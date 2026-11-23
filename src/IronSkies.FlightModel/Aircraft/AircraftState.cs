@@ -22,12 +22,14 @@ public sealed class AircraftState
         AircraftDefinition definition,
         double altitudeMeters = 1000.0,
         double speedMs = 120.0,
-        double headingRad = 0.0)
+        double headingRad = 0.0,
+        double eastMeters = 0.0,
+        double northMeters = 0.0)
     {
         Quat orientation = Quat.FromHeading(headingRad);
         return new AircraftState
         {
-            Position = new Vec3(0.0, 0.0, altitudeMeters),
+            Position = new Vec3(eastMeters, northMeters, altitudeMeters),
             VelocityEnu = orientation.Rotate(new Vec3(speedMs, 0.0, 0.0)),
             Orientation = orientation,
             AngularVelocityBody = Vec3.Zero,

@@ -4,20 +4,24 @@ using IronSkies.FlightModel.Math;
 namespace IronSkies.FlightModel.Aero;
 
 /// <summary>
-/// Coefficient build-up. Tables and Mach/altitude corrections arrive in M1; the
-/// structure here is the one the final model uses.
+/// Coefficient build-up. When an <see cref="AeroTable"/> is supplied it is authoritative
+/// for the attached-flow regime; outside its alpha range the flat-plate post-stall model
+/// takes over. Without a table, the linear coefficients in the definition are used.
 /// </summary>
 public static class AeroModel
 {
-    /// <summary>Lift coefficient, including a blended flat-plate post-stall model.</summary>
+    /// <summary>Lift coefficient from the table (or linear model) plus control/flap deltas.</summary>
     public static double LiftCoefficient(
         AircraftDefinition d, double alpha, double elevator, double flaps)
     {
-        double attached = d.Cl0
-            + d.ClAlphaPerRad * alpha
-            + d.ClElevatorPerRad * elevator
-            + d.ClFlapsPerUnit * flaps;
+        double controlDelta = d.ClElevatorPerRad * elevator + d.ClFlapsPerUnit * flaps;
 
+        if (d.Table is { } table && alpha >= table.MinAlphaRad && alpha <= table.MaxAlphaRad)
+        {
+            return table.ClAt(alpha) + controlDelta;
+        }
+
+        double attached = d.Cl0 + d.ClAlphaPerRad * alpha + controlDelta;
         double absAlpha = DeterministicMath.Abs(alpha);
         if (absAlpha <= d.AlphaStallRad)
         {
@@ -30,15 +34,20 @@ public static class AeroModel
         return DeterministicMath.Lerp(attached, flatPlate, t);
     }
 
-    /// <summary>Drag coefficient: parasite + induced, with post-stall separation drag.</summary>
+    /// <summary>Drag coefficient: table (or parasite + induced) plus configuration deltas.</summary>
     public static double DragCoefficient(
         AircraftDefinition d, double alpha, double elevator, double flaps, double gear, double radiator)
     {
+        double configuration = d.CdGear * gear + d.CdRadiator * radiator;
+        double tableFlap = d.CdFlapsPerUnit * flaps;
+
+        if (d.Table is { } table && alpha >= table.MinAlphaRad && alpha <= table.MaxAlphaRad)
+        {
+            return table.CdAt(alpha) + configuration + tableFlap;
+        }
+
         double attachedLift = LiftCoefficient(d, alpha, elevator, flaps);
-        double parasite = d.Cd0
-            + d.CdFlapsPerUnit * flaps
-            + d.CdGear * gear
-            + d.CdRadiator * radiator;
+        double parasite = d.Cd0 + d.CdFlapsPerUnit * flaps + configuration;
         double induced = attachedLift * attachedLift
             / (DeterministicMath.Pi * d.OswaldEfficiency * d.AspectRatio);
         double attached = parasite + induced;
@@ -54,6 +63,17 @@ public static class AeroModel
         double sinAlpha = DeterministicMath.Sin(alpha);
         double flatPlate = parasite + 2.0 * sinAlpha * sinAlpha;
         return DeterministicMath.Lerp(attached, flatPlate, t);
+    }
+
+    /// <summary>Pitch-moment coefficient from the table (or linear model) plus elevator.</summary>
+    public static double PitchMomentCoefficient(
+        AircraftDefinition d, double alpha, double elevator, double pitchRateHat)
+    {
+        double cm = d.Table is { } table
+            ? table.CmAt(DeterministicMath.Clamp(alpha, table.MinAlphaRad, table.MaxAlphaRad))
+            : d.Cm0 + d.CmAlphaPerRad * alpha;
+
+        return cm + d.CmElevatorPerRad * elevator + d.CmQ * pitchRateHat;
     }
 
     /// <summary>Side-force coefficient; positive β produces a force to the left.</summary>

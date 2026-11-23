@@ -1,3 +1,4 @@
+using IronSkies.FlightModel.Aero;
 using IronSkies.FlightModel.Math;
 
 namespace IronSkies.FlightModel.Aircraft;
@@ -57,6 +58,12 @@ public sealed class AircraftDefinition
     // Propulsion
     public double MaxStaticThrustN { get; init; } = 8000.0;
     public double FuelBurnKgPerSecondAtFullThrottle { get; init; } = 0.05;
+    public double PropellerEfficiency { get; init; } = 0.85;
+
+    // Optional table-driven data. When present these override the linear coefficients
+    // above (but control-surface and flap deltas still apply).
+    public AeroTable? Table { get; init; }
+    public EnginePowerTable? EnginePower { get; init; }
 
     public double MassKg => EmptyMassKg + FuelMassKg;
     public double AspectRatio => WingSpanM * WingSpanM / WingAreaM2;

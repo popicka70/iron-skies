@@ -21,6 +21,7 @@ REGISTER = ROOT / "docs" / "assets-and-licensing.md"
 ASSET_EXTENSIONS = {
     ".png", ".jpg", ".jpeg", ".webp", ".tga", ".dds", ".ktx2", ".exr", ".hdr",
     ".glb", ".gltf", ".fbx", ".blend", ".obj",
+    ".r16", ".bin",
     ".wav", ".ogg", ".flac", ".mp3",
     ".ttf", ".otf",
 }
@@ -34,7 +35,8 @@ def is_registered(path: Path, register_text: str) -> bool:
 
     directory = path.parent
     while directory >= ASSETS:
-        if (directory / "LICENSE").exists() or (directory / ".LICENSE").exists():
+        if ((directory / "LICENSE").exists() or (directory / ".LICENSE").exists()
+                or (directory / "LICENSE-DATA.txt").exists()):
             return True
         if directory == ASSETS:
             break

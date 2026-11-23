@@ -19,6 +19,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="../../game/assets/aircraft/**/*"
+             Link="aircraft/%(RecursiveDir)%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\IronSkies.FlightModel\IronSkies.FlightModel.csproj" />
   </ItemGroup>
 

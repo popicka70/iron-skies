@@ -13,10 +13,13 @@ retrospective in `docs/retro/`.
 - [x] Repository, MIT licence, CI (`dotnet test`, Godot build)
 - [x] Specification and architecture decision records
 - [x] `IronSkies.FlightModel` skeleton: ISA atmosphere, aero coefficients, 6-DOF integration
-- [ ] Godot project boots on Linux and Windows
-- [ ] Flyable test aircraft over a flat 2 × 2 km plane
-- [ ] Joystick + keyboard input, chase/orbit camera, basic HUD (speed, altitude, RPM)
-- [ ] Golden-replay determinism test in CI
+- [x] Godot project boots on Linux (Windows export pending)
+- [x] Flyable aircraft over a real 40 × 40 km heightmap
+- [x] Spitfire LF Mk IX data set, table-driven aero and engine power curve
+- [x] Terrain pipeline: Copernicus DEM → 16-bit heightmap → 40 km mesh + ground queries
+- [x] Golden-replay determinism unit test (cross-platform CI replay pending)
+- [ ] Joystick/HOTAS input
+- [ ] Basic HUD (speed, altitude, RPM) — done, expand with engine gauges
 
 **Acceptance:** the test aircraft takes off, climbs, stalls, and lands without NaNs;
 simulation runs at 240 Hz with a stable 60 FPS render; CI is green on both OSes.
@@ -45,8 +48,9 @@ sortie with engine management; deterministic replays reproduce exactly.
 
 **Goal:** a screenshot that could be mistaken for a modern sim.
 
-- 16 × 16 km hand-curated map built with the map pipeline (not hand-placed meshes)
+- Art pass over the existing 40 × 40 km theatre (no hand-placed terrain meshes)
 - Quadtree terrain with 5 LODs, geomorphing, streaming, heightfield collision
+- Terrain colour from Sentinel-2 ortho and OSM landcover (replacing the placeholder shader)
 - Splat-blended ground, forests via MultiMesh, water, roads
 - Airfield with hangars, revetments, runway markings, static props
 - Physical sky, sun/moon, SDFGI, volumetric fog, cloud layer, weather presets
@@ -81,15 +85,15 @@ within one tick; server CPU < 50% of one core per 16 players; 8-hour soak test c
 
 **Goal:** a real-world theatre that survives restarts and can be edited.
 
-- Geodata pipeline: Copernicus DEM + OSM + Sentinel-2 → 64 × 64 km theatre bundle
+- Geodata pipeline: Copernicus DEM + OSM + Sentinel-2 → 40 × 40 km theatre bundle
 - Persistence: SQLite world DB, CAS chunk store, delta journal, backup/restore
 - In-engine map editor: place/remove objects, paint ground, save deltas
 - Airfields and landmarks for the Normandy map; mission spawn points
 - Weather/time-of-day persistence per session
-- Streaming performance pass for 64 km traversal
+- Streaming performance pass for a 40 km traversal
 
 **Acceptance:** rebuild the theatre from pinned sources reproducibly; server restart
-preserves destroyed objects and player-placed items; 64 km flight at 60 FPS with
+preserves destroyed objects and player-placed items; 40 km flight at 60 FPS with
 continuous streaming.
 
 ---

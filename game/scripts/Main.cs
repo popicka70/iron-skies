@@ -1,20 +1,25 @@
+using System;
+using System.Diagnostics;
 using System.Runtime;
 using System.Text;
 using Godot;
 using IronSkies.FlightModel.Aircraft;
+using IronSkies.Game.World;
 
 namespace IronSkies.Game;
 
 /// <summary>
-/// M0 demo: flies the placeholder training aircraft over a flat plane.
-/// This proves the engine/simulation boundary, the floating-origin-friendly
-/// coordinate mapping, and the 240 Hz fixed-step loop. Terrain and art land in M2.
+/// Sandbox demo: flies the Spitfire data set over the 40 × 40 km Normandy heightmap.
+/// Proves the engine/simulation boundary, the coordinate mapping, the 240 Hz fixed
+/// step, terrain rendering and terrain-aware ground contact. Art lands in M2.
 /// </summary>
 public partial class Main : Node3D
 {
     private const double PhysicsDt = 1.0 / 240.0;
 
     private AircraftSimulator _sim = null!;
+    private AircraftDefinition _definition = null!;
+    private Heightmap _heightmap = null!;
     private MeshInstance3D _aircraft = null!;
     private Camera3D _camera = null!;
     private Label _hud = null!;
@@ -26,19 +31,26 @@ public partial class Main : Node3D
     private double _hudTimer;
     private int _tick;
 
+    private string? _screenshotPath;
+    private bool _screenshotStarted;
+
     public override void _Ready()
     {
         // Fewer full blocking collections while flying; the hot path allocates nothing.
         GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
+        _screenshotPath = ReadUserOption("--screenshot");
 
         BuildEnvironment();
+        BuildTerrain();
+        _definition = LoadAircraft();
         BuildAircraft();
         BuildCamera();
         BuildHud();
         ResetFlight();
-        WarmUp();
+        WarmUp(_definition);
 
-        GD.Print("Iron Skies M0 — WASD throttle/rudder, arrows pitch/roll, R to reset.");
+        GD.Print($"Iron Skies — {_definition.DisplayName} over {_heightmap.Meta.Name}");
+        GD.Print("WASD throttle/rudder, arrows pitch/roll, R to reset.");
     }
 
     public override void _PhysicsProcess(double delta)
@@ -80,17 +92,56 @@ public partial class Main : Node3D
 
         _hudTimer = 0.0;
         UpdateHud();
+
+        if (_screenshotPath is not null && !_screenshotStarted && _tick > 480)
+        {
+            _screenshotStarted = true;
+            CaptureScreenshot(_screenshotPath);
+        }
+    }
+
+    private static string? ReadUserOption(string name)
+    {
+        string[] args = OS.GetCmdlineUserArgs();
+        for (int i = 0; i < args.Length - 1; i++)
+        {
+            if (args[i] == name)
+            {
+                return args[i + 1];
+            }
+        }
+
+        return null;
+    }
+
+    private async void CaptureScreenshot(string path)
+    {
+        await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
+        Image image = GetViewport().GetTexture().GetImage();
+        Error error = image.SavePng(path);
+        if (error != Error.Ok)
+        {
+            GD.PushError($"Screenshot failed: {error}");
+        }
+        else
+        {
+            GD.Print($"Screenshot written to {path}");
+        }
+
+        GetTree().Quit();
     }
 
     private void UpdateHud()
     {
         FlightTelemetry t = _sim.Telemetry;
+        double ground = _heightmap.HeightAt(_sim.State.Position.X, _sim.State.Position.Y);
+        double agl = _sim.State.AltitudeMeters - ground;
         _hudText.Clear();
-        _hudText.Append("Iron Skies — M0 demo\n");
+        _hudText.Append("Iron Skies — ").Append(_definition.DisplayName).Append('\n');
         _hudText.Append("Speed     ").Append((t.SpeedMs * 1.94384).ToString("F1"))
             .Append(" kt   (").Append(t.SpeedMs.ToString("F1")).Append(" m/s)\n");
         _hudText.Append("Altitude  ").Append((_sim.State.AltitudeMeters * 3.28084).ToString("F0"))
-            .Append(" ft\n");
+            .Append(" ft MSL   ").Append((agl * 3.28084).ToString("F0")).Append(" ft AGL\n");
         _hudText.Append("AoA       ").Append((t.AlphaRad * 57.2958).ToString("F1")).Append("°\n");
         _hudText.Append("Mach      ").Append(t.Mach.ToString("F3")).Append('\n');
         _hudText.Append("Load      ").Append(t.LoadFactorG.ToString("F2")).Append(" g\n");
@@ -104,9 +155,8 @@ public partial class Main : Node3D
     /// Runs the simulation and the transform conversion once at load so the first
     /// minute of flight does not pay JIT compilation costs.
     /// </summary>
-    private static void WarmUp()
+    private static void WarmUp(AircraftDefinition definition)
     {
-        AircraftDefinition definition = AircraftDefinition.TrainingAircraft;
         var sim = new AircraftSimulator(definition, AircraftState.CreateAirborne(definition));
         for (int i = 0; i < 2_000; i++)
         {
@@ -149,10 +199,13 @@ public partial class Main : Node3D
 
     private void ResetFlight()
     {
-        AircraftDefinition definition = AircraftDefinition.TrainingAircraft;
+        const double north = 6000.0;
+        double ground = _heightmap.HeightAt(0.0, north);
         _sim = new AircraftSimulator(
-            definition,
-            AircraftState.CreateAirborne(definition, altitudeMeters: 1200.0, speedMs: 130.0));
+            _definition,
+            AircraftState.CreateAirborne(
+                _definition, altitudeMeters: ground + 2000.0, speedMs: 120.0, northMeters: north),
+            _heightmap);
         _throttle = 0.75;
         _elevator = 0.0;
         _aileron = 0.0;
@@ -185,7 +238,7 @@ public partial class Main : Node3D
             GlowIntensity = 0.35f,
             FogEnabled = true,
             FogLightColor = new Color(0.65f, 0.72f, 0.80f),
-            FogDensity = 0.00008f,
+            FogDensity = 0.000035f,
             FogSkyAffect = 0.4f,
         };
 
@@ -199,21 +252,34 @@ public partial class Main : Node3D
             DirectionalShadowMaxDistance = 8000.0f,
         };
         AddChild(sun);
+    }
 
-        var groundMaterial = new StandardMaterial3D
-        {
-            AlbedoColor = new Color(0.28f, 0.34f, 0.19f),
-            Roughness = 0.95f,
-            Metallic = 0.0f,
-        };
+    private void BuildTerrain()
+    {
+        var timer = Stopwatch.StartNew();
+        _heightmap = Heightmap.Load("res://assets/terrain/normandy-1944");
+        var terrain = new TerrainRenderer();
+        terrain.Build(_heightmap);
+        AddChild(terrain);
+        timer.Stop();
+        GD.Print($"Terrain: {_heightmap.Width}×{_heightmap.Height} @ {_heightmap.Spacing:0} m, " +
+                 $"{_heightmap.Meta.Name}, built in {timer.ElapsedMilliseconds} ms");
+    }
 
-        var ground = new MeshInstance3D
+    private static AircraftDefinition LoadAircraft()
+    {
+        const string directory = "res://assets/aircraft/spitfire-mk9";
+        try
         {
-            Mesh = new PlaneMesh { Size = new Vector2(40000.0f, 40000.0f) },
-            MaterialOverride = groundMaterial,
-            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
-        };
-        AddChild(ground);
+            string json = FileAccess.GetFileAsString($"{directory}/aircraft.json");
+            string csv = FileAccess.GetFileAsString($"{directory}/aero.csv");
+            return AircraftLoader.Parse(json, csv);
+        }
+        catch (Exception error)
+        {
+            GD.PushError($"Could not load Spitfire data: {error.Message}");
+            return AircraftDefinition.TrainingAircraft;
+        }
     }
 
     private void BuildAircraft()

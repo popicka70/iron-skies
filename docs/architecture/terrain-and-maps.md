@@ -6,24 +6,21 @@
 2. **Reproducible.** A theatre bundle can be rebuilt from pinned sources and a seed.
 3. **Persistent.** Edits and battle damage survive restarts, with a journal that can be
    replayed and compacted.
-4. **Streamed.** Memory use is bounded; the player can fly 64 km without a loading screen.
+4. **Streamed.** Memory use is bounded; the player can fly 40 km without a loading screen.
 
 ## 2. Theatre bundle
 
 ```
-theatres/normandy-1944/
-  theatre.toml            bounds, projection, sources, seed, generator version
-  manifest.json           file hashes, LOD levels, attribution block
-  heightmap/              <z>/<x>_<y>.r16  (raw 16-bit, metres above ellipsoid)
-  splat/                  <z>/<x>_<y>.png  (RGBA8: forest, field, urban, rock)
-  ortho/                  <z>/<x>_<y>.webp (colour, mipmapped)
-  vectors/                roads.fgb, water.fgb, buildings.fgb, airfields.geojson
-  objects/                static props + placement (glTF referenced by hash)
-  LICENSE-DATA.txt        generated attribution for every source
+theatres/normandy-1944/theatre.toml    definition: bounds, CRS, sources, seed
+
+game/assets/terrain/normandy-1944/     built bundle (shipped with the demo)
+  meta.json                            size, spacing, CRS, height range
+  heightmap.r16                        16-bit little-endian, row 0 = south
+  LICENSE-DATA.txt                     generated attribution
 ```
 
-Bundles are distributed as release artifacts, not committed to Git. Clients can also
-build them locally with `tools/mapgen`.
+The M0 sample is committed (≈5 MiB) so the demo runs from a clone. Larger theatres are
+release artifacts, not Git content. Clients can rebuild any bundle with `tools/mapgen`.
 
 ## 3. Source data
 
@@ -55,8 +52,9 @@ fetch → clip/reproject → heightmap LOD pyramid → derivatives (normals, slo
 
 ## 5. Runtime terrain
 
-- **Quadtree clipmap** around the camera: chunk 1 km at LOD0, 5 rings,
-  1 m → 32 m vertex spacing, max ~65k vertices per chunk.
+- **Quadtree clipmap** around the camera: chunk 1 km, 5 rings, 25 m → 400 m vertex
+  spacing, ~65k vertices per chunk. M0 ships a static 4 × 4 tile mesh at 50 m as a
+  pipeline proof; the clipmap is the M2 replacement.
 - **Geomorphing** (vertex position blending) over the last 15% of each LOD range removes
   popping; skirts hide cracks at chunk borders.
 - **Splatting:** 4-channel splat blended with a macro-variation texture (two scales)
@@ -164,7 +162,8 @@ No application-level rewrite is expected; only the repository implementation cha
 ## 8. Validation
 
 - Height accuracy: sample N points, compare to source DEM within 2 m RMSE.
+- M0 baseline: 40 × 40 km, 1601² samples at 25 m, heights −44…248 m, built in < 1 s.
 - Visual: side-by-side screenshots vs. reference photos at 6 landmark locations.
-- Streaming: fly a 64 km transect, assert no hitch > 16 ms and memory within budget.
+- Streaming: fly a 40 km transect, assert no hitch > 16 ms and memory within budget.
 - Persistence: kill -9 the server mid-mission, restart, assert state matches the journal.
 - Determinism: rebuild the bundle twice from pinned sources, assert identical hashes.

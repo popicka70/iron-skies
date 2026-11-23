@@ -1,0 +1,29 @@
+{
+  "id": "normandy-1944",
+  "name": "Normandy, June 1944",
+  "heightmapFile": "heightmap.r16",
+  "width": 1601,
+  "height": 1601,
+  "spacingMeters": 25.0,
+  "halfExtentMeters": 20000.0,
+  "rowOrder": "south-to-north",
+  "crs": "EPSG:32631",
+  "origin": {
+    "easting": 254518.717,
+    "northing": 5455157.137
+  },
+  "boundsWgs84": {
+    "north": 49.4,
+    "south": 49.0,
+    "west": -0.68,
+    "east": -0.06
+  },
+  "heightRangeMeters": [
+    -44.0,
+    248.0
+  ],
+  "source": [
+    "Copernicus DEM GLO-30"
+  ],
+  "generatedBy": "tools/mapgen/mapgen.py"
+}

@@ -174,7 +174,9 @@ validation.md     targets, sources, measured results
 ```
 
 `aircraft.json` is loaded by the sim core (no engine types), validated against a schema,
-and frozen at spawn. Modders can add aircraft without code changes.
+and frozen at spawn. Modders can add aircraft without code changes. The Spitfire LF Mk IX
+data set in `game/assets/aircraft/spitfire-mk9/` is the reference implementation, including
+the alpha-indexed `aero.csv` and the altitude power table.
 
 ## 10. Validation workflow
 

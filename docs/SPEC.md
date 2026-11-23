@@ -42,7 +42,7 @@ Success at 1.0 means:
 
 ### In scope
 
-- **Theatre:** Normandy, June 1944 — a 64 × 64 km playable area (later expandable).
+- **Theatre:** Normandy, June 1944 — a 40 × 40 km playable area (later expandable).
 - **Aircraft (flyable):** 3 at launch — Supermarine Spitfire Mk IXc, Messerschmitt
   Bf 109 G-6, North American P-51D-25. Additional AI aircraft: 2–3.
 - **Modes:** single-player (free flight, quick mission, scripted missions, simple
@@ -85,7 +85,7 @@ servers; official servers run the same container image.
 | D3 | Flight model | **Custom 6-DOF, coefficient-table aero**, 240 Hz fixed step | Jolt rigid bodies, JSBSim-first, arcade model | Full control, deterministic, no engine coupling; JSBSim optionally cross-checks. |
 | D4 | Physics engine | **Jolt** for ground contacts/props only; aircraft FDM is custom | Bullet, PhysX, Godot Physics | Jolt is MIT, fast, built into Godot 4.4+. Never used for aero. |
 | D5 | World | **Floating origin** + double-precision sim in local ENU; float32 rendering | Double-precision engine build, huge-coordinate hacks | Godot world space is float32; rebasing keeps precision to millimetres. |
-| D6 | Terrain | **Quadtree clipmap**, chunked LOD, streaming | Heightmap mesh, voxel terrain | Scales from 64 km theatre to continental data; memory-bounded. |
+| D6 | Terrain | **Quadtree clipmap**, chunked LOD, streaming | Heightmap mesh, voxel terrain | Scales from a 40 km theatre to continental data; memory-bounded. |
 | D7 | Map source | Offline pipeline: **Copernicus GLO-30 DEM + OSM + Sentinel-2/NAIP** | Hand-authored scenes, paid satellite tiles | Free, global, licence-clean, reproducible. |
 | D8 | Map runtime | **SQLite** metadata + content-addressed blob store + append-only delta journal | Postgres-first, JSON scenes | Zero-ops, single file, trivially backed up; Postgres later if scale demands. |
 | D9 | Networking | **Authoritative server, ENet**, 30 Hz snapshots, prediction/interpolation | Godot high-level replication, WebRTC, TCP | Control over bandwidth and lag compensation; ENet is MIT and proven. |
@@ -220,8 +220,9 @@ reproducible from `theatre.toml` + pinned source URLs + mapgen version.
 
 ### 8.2 Runtime terrain
 
-- Quadtree clipmap centred on the camera, chunk size 1 km, 5 LOD rings (1 m → 32 m
-  vertex spacing), geomorphing between LODs to hide seams and popping.
+- Quadtree clipmap centred on the camera, chunk size 1 km, 5 LOD rings (25 m → 400 m
+  vertex spacing), geomorphing between LODs to hide seams and popping. M0 ships a
+  static 4 × 4 tile proof at 50 m; the clipmap replaces it in M2.
 - Heightfield collision queries use the same data as rendering (single source of truth).
 - Forest/grass via `MultiMesh` with distance-based density and dithered fade; no
   per-tree nodes.
@@ -349,11 +350,11 @@ Detailed acceptance criteria: [ROADMAP.md](ROADMAP.md).
 
 | Milestone | Outcome | Rough effort (small team, part-time) |
 | --- | --- | --- |
-| **M0 Bootstrap** | Repo, CI, engine boots, FDM library flies a test aircraft over flat terrain | 2–4 weeks |
+| **M0 Bootstrap** | Repo, CI, engine boots, Spitfire data set flies over a 40 km DEM theatre | 2–4 weeks |
 | **M1 Flight core** | Full aero/propulsion/damage, 2 aircraft, validation harness | 6–8 weeks |
 | **M2 Photoreal slice** | 16 × 16 km map, terrain LOD/streaming, weather, audio, 60 FPS | 10–14 weeks |
 | **M3 Multiplayer** | Dedicated server, prediction, 16+ players, browser | 8–10 weeks |
-| **M4 Persistent Normandy** | Real-geodata 64 × 64 km theatre, persistence, missions | 10–12 weeks |
+| **M4 Persistent Normandy** | Real-geodata 40 × 40 km theatre, persistence, missions | 10–12 weeks |
 | **M5 Content & 1.0** | 3 flyable aircraft, campaign, UI, localisation, release | ongoing |
 
 A credible 1.0 is a **12–18 month** effort for a small part-time team. Full commercial

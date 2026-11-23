@@ -6,8 +6,12 @@ Iron Skies aims to combine study-level flight dynamics, a photorealistic renderi
 pipeline, persistent maps derived from real-world geodata, and drop-in multiplayer —
 with **zero licence fees, zero royalties, and no proprietary dependencies**.
 
-> **Status: pre-alpha / M0 (bootstrap).** Nothing here is stable yet. The first
-> playable vertical slice is targeted for milestone M2 (see [docs/ROADMAP.md](docs/ROADMAP.md)).
+> **Status: pre-alpha / M0.** Nothing here is stable yet. The first playable vertical
+> slice is targeted for milestone M2 (see [docs/ROADMAP.md](docs/ROADMAP.md)).
+
+![Iron Skies M0: 40 × 40 km Normandy terrain](docs/media/m0-normandy-40km.png)
+
+*M0: 40 × 40 km terrain from Copernicus DEM, placeholder aircraft and terrain shading.*
 
 ---
 
@@ -51,6 +55,8 @@ Full rationale: [docs/SPEC.md](docs/SPEC.md) and [docs/adr/](docs/adr/).
 
 ```
 game/                       Godot project (client + server entry points)
+game/assets/aircraft/       Aircraft data sets (JSON + aero CSV + validation)
+game/assets/terrain/        Sample 40 × 40 km theatre bundle (DEM-derived)
 src/IronSkies.FlightModel/  Pure .NET 6-DOF flight dynamics (engine-agnostic, unit-tested)
 tests/                      xUnit tests for simulation code
 tools/mapgen/               Offline geodata -> theatre bundle pipeline
@@ -70,6 +76,9 @@ dotnet test
 
 # Run the game (once a Godot .NET build is on PATH)
 godot --path game
+
+# Capture a deterministic screenshot and exit (used for art review/docs)
+godot --path game -- --screenshot /tmp/iron-skies.png
 ```
 
 ## Contributing

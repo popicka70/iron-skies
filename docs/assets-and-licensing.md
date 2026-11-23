@@ -34,6 +34,9 @@ distributed under ODbL with attribution, and anyone receiving it may reuse the d
 This does not affect the game code (MIT) but does affect distributed `.theatre` bundles.
 Generated `LICENSE-DATA.txt` in each bundle carries the exact notices.
 
+The committed M0 sample (`game/assets/terrain/normandy-1944/`) is derived from
+Copernicus DEM GLO-30; its attribution file ships next to the heightmap.
+
 ## Art and audio
 
 | Asset class | Source | Licence | Notes |

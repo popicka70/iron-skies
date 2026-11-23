@@ -23,16 +23,22 @@ public sealed class AircraftSimulator
 {
     private const double MinSpeedForAero = 0.5;
 
+    private readonly IGroundSurface _ground;
+
     public AircraftDefinition Definition { get; }
     public AircraftState State { get; }
     public FlightTelemetry Telemetry { get; private set; }
 
-    public AircraftSimulator(AircraftDefinition definition, AircraftState? initialState = null)
+    public AircraftSimulator(
+        AircraftDefinition definition,
+        AircraftState? initialState = null,
+        IGroundSurface? ground = null)
     {
         ArgumentNullException.ThrowIfNull(definition);
         definition.Validate();
         Definition = definition;
         State = initialState ?? AircraftState.CreateAirborne(definition);
+        _ground = ground ?? FlatGround.Instance;
     }
 
     public void Step(Controls rawControls, double dt)
@@ -73,7 +79,19 @@ public sealed class AircraftSimulator
         // Lift is perpendicular to the relative wind, in the body X–Z plane, toward "up" (−Z).
         Vec3 liftDirection = new Vec3(vhat.Z, 0.0, -vhat.X).NormalizedOrZero();
 
-        double thrust = c.Throttle * d.MaxStaticThrustN * atm.DensityRatio;
+        double thrust;
+        if (d.EnginePower is { } enginePower)
+        {
+            // Power-limited propeller: T = ηP/V, capped by static thrust.
+            double availablePower = enginePower.PowerWattsAt(State.AltitudeMeters) * d.PropellerEfficiency;
+            double effectiveSpeed = DeterministicMath.Clamp(speed, 10.0, 450.0);
+            thrust = DeterministicMath.Clamp(
+                availablePower / effectiveSpeed, 0.0, d.MaxStaticThrustN) * c.Throttle;
+        }
+        else
+        {
+            thrust = c.Throttle * d.MaxStaticThrustN * atm.DensityRatio;
+        }
         Vec3 forceBody = liftDirection * lift
             - vhat * drag
             + new Vec3(0.0, side, 0.0)
@@ -85,7 +103,7 @@ public sealed class AircraftSimulator
         double phat = speed > MinSpeedForAero ? omega.X * d.WingSpanM / (2.0 * speed) : 0.0;
         double rhat = speed > MinSpeedForAero ? omega.Z * d.WingSpanM / (2.0 * speed) : 0.0;
 
-        double cm = d.Cm0 + d.CmAlphaPerRad * alpha + d.CmElevatorPerRad * c.Elevator + d.CmQ * qhat;
+        double cm = AeroModel.PitchMomentCoefficient(d, alpha, c.Elevator, qhat);
         double rollCoef = d.ClBetaPerRad * beta + d.ClAileronPerRad * c.Aileron + d.ClP * phat;
         double yawCoef = d.CnBetaPerRad * beta + d.CnRudderPerRad * c.Rudder + d.CnR * rhat;
 
@@ -139,12 +157,13 @@ public sealed class AircraftSimulator
     /// </summary>
     private void ApplyGroundContact(double dt)
     {
-        if (State.Position.Z > 0.0)
+        double groundHeight = _ground.HeightAt(State.Position.X, State.Position.Y);
+        if (State.Position.Z > groundHeight)
         {
             return;
         }
 
-        State.Position = new Vec3(State.Position.X, State.Position.Y, 0.0);
+        State.Position = new Vec3(State.Position.X, State.Position.Y, groundHeight);
         if (State.VelocityEnu.Z < 0.0)
         {
             State.VelocityEnu = new Vec3(State.VelocityEnu.X, State.VelocityEnu.Y, 0.0);

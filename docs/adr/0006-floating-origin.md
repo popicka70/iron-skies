@@ -5,7 +5,7 @@
 
 ## Context
 
-A 64 × 64 km theatre with aircraft flying at 10 km altitude and 700 km/h needs
+A 40 × 40 km theatre with aircraft flying at 10 km altitude and 700 km/h needs
 millimetre-level precision for gear contact and gun ballistics, but Godot's world
 coordinates are float32 (~1 cm precision at 100 km, degrading rapidly). Rendering,
 physics and networking all need consistent coordinates.

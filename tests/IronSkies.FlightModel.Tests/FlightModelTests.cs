@@ -118,6 +118,22 @@ public class FlightModelTests
     }
 
     [Fact]
+    public void GroundContact_UsesTheSuppliedTerrain()
+    {
+        AircraftDefinition d = AircraftDefinition.TrainingAircraft;
+        var state = AircraftState.CreateAirborne(d, altitudeMeters: 100.0, speedMs: 80.0);
+        var sim = new AircraftSimulator(d, state, new ConstantGround(120.0));
+
+        for (int i = 0; i < 240; i++)
+        {
+            sim.Step(new Controls(), Dt);
+        }
+
+        Assert.Equal(120.0, sim.State.Position.Z, 0.5);
+        Assert.True(sim.State.VelocityEnu.Z <= 0.01);
+    }
+
+    [Fact]
     public void NegativeTimestep_IsRejected()
     {
         var sim = new AircraftSimulator(AircraftDefinition.TrainingAircraft);
@@ -137,5 +153,12 @@ public class FlightModelTests
 
         Assert.True(sim.State.MassKg < before);
         Assert.True(sim.State.FuelKg >= 0.0);
+    }
+
+    private sealed class ConstantGround : IGroundSurface
+    {
+        private readonly double _height;
+        public ConstantGround(double height) => _height = height;
+        public double HeightAt(double eastMeters, double northMeters) => _height;
     }
 }

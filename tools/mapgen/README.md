@@ -5,14 +5,15 @@ See [../../docs/architecture/terrain-and-maps.md](../../docs/architecture/terrai
 
 ## Status
 
-**Not implemented yet.** Designed in M2, required in M4. This directory currently holds
-the CLI skeleton and the source/licence policy.
+The **DEM stage is implemented** (M0): fetch Copernicus GLO-30, reproject to the
+theatre CRS and emit a 16-bit heightmap + metadata. Landcover, ortho, vectors and object
+placement are designed and land in M2–M4.
 
 ## Planned usage
 
 ```bash
 python3 tools/mapgen/mapgen.py --theatre normandy-1944 --plan
-python3 tools/mapgen/mapgen.py --theatre normandy-1944 --quick   # 4 × 4 km test tile
+python3 tools/mapgen/mapgen.py --theatre normandy-1944 --resolution 50
 python3 tools/mapgen/mapgen.py --theatre normandy-1944           # full build
 ```
 
