@@ -35,7 +35,8 @@ This does not affect the game code (MIT) but does affect distributed `.theatre` 
 Generated `LICENSE-DATA.txt` in each bundle carries the exact notices.
 
 The committed M0 sample (`game/assets/terrain/normandy-1944/`) is derived from
-Copernicus DEM GLO-30; its attribution file ships next to the heightmap.
+Copernicus DEM GLO-30 and OpenStreetMap; `osm.json` is a Derivative Database under
+ODbL 1.0 and carries the OSM attribution.
 
 ## Art and audio
 

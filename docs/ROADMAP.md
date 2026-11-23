@@ -19,6 +19,7 @@ retrospective in `docs/retro/`.
 - [x] Terrain pipeline: Copernicus DEM → 16-bit heightmap → 40 km mesh + ground queries
 - [x] Chunked LOD terrain streaming (1 km chunks, 25–200 m, 10 km radius, far base mesh)
 - [x] Sentinel-2 orthophoto (10 m) + landcover masks draped on the terrain
+- [x] OSM roads and hedgerows draped as 3D ribbons around the demo spawn
 - [x] Golden-replay determinism unit test (cross-platform CI replay pending)
 - [ ] Joystick/HOTAS input
 - [ ] Basic HUD (speed, altitude, RPM) — done, expand with engine gauges
@@ -54,7 +55,7 @@ sortie with engine management; deterministic replays reproduce exactly.
 
 - Art pass over the existing 40 × 40 km theatre (no hand-placed terrain meshes)
 - Geomorphing/skirts to remove LOD seams; streaming budget instrumentation
-- OSM landcover: hedgerows, roads, woods and settlements (Sentinel-2 masks are in)
+- OSM landcover: woods, settlements and extruded buildings (roads/hedges are in)
 - Detail normals, water shading and 3D vegetation
 - Splat-blended ground, forests via MultiMesh, water, roads
 - Airfield with hangars, revetments, runway markings, static props

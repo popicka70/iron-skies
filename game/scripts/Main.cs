@@ -43,6 +43,7 @@ public partial class Main : Node3D
     {
         Chase,
         Cockpit,
+        Top,
     }
 
     private CameraMode _cameraMode = CameraMode.Chase;
@@ -65,9 +66,14 @@ public partial class Main : Node3D
         GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
         _screenshotPath = ReadUserOption("--screenshot");
         _airStart = HasUserFlag("--air-start");
-        if (ReadUserOption("--camera") == "cockpit")
+        string? cameraOption = ReadUserOption("--camera");
+        if (cameraOption == "cockpit")
         {
             _cameraMode = CameraMode.Cockpit;
+        }
+        else if (cameraOption == "top")
+        {
+            _cameraMode = CameraMode.Top;
         }
 
         DetectJoystick();
@@ -328,7 +334,7 @@ public partial class Main : Node3D
         bool cameraKey = Input.IsPhysicalKeyPressed(Key.C);
         if (cameraKey && !_prevCameraKey)
         {
-            _cameraMode = _cameraMode == CameraMode.Chase ? CameraMode.Cockpit : CameraMode.Chase;
+            _cameraMode = _cameraMode switch { CameraMode.Chase => CameraMode.Cockpit, CameraMode.Cockpit => CameraMode.Chase, _ => CameraMode.Chase };
         }
 
         _prevCameraKey = cameraKey;
@@ -375,12 +381,15 @@ public partial class Main : Node3D
 
     private void ResetFlight()
     {
-        const double north = 6000.0;
-        double ground = _heightmap.HeightAt(0.0, north);
+        const double east = 700.0;
+        const double north = 6750.0;
+        double ground = _heightmap.HeightAt(east, north);
         AircraftState state = _airStart
             ? AircraftState.CreateAirborne(
-                _definition, altitudeMeters: ground + 2000.0, speedMs: 120.0, northMeters: north)
-            : AircraftState.CreateOnGround(_definition, ground, northMeters: north);
+                _definition, altitudeMeters: ground + 2000.0, speedMs: 120.0,
+                eastMeters: east, northMeters: north)
+            : AircraftState.CreateOnGround(
+                _definition, ground, eastMeters: east, northMeters: north);
         _sim = new AircraftSimulator(_definition, state, _heightmap);
         _throttle = _airStart ? 0.75 : 0.0;
         _brake = 0.0;
@@ -444,6 +453,11 @@ public partial class Main : Node3D
         _terrain = new TerrainWorld();
         _terrain.Build(_heightmap, directory);
         AddChild(_terrain);
+
+        var osm = new OsmDetail();
+        osm.Build(_heightmap, $"{directory}/osm.json");
+        AddChild(osm);
+
         timer.Stop();
         GD.Print($"Terrain: {_heightmap.Width}×{_heightmap.Height} @ {_heightmap.Spacing:0} m, " +
                  $"ortho {_heightmap.Meta.OrthoSize}px, base built in {timer.ElapsedMilliseconds} ms");
@@ -523,6 +537,14 @@ public partial class Main : Node3D
 
     private void UpdateCamera(double delta)
     {
+        if (_cameraMode == CameraMode.Top)
+        {
+            Vector3 target = SimBridge.ToGodot(_sim.State.Position);
+            _camera.GlobalPosition = target + new Vector3(0.0f, 700.0f, 0.0f);
+            _camera.LookAt(target, new Vector3(0.0f, 0.0f, -1.0f));
+            return;
+        }
+
         if (_cameraMode == CameraMode.Cockpit)
         {
             var cockpitBasis = SimBridge.ToGodot(_sim.State.Orientation);
