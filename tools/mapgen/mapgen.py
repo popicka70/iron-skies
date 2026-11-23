@@ -323,6 +323,20 @@ def band_scale(item: dict, key: str) -> tuple[float, float]:
     return float(bands[0].get("scale", 1.0)), 0.0
 
 
+def load_scenes(theatre: dict, bounds: dict) -> tuple[str, list[dict]]:
+    pinned = theatre.get("sentinel2_scenes") or []
+    if pinned:
+        entry = pinned[0]
+        items = [
+            http_json(f"{S2_STAC}/collections/sentinel-2-l2a/items/{item_id}")
+            for item_id in entry["items"]
+        ]
+        print(f"Sentinel-2: pinned {entry['date']} ({len(items)} tiles)", file=sys.stderr)
+        return entry["date"], items
+
+    return choose_scenes(stac_search(bounds), bounds)
+
+
 def build_ortho(theatre: dict, out_dir: Path, meta: dict, size: int) -> dict:
     try:
         from PIL import Image, ImageFilter
@@ -331,8 +345,7 @@ def build_ortho(theatre: dict, out_dir: Path, meta: dict, size: int) -> dict:
         raise SystemExit("mapgen needs rasterio, numpy and Pillow") from exc
 
     bounds = theatre["geodesy"]["bounds"]
-    items = stac_search(bounds)
-    date, scenes = choose_scenes(items, bounds)
+    date, scenes = load_scenes(theatre, bounds)
     scene_ids = sorted(i["id"] for i in scenes)
     print(f"Sentinel-2: {date} — {', '.join(scene_ids)}", file=sys.stderr)
 

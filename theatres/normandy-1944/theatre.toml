@@ -57,3 +57,9 @@ kind = "materials"
 licence = "CC0"
 attribution = "Poly Haven (polyhaven.com)"
 notes = "Textures only; no geospatial component"
+
+# Pinned Sentinel-2 scene set. mapgen uses these exact items so a rebuild is
+# reproducible; remove this block to let STAC pick the clearest current scene.
+[[sentinel2_scenes]]
+date = "2025-06-19"
+items = ["S2C_30UXV_20250619_0_L2A", "S2C_30UYV_20250619_0_L2A"]
