@@ -22,15 +22,23 @@ public sealed partial class CockpitPanel : Control
 
     public override void _Ready()
     {
-        SetAnchorsPreset(LayoutPreset.FullRect);
         MouseFilter = MouseFilterEnum.Ignore;
         _font = ThemeDB.FallbackFont;
+        Position = Vector2.Zero;
+        Size = GetViewportRect().Size;
     }
 
     public void Bind(AircraftSimulator sim) => _sim = sim;
 
     public override void _Process(double delta)
     {
+        Vector2 viewport = GetViewportRect().Size;
+        if (Size != viewport)
+        {
+            Position = Vector2.Zero;
+            Size = viewport;
+        }
+
         if (Visible && _sim is not null)
         {
             QueueRedraw();
@@ -44,13 +52,13 @@ public sealed partial class CockpitPanel : Control
             return;
         }
 
-        Vector2 size = Size;
+        Vector2 size = GetViewportRect().Size;
         const float width = 820.0f;
-        const float height = 176.0f;
+        const float height = 212.0f;
         Vector2 origin = new((size.X - width) * 0.5f, size.Y - height - 18.0f);
         DrawRect(new Rect2(origin, new Vector2(width, height)), PanelColor);
 
-        Matrix3 basis = SimBridge.ToGodot(_sim.State.Orientation);
+        Godot.Basis basis = SimBridge.ToGodot(_sim.State.Orientation);
         Vector3 forward = -basis.Z;
         Vector3 right = basis.X;
         double pitchDeg = Math.Asin(Math.Clamp(forward.Y, -1.0f, 1.0f)) * 57.2957795;
@@ -59,9 +67,9 @@ public sealed partial class CockpitPanel : Control
         double speedMph = _sim.Telemetry.SpeedMs * 2.23693629;
         double altitudeFt = _sim.State.AltitudeMeters * 3.2808399;
 
-        DrawDial(origin + new Vector2(120, 92), 62, speedMph, 400, "MPH", 40, "AIRSPEED");
-        DrawAttitude(origin + new Vector2(width * 0.5f, 92), 64, pitchDeg, rollDeg);
-        DrawDial(origin + new Vector2(width - 120, 92), 62,
+        DrawDial(origin + new Vector2(120, 96), 62, speedMph, 400, "MPH", 40, "AIRSPEED");
+        DrawAttitude(origin + new Vector2(width * 0.5f, 96), 64, pitchDeg, rollDeg);
+        DrawDial(origin + new Vector2(width - 92, 96), 62,
             (_sim.State.AltitudeMeters % 1000.0) * 3.2808399, 1000, "FT", 100, "ALTITUDE");
 
         DrawString(_font, origin + new Vector2(220, 44),
@@ -73,13 +81,13 @@ public sealed partial class CockpitPanel : Control
         DrawString(_font, origin + new Vector2(220, 102),
             $"{_sim.CoolantC,4:0} C coolant", HorizontalAlignment.Left, -1, 14, TextColor);
 
-        DrawString(_font, origin + new Vector2(width - 220, 44),
+        DrawString(_font, origin + new Vector2(width - 340, 44),
             $"{_sim.State.FuelKg,5:0} kg fuel", HorizontalAlignment.Left, -1, 14, TextColor);
-        DrawString(_font, origin + new Vector2(width - 220, 62),
+        DrawString(_font, origin + new Vector2(width - 340, 62),
             $"{_sim.Weapons.TotalAmmo,4} rounds", HorizontalAlignment.Left, -1, 14, TextColor);
-        DrawString(_font, origin + new Vector2(width - 220, 80),
+        DrawString(_font, origin + new Vector2(width - 340, 80),
             $"GEAR {(_sim.GearPosition > 0.95 ? "DOWN" : "UP")}", HorizontalAlignment.Left, -1, 14, TextColor);
-        DrawString(_font, origin + new Vector2(width - 220, 98),
+        DrawString(_font, origin + new Vector2(width - 340, 98),
             $"FLAPS {_sim.FlapPosition * 100.0,3:0}%", HorizontalAlignment.Left, -1, 14, TextColor);
 
         double stallAlpha = _sim.Definition.AlphaStallRad;

@@ -12,7 +12,7 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 > M0 already starts the Spitfire on its gear, takes off, flies over a streamed
 > 40 × 40 km Normandy terrain with Sentinel-2 orthophoto/landcover, OSM roads and
 > hedgerows, a low-poly aircraft, cockpit view, engine simulation, procedural audio and
-> four working guns with a small ground target range.
+> four working guns with a small ground target range, and a live cockpit instrument panel.
 
 ![Iron Skies M0: 40 × 40 km Normandy terrain](docs/media/m0-normandy-40km.png)
 

@@ -26,6 +26,8 @@ public partial class Main : Node3D
     private SpitfireVisual _aircraft = null!;
     private EngineAudio _audio = null!;
     private CombatVisual _combat = null!;
+    private CockpitPanel _cockpitPanel = null!;
+    private Label _crosshair = null!;
     private Camera3D _camera = null!;
     private Label _hud = null!;
 
@@ -134,6 +136,7 @@ public partial class Main : Node3D
         _aircraft.GlobalTransform = SimBridge.ToGodot(_sim.State.Orientation, _sim.State.Position);
         _aircraft.UpdateFrom(_sim, delta);
         _audio.UpdateFrom(_sim, _throttle);
+        _cockpitPanel.Visible = _cameraMode == CameraMode.Cockpit;
         _terrain.SetFocus(_aircraft.GlobalPosition);
         UpdateCamera(delta);
 
@@ -154,6 +157,9 @@ public partial class Main : Node3D
         }
 
         _hudTimer = 0.0;
+        Vector2 viewport = GetViewport().GetVisibleRect().Size;
+        _crosshair.Position = new Vector2(viewport.X * 0.5f - 16.0f, viewport.Y * 0.5f - 18.0f);
+
         UpdateHud();
 
         _joyPollTimer += delta;
@@ -411,6 +417,7 @@ public partial class Main : Node3D
             : AircraftState.CreateOnGround(
                 _definition, ground, eastMeters: east, northMeters: north);
         _sim = new AircraftSimulator(_definition, state, _heightmap);
+        _cockpitPanel.Bind(_sim);
         AddTargets(_sim);
         _throttle = airborne ? 0.75 : 0.0;
         _brake = 0.0;
@@ -565,23 +572,19 @@ public partial class Main : Node3D
         _hud.AddThemeConstantOverride("shadow_offset_y", 1);
         layer.AddChild(_hud);
 
-        var crosshair = new Label
+        _crosshair = new Label
         {
             Text = "+",
+            Size = new Vector2(32.0f, 32.0f),
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
-            AnchorLeft = 0.5f,
-            AnchorTop = 0.5f,
-            AnchorRight = 0.5f,
-            AnchorBottom = 0.5f,
-            OffsetLeft = -12.0f,
-            OffsetTop = -18.0f,
-            OffsetRight = 12.0f,
-            OffsetBottom = 18.0f,
         };
-        crosshair.AddThemeFontSizeOverride("font_size", 22);
-        crosshair.AddThemeColorOverride("font_color", new Color(1.0f, 0.85f, 0.4f, 0.9f));
-        layer.AddChild(crosshair);
+        _crosshair.AddThemeFontSizeOverride("font_size", 22);
+        _crosshair.AddThemeColorOverride("font_color", new Color(1.0f, 0.85f, 0.4f, 0.9f));
+        layer.AddChild(_crosshair);
+
+        _cockpitPanel = new CockpitPanel();
+        layer.AddChild(_cockpitPanel);
     }
 
     public override void _UnhandledInput(InputEvent @event)
