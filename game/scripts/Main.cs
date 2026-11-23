@@ -22,6 +22,7 @@ public partial class Main : Node3D
     private Heightmap _heightmap = null!;
     private TerrainWorld _terrain = null!;
     private SpitfireVisual _aircraft = null!;
+    private EngineAudio _audio = null!;
     private Camera3D _camera = null!;
     private Label _hud = null!;
 
@@ -114,6 +115,7 @@ public partial class Main : Node3D
 
         _aircraft.GlobalTransform = SimBridge.ToGodot(_sim.State.Orientation, _sim.State.Position);
         _aircraft.UpdateFrom(_sim, delta);
+        _audio.UpdateFrom(_sim, _throttle);
         _terrain.SetFocus(_aircraft.GlobalPosition);
         UpdateCamera(delta);
 
@@ -468,6 +470,10 @@ public partial class Main : Node3D
         _aircraft = new SpitfireVisual();
         _aircraft.Build();
         AddChild(_aircraft);
+
+        _audio = new EngineAudio();
+        AddChild(_audio);
+        _audio.Build();
     }
 
     private void BuildCamera()
