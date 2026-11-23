@@ -1,0 +1,45 @@
+# Build output
+bin/
+obj/
+build/
+dist/
+artifacts/
+
+# Godot
+.godot/
+*.translation
+export_presets.cfg
+/android/
+/ios/
+
+# .NET / IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.DotSettings.user
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local runtime data (never commit worlds or generated theatres)
+world/
+theatres/**/heightmap/
+theatres/**/splat/
+theatres/**/ortho/
+theatres/**/vectors/
+theatres/**/objects/
+theatres/**/manifest.json
+theatres/**/LICENSE-DATA.txt
+*.theatre.zip
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local config
+*.local.toml

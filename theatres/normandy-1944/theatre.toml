@@ -1,0 +1,56 @@
+# Normandy 1944 — first playable theatre.
+# This is a *definition*; generated rasters are git-ignored and rebuilt by tools/mapgen.
+# Source URLs and checksums are pinned in M4 before any bundle is published.
+
+id = "normandy-1944"
+name = "Normandy, June 1944"
+description = "Bocage, the Cotentin coast and the airfields around Caen and Carentan."
+generator_version = "0.1"
+seed = 19440606
+
+# WGS-84 bounds (~64 km north–south). The runtime uses a local ENU tangent frame.
+[geodesy]
+crs = "EPSG:32631"          # UTM zone 31N
+origin = { lat = 49.1900, lon = -0.4500 }
+bounds = { north = 49.4800, south = 48.9000, west = -0.9500, east = 0.0500 }
+vertical_datum = "EGM2008"
+
+[terrain]
+chunk_size_m = 1000
+lod_levels = 5
+lod0_spacing_m = 1.0
+heightmap_bits = 16
+
+[runtime]
+default_weather = "broken"
+time_of_day = "09:30"
+
+# Every source must carry its licence and attribution string. mapgen copies these
+# into the generated LICENSE-DATA.txt.
+[[sources]]
+id = "copernicus-glo30"
+kind = "elevation"
+licence = "Copernicus DEM licence (free, attribution)"
+attribution = "© DLR e.V. 2010-2014 and © Airbus DS GmbH 2017-2021"
+resolution_m = 30
+
+[[sources]]
+id = "sentinel-2-l2a"
+kind = "imagery"
+licence = "Copernicus Sentinel Data Terms (free, attribution)"
+attribution = "Contains modified Copernicus Sentinel data 2026"
+resolution_m = 10
+
+[[sources]]
+id = "osm-normandy"
+kind = "vectors"
+licence = "ODbL 1.0"
+attribution = "© OpenStreetMap contributors"
+notes = "Derived bundles are ODbL; see docs/assets-and-licensing.md"
+
+[[sources]]
+id = "polyhaven-materials"
+kind = "materials"
+licence = "CC0"
+attribution = "Poly Haven (polyhaven.com)"
+notes = "Textures only; no geospatial component"
