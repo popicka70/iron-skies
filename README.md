@@ -69,6 +69,26 @@ docs/                       Specification, architecture, ADRs
 .github/workflows/          CI
 ```
 
+## Controls
+
+| Input | Action |
+| --- | --- |
+| W / S | Throttle up / down |
+| ↑ / ↓ | Pitch (pull / push) |
+| ← / → | Roll |
+| A / D | Rudder |
+| B | Wheel brakes |
+| F | Flaps |
+| G | Gear (airborne only) |
+| K / L | Radiator closed / open |
+| , / . | Elevator trim |
+| C | Cycle chase / cockpit camera |
+| Right mouse (cockpit) | Look around |
+| R | Reset sortie |
+
+The demo starts on its gear beside a Normandy hedgerow. Throttle up, keep straight with
+rudder, and ease back at ~100 mph to unstick.
+
 ## Quick start (developers)
 
 Prerequisites: .NET SDK 10+, Python 3.11+, Git. Godot 4.7 (.NET build) is needed only
