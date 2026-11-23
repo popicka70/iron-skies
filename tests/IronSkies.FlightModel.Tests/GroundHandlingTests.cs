@@ -170,4 +170,88 @@ public class GroundHandlingTests
         Assert.Contains(d.GearLegs, leg => leg.Steerable);
         Assert.Equal(2, d.GearLegs.Count(leg => leg.Braked));
     }
+
+    [Fact]
+    public void Engine_IdlesWithNoThrust()
+    {
+        AircraftDefinition d = AircraftDefinition.TrainingAircraft;
+        var sim = new AircraftSimulator(d, AircraftState.CreateAirborne(d, 2000.0, 120.0));
+
+        for (int i = 0; i < 5 * 240; i++)
+        {
+            sim.Step(new Controls(Throttle: 0.0), Dt);
+        }
+
+        Assert.InRange(sim.EngineRpm, 650.0, 760.0);
+        Assert.True(sim.EnginePowerWatts < 1.0);
+    }
+
+    [Fact]
+    public void Engine_FullThrottleHeatsCoolant()
+    {
+        AircraftDefinition d = AircraftDefinition.TrainingAircraft;
+        var sim = new AircraftSimulator(
+            d, AircraftState.CreateOnGround(d, 0.0), FlatGround.Instance);
+
+        for (int i = 0; i < 60 * 240; i++)
+        {
+            sim.Step(new Controls(Throttle: 1.0, Brake: 1.0, Radiator: 0.5), Dt);
+        }
+
+        Assert.InRange(sim.CoolantC, 75.0, 120.0);
+        Assert.True(sim.BoostSeconds > 55.0);
+    }
+
+    [Fact]
+    public void Engine_ClosedRadiatorOverheatsAndDerates()
+    {
+        AircraftDefinition d = AircraftDefinition.TrainingAircraft;
+        var sim = new AircraftSimulator(
+            d, AircraftState.CreateOnGround(d, 0.0), FlatGround.Instance);
+
+        for (int i = 0; i < 180 * 240; i++)
+        {
+            sim.Step(new Controls(Throttle: 1.0, Brake: 1.0, Radiator: 0.0), Dt);
+        }
+
+        Assert.True(sim.CoolantC > 140.0, $"coolant={sim.CoolantC:F1}C");
+        // Overheat derating is feedback-limited: the engine settles well above the
+        // redline but still makes partial power.
+        Assert.True(sim.EnginePowerWatts < 0.75 * 1650.0 * 745.7,
+            $"power={sim.EnginePowerWatts:F0}W coolant={sim.CoolantC:F1}C");
+        Assert.True(sim.EngineRpm > 2500.0);
+    }
+
+    [Fact]
+    public void Engine_FullThrottleBurnsMoreFuelThanIdle()
+    {
+        AircraftDefinition d = AircraftDefinition.TrainingAircraft;
+
+        static double Burn(AircraftDefinition d, double throttle)
+        {
+            var sim = new AircraftSimulator(d, AircraftState.CreateAirborne(d, 2000.0, 120.0));
+            for (int i = 0; i < 10 * 240; i++)
+            {
+                sim.Step(new Controls(Throttle: throttle), 1.0 / 240.0);
+            }
+
+            return d.FuelMassKg - sim.State.FuelKg;
+        }
+
+        double idleBurn = Burn(d, 0.0);
+        double fullBurn = Burn(d, 1.0);
+        Assert.True(fullBurn > idleBurn * 5.0);
+    }
+
+    [Fact]
+    public void SpitfireData_HasMerlinEngineLimits()
+    {
+        AircraftDefinition d = AircraftLoader.LoadFromDirectory(
+            Path.Combine(AppContext.BaseDirectory, "aircraft", "spitfire-mk9"));
+
+        Assert.Equal(3000.0, d.MaxRpm, 1e-9);
+        Assert.Equal(67.0, d.MaxManifoldPressureInHg, 1e-9);
+        Assert.Equal(300.0, d.BoostLimitSeconds, 1e-9);
+        Assert.Equal(135.0, d.CoolantMaxC, 1e-9);
+    }
 }

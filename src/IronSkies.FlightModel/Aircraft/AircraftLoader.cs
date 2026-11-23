@@ -138,6 +138,13 @@ public static class AircraftLoader
             TrimRudderAuthority = dto.TrimRudderAuthority,
             FlapTravelSeconds = dto.FlapTravelSeconds,
             GearTravelSeconds = dto.GearTravelSeconds,
+            IdleRpm = dto.IdleRpm,
+            MaxRpm = dto.MaxRpm,
+            RpmLagSeconds = dto.RpmLagSeconds,
+            MaxManifoldPressureInHg = dto.MaxManifoldPressureInHg,
+            BoostLimitSeconds = dto.BoostLimitSeconds,
+            CoolantMaxC = dto.CoolantMaxC,
+            OilMaxC = dto.OilMaxC,
         };
 
         definition.Validate();
@@ -202,6 +209,13 @@ internal sealed class AircraftDto
     public double TrimRudderAuthority { get; init; } = 0.20;
     public double FlapTravelSeconds { get; init; } = 8.0;
     public double GearTravelSeconds { get; init; } = 12.0;
+    public double IdleRpm { get; init; } = 700.0;
+    public double MaxRpm { get; init; } = 3000.0;
+    public double RpmLagSeconds { get; init; } = 1.0;
+    public double MaxManifoldPressureInHg { get; init; } = 67.0;
+    public double BoostLimitSeconds { get; init; } = 300.0;
+    public double CoolantMaxC { get; init; } = 135.0;
+    public double OilMaxC { get; init; } = 95.0;
 }
 
 internal sealed class GearDto
