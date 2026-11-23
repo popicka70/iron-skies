@@ -252,8 +252,8 @@ reproducible from `theatre.toml` + pinned source URLs + mapgen version.
    near the playable airfields; keep a documented fallback for cloudy scenes.
 7. Bake ambient occlusion and macro variation; validate in-engine against reference photos.
 
-**M0 status:** DEM → 16-bit heightmap, Sentinel-2 true colour (two tiles, cloud < 1%),
-and landcover masks are implemented. OSM vectors, buildings and object placement are next.
+**M0 status:** DEM → 16-bit heightmap, Sentinel-2 true colour, landcover masks and OSM
+roads/hedgerows are implemented. Buildings, woods and object placement are next.
 
 Data licence obligations (ODbL for OSM-derived bundles, attribution for Copernicus) are
 recorded in [assets-and-licensing.md](assets-and-licensing.md).

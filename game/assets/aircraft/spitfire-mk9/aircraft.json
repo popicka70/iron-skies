@@ -123,5 +123,59 @@
       12192,
       400
     ]
+  ],
+  "weapons": [
+    {
+      "name": "Hispano Mk II (L)",
+      "muzzleVelocity": 860,
+      "rpm": 600,
+      "ammo": 120,
+      "damage": 12,
+      "dispersion": 0.0025,
+      "muzzle": [
+        1.4,
+        -2.4,
+        -0.05
+      ]
+    },
+    {
+      "name": "Hispano Mk II (R)",
+      "muzzleVelocity": 860,
+      "rpm": 600,
+      "ammo": 120,
+      "damage": 12,
+      "dispersion": 0.0025,
+      "muzzle": [
+        1.4,
+        2.4,
+        -0.05
+      ]
+    },
+    {
+      "name": ".50 M2 (L)",
+      "muzzleVelocity": 880,
+      "rpm": 800,
+      "ammo": 250,
+      "damage": 4,
+      "dispersion": 0.0035,
+      "muzzle": [
+        1.4,
+        -1.7,
+        -0.05
+      ]
+    },
+    {
+      "name": ".50 M2 (R)",
+      "muzzleVelocity": 880,
+      "rpm": 800,
+      "ammo": 250,
+      "damage": 4,
+      "dispersion": 0.0035,
+      "muzzle": [
+        1.4,
+        1.7,
+        -0.05
+      ]
+    }
   ]
 }

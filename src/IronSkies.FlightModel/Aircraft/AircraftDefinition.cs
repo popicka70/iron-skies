@@ -1,4 +1,5 @@
 using IronSkies.FlightModel.Aero;
+using IronSkies.FlightModel.Combat;
 using IronSkies.FlightModel.Math;
 
 namespace IronSkies.FlightModel.Aircraft;
@@ -69,6 +70,9 @@ public sealed class AircraftDefinition
     public double CoolantMaxC { get; init; } = 135.0;
     public double OilMaxC { get; init; } = 95.0;
 
+    // Gun installations. Empty means unarmed.
+    public WeaponDefinition[] Weapons { get; init; } = Array.Empty<WeaponDefinition>();
+
     // Landing gear (taildragger by default). Override per aircraft.
     public GearLeg[] GearLegs { get; init; } = DefaultGear();
 
@@ -119,6 +123,11 @@ public sealed class AircraftDefinition
         if (FlapTravelSeconds < 0.0 || GearTravelSeconds < 0.0)
         {
             throw new InvalidOperationException($"{Id}: travel times must not be negative.");
+        }
+
+        for (int i = 0; i < Weapons.Length; i++)
+        {
+            Weapons[i].Validate(Id, i);
         }
     }
 
@@ -176,7 +185,8 @@ public readonly record struct Controls(
     double TrimElevator = 0.0,
     double TrimAileron = 0.0,
     double TrimRudder = 0.0,
-    double Mixture = 0.8)
+    double Mixture = 0.8,
+    bool Fire = false)
 {
     // Explicit values: `new()` on a struct runs the zeroing constructor and would
     // ignore the primary constructor's optional defaults (e.g. gear down).
@@ -194,5 +204,6 @@ public readonly record struct Controls(
         DeterministicMath.Clamp(TrimElevator, -1.0, 1.0),
         DeterministicMath.Clamp(TrimAileron, -1.0, 1.0),
         DeterministicMath.Clamp(TrimRudder, -1.0, 1.0),
-        DeterministicMath.Clamp(Mixture, 0.0, 1.0));
+        DeterministicMath.Clamp(Mixture, 0.0, 1.0),
+        Fire);
 }

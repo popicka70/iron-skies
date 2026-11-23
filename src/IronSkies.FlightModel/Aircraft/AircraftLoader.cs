@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using IronSkies.FlightModel.Aero;
+using IronSkies.FlightModel.Combat;
 using IronSkies.FlightModel.Math;
 
 namespace IronSkies.FlightModel.Aircraft;
@@ -93,6 +94,33 @@ public static class AircraftLoader
             gear = AircraftDefinition.DefaultGear();
         }
 
+        WeaponDefinition[] weapons;
+        if (dto.Weapons is { Length: > 0 })
+        {
+            weapons = new WeaponDefinition[dto.Weapons.Length];
+            for (int i = 0; i < dto.Weapons.Length; i++)
+            {
+                WeaponDto weapon = dto.Weapons[i];
+                Vec3 muzzle = weapon.Muzzle is { Length: 3 }
+                    ? new Vec3(weapon.Muzzle[0], weapon.Muzzle[1], weapon.Muzzle[2])
+                    : new Vec3(1.4, 2.0, -0.05);
+                weapons[i] = new WeaponDefinition
+                {
+                    Name = weapon.Name,
+                    MuzzleVelocityMs = weapon.MuzzleVelocity,
+                    RoundsPerMinute = weapon.Rpm,
+                    Ammo = weapon.Ammo,
+                    Damage = weapon.Damage,
+                    DispersionRad = weapon.Dispersion,
+                    MuzzleOffsetBody = muzzle,
+                };
+            }
+        }
+        else
+        {
+            weapons = Array.Empty<WeaponDefinition>();
+        }
+
         var definition = new AircraftDefinition
         {
             Id = Require(dto.Id, "id"),
@@ -145,6 +173,7 @@ public static class AircraftLoader
             BoostLimitSeconds = dto.BoostLimitSeconds,
             CoolantMaxC = dto.CoolantMaxC,
             OilMaxC = dto.OilMaxC,
+            Weapons = weapons,
         };
 
         definition.Validate();
@@ -216,6 +245,18 @@ internal sealed class AircraftDto
     public double BoostLimitSeconds { get; init; } = 300.0;
     public double CoolantMaxC { get; init; } = 135.0;
     public double OilMaxC { get; init; } = 95.0;
+    public WeaponDto[]? Weapons { get; init; }
+}
+
+internal sealed class WeaponDto
+{
+    public string Name { get; init; } = "gun";
+    public double MuzzleVelocity { get; init; } = 860.0;
+    public double Rpm { get; init; } = 600.0;
+    public int Ammo { get; init; } = 120;
+    public double Damage { get; init; } = 10.0;
+    public double Dispersion { get; init; } = 0.003;
+    public double[]? Muzzle { get; init; }
 }
 
 internal sealed class GearDto

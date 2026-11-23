@@ -11,7 +11,8 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 >
 > M0 already starts the Spitfire on its gear, takes off, flies over a streamed
 > 40 × 40 km Normandy terrain with Sentinel-2 orthophoto/landcover, OSM roads and
-> hedgerows, a low-poly aircraft, cockpit view, engine simulation and procedural audio.
+> hedgerows, a low-poly aircraft, cockpit view, engine simulation, procedural audio and
+> four working guns with a small ground target range.
 
 ![Iron Skies M0: 40 × 40 km Normandy terrain](docs/media/m0-normandy-40km.png)
 
@@ -84,6 +85,7 @@ docs/                       Specification, architecture, ADRs
 | , / . | Elevator trim |
 | C | Cycle chase / cockpit camera |
 | Right mouse (cockpit) | Look around |
+| Space / left mouse | Fire guns |
 | R | Reset sortie |
 
 The demo starts on its gear beside a Normandy hedgerow. Throttle up, keep straight with
