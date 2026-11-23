@@ -182,11 +182,11 @@ public sealed partial class OsmDetail : Node3D
                 float h1 = (float)map.HeightAt(eb, nb);
                 Vector3 b0 = new((float)ea, h0 + 0.05f, (float)-na);
                 Vector3 b1 = new((float)eb, h1 + 0.05f, (float)-nb);
-                Vector3 t0 = new((float)ea, h0 + (float)height, (float)-na);
-                Vector3 t1 = new((float)eb, h1 + (float)height, (float)-nb);
+                Vector3 top0 = new((float)ea, h0 + (float)height, (float)-na);
+                Vector3 top1 = new((float)eb, h1 + (float)height, (float)-nb);
 
-                AddTriangle(tool, b0, b1, t1);
-                AddTriangle(tool, b0, t1, t0);
+                AddTriangle(tool, b0, b1, top1);
+                AddTriangle(tool, b0, top1, top0);
             }
         }
     }
