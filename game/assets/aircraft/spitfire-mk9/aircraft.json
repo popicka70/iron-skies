@@ -43,6 +43,37 @@
   "fuelBurnKgPerSecondAtFullThrottle": 0.12,
   "propellerEfficiency": 0.85,
 
+  "gear": [
+    {
+      "contact": [0.85, -0.85, 1.50],
+      "spring": 85000,
+      "damping": 8000,
+      "maxCompression": 0.30,
+      "rollingFriction": 0.03,
+      "lateralFriction": 0.90,
+      "braked": true
+    },
+    {
+      "contact": [0.85, 0.85, 1.50],
+      "spring": 85000,
+      "damping": 8000,
+      "maxCompression": 0.30,
+      "rollingFriction": 0.03,
+      "lateralFriction": 0.90,
+      "braked": true
+    },
+    {
+      "contact": [-4.90, 0.0, 0.41],
+      "spring": 60000,
+      "damping": 6000,
+      "maxCompression": 0.35,
+      "rollingFriction": 0.05,
+      "lateralFriction": 0.50,
+      "braked": false,
+      "steerable": true
+    }
+  ],
+
   "enginePowerHp": [
     [0, 1650],
     [1752, 1705],

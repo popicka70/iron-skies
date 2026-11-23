@@ -9,8 +9,8 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 > **Status: pre-alpha / M0.** Nothing here is stable yet. The first playable vertical
 > slice is targeted for milestone M2 (see [docs/ROADMAP.md](docs/ROADMAP.md)).
 >
-> M0 already flies the Spitfire data set over a streamed 40 × 40 km Normandy terrain
-> with a Sentinel-2 orthophoto and landcover masks.
+> M0 already starts the Spitfire on its gear, takes off, flies over a streamed
+> 40 × 40 km Normandy terrain with a Sentinel-2 orthophoto and landcover masks.
 
 ![Iron Skies M0: 40 × 40 km Normandy terrain](docs/media/m0-normandy-40km.png)
 

@@ -125,11 +125,13 @@ Each gear leg is a spring-damper against the terrain heightfield with:
 
 - suspension travel and progressive spring rate,
 - tyre friction (rolling vs. lateral, slip-angle based),
-- brake torque with lock-up,
+- brake torque with lock-up (implemented as a rolling-friction coefficient),
+- tail-wheel steering from rudder input while the wheel is loaded,
 - retraction state (no contact force when retracted).
 
 Fuselage/prop strikes are proximity checks against the heightfield and static geometry;
-they trigger the damage model rather than rigid-body collision.
+they trigger the damage model rather than rigid-body collision. A last-resort guard keeps
+the CoG above the terrain if the gear collapses.
 
 ## 7. Damage model
 

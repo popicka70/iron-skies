@@ -34,7 +34,8 @@ simulation runs at 240 Hz with a stable 60 FPS render; CI is green on both OSes.
 
 - Coefficient tables for the Spitfire Mk IX and Bf 109 G-6
 - Engine + propeller model (boost, mixture, radiators, temperature, fuel burn)
-- Trim, flaps, gear, brakes, ground handling (spring-damper gear, ground loop)
+- [x] Spring-damper gear, brakes, tail-wheel steering and taildragger takeoff
+- [ ] Trim, flaps and retractable gear animation
 - Damage primitives: structure, control surfaces, engine, fuel, fire
 - Wind, turbulence, gusts
 - Validation harness: compare climb/speed/turn/stall vs published data

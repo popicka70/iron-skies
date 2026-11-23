@@ -63,6 +63,36 @@ public static class AircraftLoader
             enginePower = new EnginePowerTable(altitudes, horsepower);
         }
 
+        GearLeg[] gear;
+        if (dto.Gear is { Length: > 0 })
+        {
+            gear = new GearLeg[dto.Gear.Length];
+            for (int i = 0; i < dto.Gear.Length; i++)
+            {
+                GearDto leg = dto.Gear[i];
+                if (leg.Contact is not { Length: 3 })
+                {
+                    throw new InvalidDataException("gear.contact must be [x, y, z] in metres");
+                }
+
+                gear[i] = new GearLeg
+                {
+                    ContactBody = new Vec3(leg.Contact[0], leg.Contact[1], leg.Contact[2]),
+                    SpringNPerMeter = leg.Spring,
+                    DampingNsPerMeter = leg.Damping,
+                    MaxCompressionMeters = leg.MaxCompression,
+                    RollingFriction = leg.RollingFriction,
+                    LateralFriction = leg.LateralFriction,
+                    Braked = leg.Braked,
+                    Steerable = leg.Steerable,
+                };
+            }
+        }
+        else
+        {
+            gear = AircraftDefinition.DefaultGear();
+        }
+
         var definition = new AircraftDefinition
         {
             Id = Require(dto.Id, "id"),
@@ -102,6 +132,7 @@ public static class AircraftLoader
             PropellerEfficiency = dto.PropellerEfficiency,
             Table = table,
             EnginePower = enginePower,
+            GearLegs = gear,
         };
 
         definition.Validate();
@@ -160,6 +191,19 @@ internal sealed class AircraftDto
     public double PropellerEfficiency { get; init; } = 0.85;
 
     public double[][]? EnginePowerHp { get; init; }
+    public GearDto[]? Gear { get; init; }
+}
+
+internal sealed class GearDto
+{
+    public double[]? Contact { get; init; }
+    public double Spring { get; init; } = 85_000.0;
+    public double Damping { get; init; } = 8_000.0;
+    public double MaxCompression { get; init; } = 0.30;
+    public double RollingFriction { get; init; } = 0.03;
+    public double LateralFriction { get; init; } = 0.90;
+    public bool Braked { get; init; } = true;
+    public bool Steerable { get; init; }
 }
 
 [JsonSourceGenerationOptions(

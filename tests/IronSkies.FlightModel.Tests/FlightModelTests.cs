@@ -121,16 +121,17 @@ public class FlightModelTests
     public void GroundContact_UsesTheSuppliedTerrain()
     {
         AircraftDefinition d = AircraftDefinition.TrainingAircraft;
-        var state = AircraftState.CreateAirborne(d, altitudeMeters: 100.0, speedMs: 80.0);
+        var state = AircraftState.CreateAirborne(d, altitudeMeters: 125.0, speedMs: 0.0);
         var sim = new AircraftSimulator(d, state, new ConstantGround(120.0));
 
-        for (int i = 0; i < 240; i++)
+        for (int i = 0; i < 5 * 240; i++)
         {
             sim.Step(new Controls(), Dt);
         }
 
-        Assert.Equal(120.0, sim.State.Position.Z, 0.5);
-        Assert.True(sim.State.VelocityEnu.Z <= 0.01);
+        Assert.InRange(sim.State.Position.Z, 120.9, 121.6);
+        Assert.True(sim.Telemetry.OnGround);
+        Assert.True(DeterministicMath.Abs(sim.State.VelocityEnu.Z) < 0.05);
     }
 
     [Fact]

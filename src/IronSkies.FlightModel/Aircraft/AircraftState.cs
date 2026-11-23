@@ -38,6 +38,36 @@ public sealed class AircraftState
         };
     }
 
+    /// <summary>Places the aircraft on its gear at a ground height, level and stationary.</summary>
+    public static AircraftState CreateOnGround(
+        AircraftDefinition definition,
+        double groundHeightMeters,
+        double headingRad = 0.0,
+        double eastMeters = 0.0,
+        double northMeters = 0.0,
+        double speedMs = 0.0)
+    {
+        double gearExtension = 0.0;
+        foreach (GearLeg leg in definition.GearLegs)
+        {
+            if (leg.ContactBody.Z > gearExtension)
+            {
+                gearExtension = leg.ContactBody.Z;
+            }
+        }
+
+        Quat orientation = Quat.FromHeading(headingRad);
+        return new AircraftState
+        {
+            Position = new Vec3(eastMeters, northMeters, groundHeightMeters + gearExtension + 0.05),
+            VelocityEnu = orientation.Rotate(new Vec3(speedMs, 0.0, 0.0)),
+            Orientation = orientation,
+            AngularVelocityBody = Vec3.Zero,
+            MassKg = definition.MassKg,
+            FuelKg = definition.FuelMassKg,
+        };
+    }
+
     public AircraftState Clone() => new()
     {
         Position = Position,

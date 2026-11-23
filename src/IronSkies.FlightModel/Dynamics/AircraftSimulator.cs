@@ -13,7 +13,8 @@ public readonly record struct FlightTelemetry(
     double ThrustN,
     double DynamicPressurePa,
     double SpeedMs,
-    double DensityKgM3);
+    double DensityKgM3,
+    bool OnGround);
 
 /// <summary>
 /// Integrated 6-DOF aircraft. The caller advances it with a fixed timestep
@@ -112,6 +113,8 @@ public sealed class AircraftSimulator
             qbar * d.WingAreaM2 * d.MeanChordM * cm,
             qbar * d.WingAreaM2 * d.WingSpanM * yawCoef);
 
+        bool onGround = ApplyGearForces(ref forceBody, ref momentBody, c, q, omega);
+
         // Translational acceleration in the body frame (including ω × v).
         Vec3 accelBody = forceBody / State.MassKg - Vec3.Cross(omega, vBody);
         vBody += accelBody * dt;
@@ -131,12 +134,12 @@ public sealed class AircraftSimulator
         State.Orientation = Quat.Integrate(q, omega, dt);
 
         BurnFuel(c, dt);
-        ApplyGroundContact(dt);
+        PreventTunnel();
 
         double mach = speed / atm.SpeedOfSoundMs;
         double loadFactor = State.MassKg > 0.0 ? lift / (State.MassKg * Isa.Gravity) : 0.0;
         Telemetry = new FlightTelemetry(
-            alpha, beta, mach, loadFactor, thrust, qbar, speed, atm.DensityKgM3);
+            alpha, beta, mach, loadFactor, thrust, qbar, speed, atm.DensityKgM3, onGround);
     }
 
     private void BurnFuel(in Controls c, double dt)
@@ -152,26 +155,86 @@ public sealed class AircraftSimulator
     }
 
     /// <summary>
-    /// Placeholder ground handling for M0. M1 replaces this with spring-damper gear
-    /// contacts against the terrain heightfield.
+    /// Spring-damper gear contacts against the terrain heightfield. Each leg produces a
+    /// normal force and a moment, plus rolling/lateral friction and tail-wheel steering.
     /// </summary>
-    private void ApplyGroundContact(double dt)
+    private bool ApplyGearForces(
+        ref Vec3 forceBody, ref Vec3 momentBody, in Controls c, Quat q, Vec3 omega)
     {
-        double groundHeight = _ground.HeightAt(State.Position.X, State.Position.Y);
-        if (State.Position.Z > groundHeight)
+        Vec3 omegaWorld = q.Rotate(omega);
+        Vec3 bodyForward = q.Rotate(Vec3.UnitX);
+        Vec3 forward = new Vec3(bodyForward.X, bodyForward.Y, 0.0).NormalizedOrZero();
+        if (forward.LengthSquared < 0.5)
+        {
+            forward = Vec3.UnitY;
+        }
+
+        Vec3 right = new Vec3(forward.Y, -forward.X, 0.0);
+        bool anyContact = false;
+
+        foreach (GearLeg leg in Definition.GearLegs)
+        {
+            Vec3 rWorld = q.Rotate(leg.ContactBody);
+            Vec3 point = State.Position + rWorld;
+            double ground = _ground.HeightAt(point.X, point.Y);
+            double penetration = ground - point.Z;
+            if (penetration <= 0.0)
+            {
+                continue;
+            }
+
+            Vec3 velocityPoint = State.VelocityEnu + Vec3.Cross(omegaWorld, rWorld);
+            double compression = DeterministicMath.Min(penetration, leg.MaxCompressionMeters);
+            double normalForce = leg.SpringNPerMeter * compression
+                - leg.DampingNsPerMeter * velocityPoint.Z;
+            if (normalForce <= 0.0)
+            {
+                continue;
+            }
+
+            Vec3 force = new Vec3(0.0, 0.0, normalForce);
+
+            double vForward = velocityPoint.Dot(forward);
+            double vLateral = velocityPoint.Dot(right);
+            double forwardMu = leg.RollingFriction + (leg.Braked ? c.Brake * 0.60 : 0.0);
+
+            double fForward = -DeterministicMath.Sign(vForward)
+                * DeterministicMath.Min(DeterministicMath.Abs(vForward) * 1.5, 1.0)
+                * forwardMu * normalForce;
+            double fLateral = -DeterministicMath.Sign(vLateral)
+                * DeterministicMath.Min(DeterministicMath.Abs(vLateral) * 3.0, 1.0)
+                * leg.LateralFriction * normalForce;
+
+            force += forward * fForward + right * fLateral;
+
+            if (leg.Steerable && c.Rudder != 0.0)
+            {
+                force += right * (-c.Rudder * 0.8 * normalForce);
+            }
+
+            forceBody += q.InverseRotate(force);
+            momentBody += q.InverseRotate(Vec3.Cross(rWorld, force));
+            anyContact = true;
+        }
+
+        return anyContact;
+    }
+
+    /// <summary>
+    /// Last-resort guard: if the CoG ends up inside the terrain (gear collapsed, inverted
+    /// crash), stop it instead of letting it fall through the world.
+    /// </summary>
+    private void PreventTunnel()
+    {
+        double ground = _ground.HeightAt(State.Position.X, State.Position.Y);
+        if (State.Position.Z >= ground + 0.30)
         {
             return;
         }
 
-        State.Position = new Vec3(State.Position.X, State.Position.Y, groundHeight);
-        if (State.VelocityEnu.Z < 0.0)
-        {
-            State.VelocityEnu = new Vec3(State.VelocityEnu.X, State.VelocityEnu.Y, 0.0);
-        }
-
-        double friction = 3.0 * dt;
-        double factor = DeterministicMath.Clamp(1.0 - friction, 0.0, 1.0);
-        State.VelocityEnu *= factor;
-        State.AngularVelocityBody *= factor;
+        State.Position = new Vec3(State.Position.X, State.Position.Y, ground + 0.30);
+        State.VelocityEnu = new Vec3(
+            State.VelocityEnu.X * 0.5, State.VelocityEnu.Y * 0.5, 0.0);
+        State.AngularVelocityBody *= 0.5;
     }
 }
