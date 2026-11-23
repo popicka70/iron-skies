@@ -152,6 +152,9 @@ Damage is applied by the server from projectile hits and over-g/overspeed condit
   `FastAtan2`) with documented max error; tables are generated, not hardcoded.
 - No `float`, no FMA contraction, no `Parallel.For` inside a single aircraft step.
 - All iteration orders are stable (arrays, not dictionaries).
+- No heap allocations, no strings, no LINQ, no reference-type hashing, no
+  `Random`/`DateTime`/`Guid`; randomness comes from an explicitly seeded PRNG.
+  `AllocationTests` enforces zero bytes per step (see ADR-0007).
 - Golden replay: a recorded input trace must produce a bit-identical state hash on
   Linux x64 and Windows x64.
 

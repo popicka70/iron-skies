@@ -6,6 +6,10 @@
     <LangVersion>latest</LangVersion>
     <RootNamespace>IronSkies.Game</RootNamespace>
     <AssemblyName>IronSkies.Game</AssemblyName>
+    <!-- Stable frame times: fully optimize on first call instead of tiering mid-flight.
+         A warm-up pass in Main._Ready pays the JIT cost during loading. -->
+    <TieredCompilation>false</TieredCompilation>
+    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
   </PropertyGroup>
 
   <ItemGroup>

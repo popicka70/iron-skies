@@ -41,6 +41,10 @@ team can ship a credible, good-looking WW2 sim on a fully permissive stack.
 | Persistence | SQLite + content-addressed chunk store | Public domain |
 | CI / hosting | GitHub Actions, GitHub Releases, Containers | Free tier |
 
+The simulation core measures **0.125 µs per 240 Hz step with zero heap allocations** on
+the development machine, so GC pauses never touch the flight path. Policy, benchmarks and
+the fallback plan: [ADR-0007](docs/adr/0007-csharp-runtime.md).
+
 Full rationale: [docs/SPEC.md](docs/SPEC.md) and [docs/adr/](docs/adr/).
 
 ## Repository layout

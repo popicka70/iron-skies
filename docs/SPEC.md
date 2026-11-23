@@ -81,7 +81,7 @@ servers; official servers run the same container image.
 | # | Area | Decision | Rejected alternatives | Why |
 | --- | --- | --- | --- | --- |
 | D1 | Engine | **Godot 4.7** (Vulkan Forward+, Jolt) | Unreal 5, Unity, Bevy, custom | MIT, no royalties, Linux-first, headless server export, C# + GDExtension. |
-| D2 | Language | **C# (.NET 10 LTS)** for game + simulation; **C++** via GDExtension only for proven hotspots; **Python** for offline tooling | GDScript-only, Rust, C++-only | Type safety, performance, testability, fast iteration; .NET is MIT. |
+| D2 | Language | **C# (.NET 10 LTS)** for game + simulation; **C++** via GDExtension only for proven hotspots; **Python** for offline tooling | GDScript-only, Rust, C++-only | Type safety, performance, testability, fast iteration; .NET is MIT. GC/JIT policy and measurements in ADR-0007. |
 | D3 | Flight model | **Custom 6-DOF, coefficient-table aero**, 240 Hz fixed step | Jolt rigid bodies, JSBSim-first, arcade model | Full control, deterministic, no engine coupling; JSBSim optionally cross-checks. |
 | D4 | Physics engine | **Jolt** for ground contacts/props only; aircraft FDM is custom | Bullet, PhysX, Godot Physics | Jolt is MIT, fast, built into Godot 4.4+. Never used for aero. |
 | D5 | World | **Floating origin** + double-precision sim in local ENU; float32 rendering | Double-precision engine build, huge-coordinate hacks | Godot world space is float32; rebasing keeps precision to millimetres. |
@@ -179,6 +179,10 @@ Determinism is required for prediction, replays and reproducible bugs. Rules:
   approximations or precomputed tables owned by the project.
 - No FMA contraction, no fast-math, no parallelism inside one aircraft's step.
 - `System.Math` usage is banned in `IronSkies.FlightModel` (enforced by an analyzer test).
+- **Zero heap allocations per step** (unit-test enforced): no strings, LINQ, `Dictionary`
+  iteration or reference-type hashing in the sim. A seeded PRNG is passed explicitly.
+- The GC affects timing, not arithmetic; JIT/GC policy, measurements and the escape hatch
+  are recorded in [ADR-0007](adr/0007-csharp-runtime.md).
 - From M1, CI runs a deterministic golden-replay test on Linux and Windows and diffs state hashes.
 
 ### 7.4 Validation tolerances

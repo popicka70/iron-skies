@@ -1,3 +1,5 @@
+using System.Runtime;
+using System.Text;
 using Godot;
 using IronSkies.FlightModel.Aircraft;
 
@@ -17,17 +19,24 @@ public partial class Main : Node3D
     private Camera3D _camera = null!;
     private Label _hud = null!;
 
+    private readonly StringBuilder _hudText = new(512);
+
     private double _throttle = 0.75;
     private double _accumulator;
+    private double _hudTimer;
     private int _tick;
 
     public override void _Ready()
     {
+        // Fewer full blocking collections while flying; the hot path allocates nothing.
+        GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
+
         BuildEnvironment();
         BuildAircraft();
         BuildCamera();
         BuildHud();
         ResetFlight();
+        WarmUp();
 
         GD.Print("Iron Skies M0 — WASD throttle/rudder, arrows pitch/roll, R to reset.");
     }
@@ -62,17 +71,52 @@ public partial class Main : Node3D
 
     public override void _Process(double delta)
     {
+        // The HUD is not a hot path: update it at 10 Hz and reuse one builder.
+        _hudTimer += delta;
+        if (_hudTimer < 0.1)
+        {
+            return;
+        }
+
+        _hudTimer = 0.0;
+        UpdateHud();
+    }
+
+    private void UpdateHud()
+    {
         FlightTelemetry t = _sim.Telemetry;
-        _hud.Text =
-            $"Iron Skies — M0 demo\n" +
-            $"Speed     {t.SpeedMs * 1.94384,7:F1} kt   ({t.SpeedMs:F1} m/s)\n" +
-            $"Altitude  {_sim.State.AltitudeMeters * 3.28084,7:F0} ft\n" +
-            $"AoA       {t.AlphaRad * 57.2958,7:F1}°\n" +
-            $"Mach      {t.Mach,7:F3}\n" +
-            $"Load      {t.LoadFactorG,7:F2} g\n" +
-            $"Throttle  {_throttle * 100.0,7:F0} %\n" +
-            $"Tick      {_tick,7}\n\n" +
-            "W/S throttle   ↑/↓ pitch   ←/→ roll   A/D rudder   R reset";
+        _hudText.Clear();
+        _hudText.Append("Iron Skies — M0 demo\n");
+        _hudText.Append("Speed     ").Append((t.SpeedMs * 1.94384).ToString("F1"))
+            .Append(" kt   (").Append(t.SpeedMs.ToString("F1")).Append(" m/s)\n");
+        _hudText.Append("Altitude  ").Append((_sim.State.AltitudeMeters * 3.28084).ToString("F0"))
+            .Append(" ft\n");
+        _hudText.Append("AoA       ").Append((t.AlphaRad * 57.2958).ToString("F1")).Append("°\n");
+        _hudText.Append("Mach      ").Append(t.Mach.ToString("F3")).Append('\n');
+        _hudText.Append("Load      ").Append(t.LoadFactorG.ToString("F2")).Append(" g\n");
+        _hudText.Append("Throttle  ").Append((_throttle * 100.0).ToString("F0")).Append(" %\n");
+        _hudText.Append("Tick      ").Append(_tick).Append("\n\n");
+        _hudText.Append("W/S throttle   ↑/↓ pitch   ←/→ roll   A/D rudder   R reset");
+        _hud.Text = _hudText.ToString();
+    }
+
+    /// <summary>
+    /// Runs the simulation and the transform conversion once at load so the first
+    /// minute of flight does not pay JIT compilation costs.
+    /// </summary>
+    private static void WarmUp()
+    {
+        AircraftDefinition definition = AircraftDefinition.TrainingAircraft;
+        var sim = new AircraftSimulator(definition, AircraftState.CreateAirborne(definition));
+        for (int i = 0; i < 2_000; i++)
+        {
+            sim.Step(new Controls(
+                Elevator: 0.10 * Mathf.Sin(i * 0.01f),
+                Aileron: 0.05 * Mathf.Cos(i * 0.013f),
+                Rudder: 0.02 * Mathf.Sin(i * 0.007f),
+                Throttle: 0.8), PhysicsDt);
+            _ = SimBridge.ToGodot(sim.State.Orientation, sim.State.Position);
+        }
     }
 
     private double _elevator;
