@@ -49,6 +49,8 @@ public partial class Main : Node3D
     private string _joystickName = "";
     private double _joyPollTimer;
     private bool _prevCameraKey;
+    private float _lookYaw;
+    private float _lookPitch;
     private double _hudTimer;
     private int _tick;
 
@@ -236,7 +238,11 @@ public partial class Main : Node3D
             .Append(" kt   (").Append(t.SpeedMs.ToString("F1")).Append(" m/s)\n");
         _hudText.Append("Altitude  ").Append((_sim.State.AltitudeMeters * 3.28084).ToString("F0"))
             .Append(" ft MSL   ").Append((agl * 3.28084).ToString("F0")).Append(" ft AGL\n");
-        _hudText.Append("AoA       ").Append((t.AlphaRad * 57.2958).ToString("F1")).Append("°\n");
+        _hudText.Append("AoA       ").Append((t.AlphaRad * 57.2958).ToString("F1")).Append("°")
+            .Append(!t.OnGround && t.AlphaRad > _definition.AlphaStallRad ? "   ** STALL **" : "")
+            .Append('\n');
+        _hudText.Append("V/S       ").Append((_sim.State.VelocityEnu.Z * 196.85).ToString("+0;-0;0"))
+            .Append(" ft/min\n");
         _hudText.Append("Mach      ").Append(t.Mach.ToString("F3")).Append('\n');
         _hudText.Append("Load      ").Append(t.LoadFactorG.ToString("F2")).Append(" g\n");
         _hudText.Append("Throttle  ").Append((_throttle * 100.0).ToString("F0")).Append(" %\n");
@@ -255,7 +261,7 @@ public partial class Main : Node3D
         _hudText.Append("Chunks    ").Append(_terrain.ResidentChunks).Append("   FPS ")
             .Append(Engine.GetFramesPerSecond()).Append('\n');
         _hudText.Append("Tick      ").Append(_tick).Append("\n\n");
-        _hudText.Append("W/S throttle  B brakes  C camera  F flaps  G gear  K/L radiator  , . trim  ↑/↓ pitch  ←/→ roll  A/D rudder");
+        _hudText.Append("W/S throttle  B brakes  C camera  RMB look  F flaps  G gear  K/L radiator  , . trim  ↑/↓ pitch  ←/→ roll  A/D rudder");
         _hud.Text = _hudText.ToString();
     }
 
@@ -283,6 +289,12 @@ public partial class Main : Node3D
 
     private void ReadControls()
     {
+        if (Input.IsPhysicalKeyPressed(Key.R))
+        {
+            _lookYaw = 0.0f;
+            _lookPitch = 0.0f;
+        }
+
         double pitch = (Input.IsPhysicalKeyPressed(Key.Up) ? 1.0 : 0.0)
             - (Input.IsPhysicalKeyPressed(Key.Down) ? 1.0 : 0.0);
         double roll = (Input.IsPhysicalKeyPressed(Key.Right) ? 1.0 : 0.0)
@@ -488,6 +500,21 @@ public partial class Main : Node3D
         layer.AddChild(_hud);
     }
 
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        if (_cameraMode != CameraMode.Cockpit)
+        {
+            return;
+        }
+
+        if (@event is InputEventMouseMotion motion
+            && Input.IsMouseButtonPressed(MouseButton.Right))
+        {
+            _lookYaw = Mathf.Clamp(_lookYaw - motion.Relative.X * 0.0025f, -1.2f, 1.2f);
+            _lookPitch = Mathf.Clamp(_lookPitch - motion.Relative.Y * 0.0025f, -0.8f, 0.8f);
+        }
+    }
+
     private void UpdateCamera(double delta)
     {
         if (_cameraMode == CameraMode.Cockpit)
@@ -495,7 +522,9 @@ public partial class Main : Node3D
             var cockpitBasis = SimBridge.ToGodot(_sim.State.Orientation);
             Vector3 aircraft = SimBridge.ToGodot(_sim.State.Position);
             Vector3 eye = aircraft + cockpitBasis.Y * 0.55f + cockpitBasis.Z * -0.35f;
-            _camera.GlobalTransform = new Transform3D(cockpitBasis, eye);
+            Basis look = cockpitBasis.Rotated(Vector3.Up, _lookYaw);
+            look = look.Rotated(look.X, _lookPitch);
+            _camera.GlobalTransform = new Transform3D(look, eye);
             return;
         }
 
