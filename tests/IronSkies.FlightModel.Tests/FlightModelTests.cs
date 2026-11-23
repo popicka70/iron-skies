@@ -126,7 +126,7 @@ public class FlightModelTests
 
         for (int i = 0; i < 5 * 240; i++)
         {
-            sim.Step(new Controls(), Dt);
+            sim.Step(Controls.Neutral, Dt);
         }
 
         Assert.InRange(sim.State.Position.Z, 120.9, 121.6);

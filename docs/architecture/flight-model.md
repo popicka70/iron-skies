@@ -19,7 +19,10 @@ Body axes follow aerospace convention: **+X forward, +Y right, +Z down**. Altitu
 
 Per tick the model receives a `Controls` struct (elevator, aileron, rudder, throttle,
 prop pitch, mixture, radiator, flaps, gear, brakes, trims) and returns a new state plus
-derived telemetry (α, β, Mach, g-load, engine params).
+derived telemetry (α, β, Mach, g-load, engine params). Trim is applied as an offset to
+the pilot's control input (per-aircraft authority). Flaps and gear move toward the
+commanded position over their configured travel time; the actual positions drive lift,
+drag and gear contact.
 
 ## 2. Equations of motion
 
