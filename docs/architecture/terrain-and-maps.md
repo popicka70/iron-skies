@@ -18,6 +18,7 @@ game/assets/terrain/normandy-1944/     built bundle (shipped with the demo)
   heightmap.r16                        16-bit little-endian, row 0 = south
   ortho.jpg                            Sentinel-2 true colour, north-up, 4096²
   landcover.png                        RGBA masks: water/vegetation/bare/forest
+  osm.json                             roads + hedges around the spawn (local metres)
   LICENSE-DATA.txt                     generated attribution
 ```
 
@@ -63,6 +64,8 @@ fetch → clip/reproject → heightmap LOD pyramid → derivatives (normals, slo
   base to avoid z-fighting; geomorphing and skirts come in M2.
 - **Global textures:** 4096² orthophoto and 2048² landcover masks sampled in world
   space. Larger theatres will need a virtual-texture page table.
+- **OSM detail:** roads and hedgerows are draped as ribbon/fence meshes for the 7 km
+  patch around the spawn. Woods and buildings are the next OSM layer.
 - **Geomorphing** (vertex position blending) over the last 15% of each LOD range removes
   popping; skirts hide cracks at chunk borders.
 - **Splatting:** 4-channel splat blended with a macro-variation texture (two scales)

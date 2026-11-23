@@ -27,6 +27,8 @@ heightmap_bits = 16
 [runtime]
 default_weather = "broken"
 time_of_day = "09:30"
+# Centre the OSM detail patch on the demo spawn, not the theatre origin.
+osm_center = { lat = 49.2740, lon = -0.3700 }
 
 # Every source must carry its licence and attribution string. mapgen copies these
 # into the generated LICENSE-DATA.txt.

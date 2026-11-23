@@ -10,8 +10,8 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 > slice is targeted for milestone M2 (see [docs/ROADMAP.md](docs/ROADMAP.md)).
 >
 > M0 already starts the Spitfire on its gear, takes off, flies over a streamed
-> 40 × 40 km Normandy terrain with Sentinel-2 orthophoto/landcover, and has a
-> low-poly aircraft, cockpit view and live engine gauges.
+> 40 × 40 km Normandy terrain with Sentinel-2 orthophoto/landcover, OSM roads and
+> hedgerows, a low-poly aircraft, cockpit view, engine simulation and procedural audio.
 
 ![Iron Skies M0: 40 × 40 km Normandy terrain](docs/media/m0-normandy-40km.png)
 

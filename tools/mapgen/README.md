@@ -9,8 +9,8 @@ See [../../docs/architecture/terrain-and-maps.md](../../docs/architecture/terrai
 orthophoto + landcover masks. The STAC query picks the clearest June/July scene set
 that covers the theatre, reads only the needed windows over HTTP, and writes the bundle.
 
-**Next:** OSM vectors (roads, water, settlements), building extrusion and object
-placement.
+**OSM roads and hedges** are also implemented for a patch around the spawn. **Next:**
+woods, water, building extrusion and object placement.
 
 ## Planned usage
 

@@ -24,6 +24,7 @@ import json
 import math
 import sys
 import tomllib
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -60,6 +61,7 @@ def print_plan(theatre: dict) -> None:
             "reproject + build heightmap",
             "select low-cloud Sentinel-2 scenes (STAC)",
             "mosaic true colour + landcover",
+            "fetch OSM roads + hedges",
             "write meta + attribution",
         ],
         start=1,
@@ -168,6 +170,13 @@ def build_heightmap(theatre: dict, out_dir: Path, resolution_m: float) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
     heights.tofile(out_dir / "heightmap.r16")
 
+    previous: dict = {}
+    if (out_dir / "meta.json").exists():
+        try:
+            previous = json.loads((out_dir / "meta.json").read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            previous = {}
+
     meta = {
         "id": theatre["id"],
         "name": theatre["name"],
@@ -184,6 +193,11 @@ def build_heightmap(theatre: dict, out_dir: Path, resolution_m: float) -> dict:
         "source": ["Copernicus DEM GLO-30"],
         "generatedBy": "tools/mapgen/mapgen.py",
     }
+    for key in ("orthoFile", "orthoSize", "orthoResolutionMeters", "orthoRowOrder",
+                "landcoverFile", "landcoverSize", "sentinel2", "osm"):
+        if key in previous:
+            meta[key] = previous[key]
+
     (out_dir / "meta.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
     print(
         f"heightmap: {size}×{size} @ {resolution_m:g} m, "
@@ -470,6 +484,103 @@ def build_ortho(theatre: dict, out_dir: Path, meta: dict, size: int) -> dict:
     return meta
 
 
+# ----------------------------------------------------------------------------- OSM
+
+OVERPASS = "https://overpass-api.de/api/interpreter"
+OVERPASS_FALLBACK = "https://overpass.kumi.systems/api/interpreter"
+OSM_USER_AGENT = "IronSkies/0.1 (terrain tooling; contact: dev@example.invalid)"
+
+
+def build_osm(theatre: dict, out_dir: Path, meta: dict, radius_m: float, refresh: bool) -> None:
+    """Fetch roads and hedges around the theatre origin and store local metres."""
+    out_path = out_dir / "osm.json"
+    if out_path.exists() and not refresh:
+        print(f"osm: reusing {out_path.name} ({out_path.stat().st_size / 1_048_576:.1f} MiB)")
+        return
+
+    try:
+        from rasterio.crs import CRS
+        from rasterio.warp import transform
+    except ImportError as exc:  # pragma: no cover
+        raise SystemExit("mapgen needs rasterio for OSM conversion") from exc
+
+    origin = theatre.get("runtime", {}).get("osm_center") or theatre["geodesy"]["origin"]
+    lat0, lon0 = float(origin["lat"]), float(origin["lon"])
+    dlat = radius_m / 111_320.0
+    dlon = radius_m / (111_320.0 * math.cos(math.radians(lat0)))
+    bbox = f"{lat0 - dlat:.6f},{lon0 - dlon:.6f},{lat0 + dlat:.6f},{lon0 + dlon:.6f}"
+
+    query = (
+        "[out:json][timeout:180];("
+        f'way["highway"~"^(primary|secondary|tertiary|residential)$"]({bbox});'
+        f'way["barrier"="hedge"]({bbox});'
+        ");out geom;"
+    )
+    print(f"osm: querying {radius_m / 1000:.0f} km radius ...", file=sys.stderr)
+    body = urllib.parse.urlencode({"data": query}).encode()
+    payload = None
+    for endpoint in (OVERPASS, OVERPASS_FALLBACK):
+        request = urllib.request.Request(
+            endpoint, data=body,
+            headers={"User-Agent": OSM_USER_AGENT, "Accept": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=240) as response:
+                payload = json.load(response)
+            break
+        except Exception as error:  # noqa: BLE001 - try the mirror
+            print(f"osm: {endpoint} failed ({error}); trying mirror", file=sys.stderr)
+
+    if payload is None:
+        raise SystemExit("OSM query failed on all endpoints")
+
+    origin_e = float(meta["origin"]["easting"])
+    origin_n = float(meta["origin"]["northing"])
+    src = CRS.from_epsg(4326)
+    dst = CRS.from_epsg(32630)
+
+    roads = []
+    hedges = []
+    for element in payload.get("elements", []):
+        geometry = element.get("geometry")
+        if not geometry or len(geometry) < 2:
+            continue
+
+        lons = [point["lon"] for point in geometry]
+        lats = [point["lat"] for point in geometry]
+        xs, ys = transform(src, dst, lons, lats)
+        points = [
+            [round(x - origin_e, 1), round(y - origin_n, 1)]
+            for x, y in zip(xs, ys)
+        ]
+
+        tags = element.get("tags", {})
+        if tags.get("barrier") == "hedge":
+            hedges.append(points)
+        elif "highway" in tags:
+            roads.append({"kind": tags["highway"], "points": points})
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    payload_out = {
+        "radiusMeters": radius_m,
+        "origin": {"easting": origin_e, "northing": origin_n},
+        "roads": roads,
+        "hedges": hedges,
+    }
+    out_path.write_text(json.dumps(payload_out, separators=(",", ":")), encoding="utf-8")
+
+    meta["osm"] = {
+        "file": "osm.json",
+        "radiusMeters": radius_m,
+        "roads": len(roads),
+        "hedges": len(hedges),
+        "attribution": "© OpenStreetMap contributors (ODbL 1.0)",
+    }
+    (out_dir / "meta.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
+    print(f"osm: {len(roads)} roads, {len(hedges)} hedges -> {out_path.name} "
+          f"({out_path.stat().st_size / 1_048_576:.1f} MiB)")
+
+
 # ------------------------------------------------------------------------- main
 
 
@@ -481,6 +592,9 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--resolution", type=float, default=25.0)
     parser.add_argument("--ortho-size", type=int, default=4096)
     parser.add_argument("--no-ortho", action="store_true")
+    parser.add_argument("--no-osm", action="store_true")
+    parser.add_argument("--refresh-osm", action="store_true")
+    parser.add_argument("--osm-radius", type=float, default=10000.0)
     args = parser.parse_args(argv)
 
     theatre = load_theatre(args.theatre)
@@ -491,7 +605,9 @@ def main(argv: list[str]) -> int:
     out_dir = args.out or (ROOT / "game" / "assets" / "terrain" / args.theatre)
     meta = build_heightmap(theatre, out_dir, args.resolution)
     if not args.no_ortho:
-        build_ortho(theatre, out_dir, meta, args.ortho_size)
+        meta = build_ortho(theatre, out_dir, meta, args.ortho_size)
+    if not args.no_osm:
+        build_osm(theatre, out_dir, meta, args.osm_radius, args.refresh_osm)
     return 0
 
 
