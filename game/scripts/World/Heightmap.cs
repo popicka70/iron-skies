@@ -17,6 +17,10 @@ public sealed class TerrainMeta
     public double HalfExtentMeters { get; set; }
     public string RowOrder { get; set; } = "south-to-north";
     public string Crs { get; set; } = "";
+    public string OrthoFile { get; set; } = "";
+    public string LandcoverFile { get; set; } = "";
+    public int OrthoSize { get; set; }
+    public int LandcoverSize { get; set; }
 }
 
 /// <summary>

@@ -4,3 +4,5 @@ Map data attribution for this bundle:
 - sentinel-2-l2a: Contains modified Copernicus Sentinel data 2026 [Copernicus Sentinel Data Terms (free, attribution)]
 - osm-normandy: © OpenStreetMap contributors [ODbL 1.0]
 - polyhaven-materials: Poly Haven (polyhaven.com) [CC0]
+
+Sentinel-2 scenes: S2C_30UXV_20250619_0_L2A, S2C_30UYV_20250619_0_L2A (2025-06-19)

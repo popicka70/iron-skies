@@ -1,13 +1,12 @@
-// First-pass terrain shading. Deliberately simple: procedural world-space noise for
-// macro variation, slope rock and lowland sand. No textures yet, and no repeat seams.
-// Photoreal splat/ortho layers land in M2.
+// Terrain shading with Sentinel-2 orthophoto + landcover masks.
+// The ortho is north-up and mapped through a world-space rect; no per-chunk UVs.
 shader_type spatial;
 render_mode cull_disabled, diffuse_burley, specular_schlick_ggx;
 
-uniform vec3 low_color : source_color = vec3(0.14, 0.22, 0.08);
-uniform vec3 high_color : source_color = vec3(0.42, 0.41, 0.20);
-uniform vec3 rock_color : source_color = vec3(0.36, 0.34, 0.31);
-uniform vec3 sand_color : source_color = vec3(0.58, 0.54, 0.40);
+uniform sampler2D ortho_tex : source_color, filter_linear_mipmap, repeat_disable;
+uniform sampler2D landcover_tex : filter_linear_mipmap, repeat_disable;
+// x, z origin then width, height (Godot world space).
+uniform vec4 map_rect = vec4(-20000.0, -20000.0, 40000.0, 40000.0);
 
 varying vec3 world_pos;
 varying vec3 world_normal;
@@ -29,42 +28,30 @@ float value_noise(vec2 p) {
     return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
 }
 
-float fbm(vec2 p) {
-    float value = 0.0;
-    float amplitude = 0.5;
-    for (int octave = 0; octave < 3; octave++) {
-        value += amplitude * value_noise(p);
-        p *= 2.03;
-        amplitude *= 0.5;
-    }
-    return value / 0.875;
-}
-
 void vertex() {
     world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
     world_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 }
 
 void fragment() {
-    float macro = fbm(world_pos.xz * 0.00006);
-    float mid = fbm(world_pos.xz * 0.0007 + vec2(17.0, -9.0));
-    float detail = value_noise(world_pos.xz * 0.03);
+    vec2 uv = clamp((world_pos.xz - map_rect.xy) / map_rect.zw, vec2(0.0), vec2(1.0));
+    vec3 albedo = texture(ortho_tex, uv).rgb;
+    vec4 landcover = texture(landcover_tex, uv);
 
-    vec3 color = mix(low_color, high_color, smoothstep(0.38, 0.62, macro));
-    color *= 0.86 + 0.22 * mid + 0.08 * detail;
+    // Break up the satellite texture at close range without destroying it.
+    float macro_detail = value_noise(world_pos.xz * 0.25);
+    float fine_detail = value_noise(world_pos.xz * 1.7);
+    albedo *= 0.93 + 0.10 * macro_detail + 0.04 * fine_detail;
 
-    // Coarse agricultural patchwork (placeholder for real landcover splats).
-    vec2 fieldCell = floor(world_pos.xz / 420.0);
-    float field = hash12(fieldCell);
-    color *= mix(vec3(0.88, 1.02, 0.84), vec3(1.08, 1.02, 0.92), smoothstep(0.2, 0.8, field));
+    // Inland water: cool and darken, low roughness.
+    albedo = mix(albedo, albedo * vec3(0.30, 0.55, 0.75), landcover.r * 0.75);
+    // Vegetation: gentle green push.
+    albedo = mix(albedo, albedo * vec3(0.93, 1.07, 0.88), landcover.g * 0.30);
+    // Bare soil / urban: slightly desaturate.
+    float grey = dot(albedo, vec3(0.299, 0.587, 0.114));
+    albedo = mix(albedo, vec3(grey), landcover.b * 0.22);
 
-    float slope = 1.0 - clamp(world_normal.y, 0.0, 1.0);
-    color = mix(color, rock_color, smoothstep(0.28, 0.62, slope));
-
-    float lowland = 1.0 - smoothstep(3.0, 14.0, world_pos.y);
-    color = mix(color, sand_color, lowland * 0.55);
-
-    ALBEDO = color;
-    ROUGHNESS = 0.96;
-    SPECULAR = 0.12;
+    ALBEDO = albedo;
+    ROUGHNESS = mix(0.95, 0.25, landcover.r);
+    SPECULAR = 0.15;
 }

@@ -14,13 +14,19 @@
 theatres/normandy-1944/theatre.toml    definition: bounds, CRS, sources, seed
 
 game/assets/terrain/normandy-1944/     built bundle (shipped with the demo)
-  meta.json                            size, spacing, CRS, height range
+  meta.json                            size, spacing, CRS, height range, scene IDs
   heightmap.r16                        16-bit little-endian, row 0 = south
+  ortho.jpg                            Sentinel-2 true colour, north-up, 4096²
+  landcover.png                        RGBA masks: water/vegetation/bare/forest
   LICENSE-DATA.txt                     generated attribution
 ```
 
 The M0 sample is committed (≈5 MiB) so the demo runs from a clone. Larger theatres are
 release artifacts, not Git content. Clients can rebuild any bundle with `tools/mapgen`.
+
+The runtime reads `heightmap.r16`, `ortho.jpg` and `landcover.png` as **plain files**
+(not imported Godot resources). Export presets must therefore include
+`assets/terrain/**` explicitly when we add Linux/Windows exports.
 
 ## 3. Source data
 
@@ -52,9 +58,11 @@ fetch → clip/reproject → heightmap LOD pyramid → derivatives (normals, slo
 
 ## 5. Runtime terrain
 
-- **Quadtree clipmap** around the camera: chunk 1 km, 5 rings, 25 m → 400 m vertex
-  spacing, ~65k vertices per chunk. M0 ships a static 4 × 4 tile mesh at 50 m as a
-  pipeline proof; the clipmap is the M2 replacement.
+- **Chunked LOD** around the camera: 1 km tiles at 25/50/100/200 m spacing within
+  10 km, plus one 200 m base mesh for the far field. Chunks are lifted 0.35 m above the
+  base to avoid z-fighting; geomorphing and skirts come in M2.
+- **Global textures:** 4096² orthophoto and 2048² landcover masks sampled in world
+  space. Larger theatres will need a virtual-texture page table.
 - **Geomorphing** (vertex position blending) over the last 15% of each LOD range removes
   popping; skirts hide cracks at chunk borders.
 - **Splatting:** 4-channel splat blended with a macro-variation texture (two scales)

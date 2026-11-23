@@ -11,9 +11,9 @@ seed = 19440606
 
 # 40 × 40 km WGS-84 bounds. The runtime uses a local UTM/ENU square.
 [geodesy]
-crs = "EPSG:32631"          # UTM zone 31N
-origin = { lat = 49.2000, lon = -0.3700 }
-bounds = { north = 49.4000, south = 49.0000, west = -0.6800, east = -0.0600 }
+crs = "EPSG:32630"          # UTM zone 30N (Sentinel-2 grid)
+origin = { lat = 49.2200, lon = -0.3700 }
+bounds = { north = 49.4200, south = 49.0000, west = -0.6800, east = -0.0600 }
 vertical_datum = "EGM2008"
 
 [terrain]

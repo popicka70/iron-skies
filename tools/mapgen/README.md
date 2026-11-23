@@ -5,9 +5,12 @@ See [../../docs/architecture/terrain-and-maps.md](../../docs/architecture/terrai
 
 ## Status
 
-The **DEM stage is implemented** (M0): fetch Copernicus GLO-30, reproject to the
-theatre CRS and emit a 16-bit heightmap + metadata. Landcover, ortho, vectors and object
-placement are designed and land in M2–M4.
+**Implemented:** Copernicus DEM → 16-bit heightmap, and Sentinel-2 L2A → true-colour
+orthophoto + landcover masks. The STAC query picks the clearest June/July scene set
+that covers the theatre, reads only the needed windows over HTTP, and writes the bundle.
+
+**Next:** OSM vectors (roads, water, settlements), building extrusion and object
+placement.
 
 ## Planned usage
 
@@ -26,14 +29,14 @@ python3 tools/mapgen/mapgen.py --theatre normandy-1944           # full build
 | `heightmap` | DEM | 16-bit height tiles + LOD pyramid |
 | `derivatives` | heightmap | normals, slope, curvature, flow accumulation |
 | `landcover` | Sentinel-2, OSM landuse | RGBA splat masks |
-| `ortho` | Sentinel-2 / NAIP | colour tiles with macro-variation |
+| `ortho` | Sentinel-2 / NAIP | `ortho.jpg` (world-space) + `landcover.png` masks |
 | `vectors` | OSM extract | FlatGeobuf roads/water/buildings |
 | `objects` | footprints + rules | airfields, settlements, props |
 | `manifest` | all of the above | hashes, attribution, `LICENSE-DATA.txt` |
 
 ## Dependencies
 
-`rasterio`/GDAL, `numpy`, `scipy`, `shapely`, `pyproj`, `osmium-tool` (CLI).
+`rasterio`/GDAL, `numpy`, `Pillow`; later `shapely`, `pyproj`, `osmium-tool`.
 
 ## Licensing
 

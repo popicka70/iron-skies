@@ -36,3 +36,7 @@ docs/media/** -filter -diff -merge
 
 # Heightmap rasters are binary; do not attempt text diffs.
 *.r16 binary
+
+# Generated theatre bundles are small sample data; keep them in normal Git so a clone
+# runs the demo without Git LFS. Larger theatres ship as release artifacts.
+game/assets/terrain/** -filter -diff -merge

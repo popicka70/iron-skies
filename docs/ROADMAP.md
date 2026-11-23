@@ -17,6 +17,8 @@ retrospective in `docs/retro/`.
 - [x] Flyable aircraft over a real 40 × 40 km heightmap
 - [x] Spitfire LF Mk IX data set, table-driven aero and engine power curve
 - [x] Terrain pipeline: Copernicus DEM → 16-bit heightmap → 40 km mesh + ground queries
+- [x] Chunked LOD terrain streaming (1 km chunks, 25–200 m, 10 km radius, far base mesh)
+- [x] Sentinel-2 orthophoto (10 m) + landcover masks draped on the terrain
 - [x] Golden-replay determinism unit test (cross-platform CI replay pending)
 - [ ] Joystick/HOTAS input
 - [ ] Basic HUD (speed, altitude, RPM) — done, expand with engine gauges
@@ -49,8 +51,9 @@ sortie with engine management; deterministic replays reproduce exactly.
 **Goal:** a screenshot that could be mistaken for a modern sim.
 
 - Art pass over the existing 40 × 40 km theatre (no hand-placed terrain meshes)
-- Quadtree terrain with 5 LODs, geomorphing, streaming, heightfield collision
-- Terrain colour from Sentinel-2 ortho and OSM landcover (replacing the placeholder shader)
+- Geomorphing/skirts to remove LOD seams; streaming budget instrumentation
+- OSM landcover: hedgerows, roads, woods and settlements (Sentinel-2 masks are in)
+- Detail normals, water shading and 3D vegetation
 - Splat-blended ground, forests via MultiMesh, water, roads
 - Airfield with hangars, revetments, runway markings, static props
 - Physical sky, sun/moon, SDFGI, volumetric fog, cloud layer, weather presets

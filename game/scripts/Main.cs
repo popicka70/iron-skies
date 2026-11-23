@@ -20,6 +20,7 @@ public partial class Main : Node3D
     private AircraftSimulator _sim = null!;
     private AircraftDefinition _definition = null!;
     private Heightmap _heightmap = null!;
+    private TerrainWorld _terrain = null!;
     private MeshInstance3D _aircraft = null!;
     private Camera3D _camera = null!;
     private Label _hud = null!;
@@ -33,12 +34,17 @@ public partial class Main : Node3D
 
     private string? _screenshotPath;
     private bool _screenshotStarted;
+    private int _screenshotTicks = 480;
 
     public override void _Ready()
     {
         // Fewer full blocking collections while flying; the hot path allocates nothing.
         GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
         _screenshotPath = ReadUserOption("--screenshot");
+        if (int.TryParse(ReadUserOption("--screenshot-delay"), out int delaySeconds))
+        {
+            _screenshotTicks = delaySeconds * 240;
+        }
 
         BuildEnvironment();
         BuildTerrain();
@@ -72,6 +78,7 @@ public partial class Main : Node3D
         }
 
         _aircraft.GlobalTransform = SimBridge.ToGodot(_sim.State.Orientation, _sim.State.Position);
+        _terrain.SetFocus(_aircraft.GlobalPosition);
         UpdateCamera(delta);
 
         if (!_sim.State.IsFinite)
@@ -93,7 +100,7 @@ public partial class Main : Node3D
         _hudTimer = 0.0;
         UpdateHud();
 
-        if (_screenshotPath is not null && !_screenshotStarted && _tick > 480)
+        if (_screenshotPath is not null && !_screenshotStarted && _tick >= _screenshotTicks)
         {
             _screenshotStarted = true;
             CaptureScreenshot(_screenshotPath);
@@ -146,6 +153,8 @@ public partial class Main : Node3D
         _hudText.Append("Mach      ").Append(t.Mach.ToString("F3")).Append('\n');
         _hudText.Append("Load      ").Append(t.LoadFactorG.ToString("F2")).Append(" g\n");
         _hudText.Append("Throttle  ").Append((_throttle * 100.0).ToString("F0")).Append(" %\n");
+        _hudText.Append("Chunks    ").Append(_terrain.ResidentChunks).Append("   FPS ")
+            .Append(Engine.GetFramesPerSecond()).Append('\n');
         _hudText.Append("Tick      ").Append(_tick).Append("\n\n");
         _hudText.Append("W/S throttle   ↑/↓ pitch   ←/→ roll   A/D rudder   R reset");
         _hud.Text = _hudText.ToString();
@@ -212,6 +221,7 @@ public partial class Main : Node3D
         _rudder = 0.0;
         _tick = 0;
         _accumulator = 0.0;
+        _terrain.Prewarm(SimBridge.ToGodot(_sim.State.Position));
     }
 
     private void BuildEnvironment()
@@ -220,7 +230,7 @@ public partial class Main : Node3D
         {
             SkyTopColor = new Color(0.15f, 0.32f, 0.62f),
             SkyHorizonColor = new Color(0.68f, 0.76f, 0.84f),
-            GroundBottomColor = new Color(0.22f, 0.24f, 0.20f),
+            GroundBottomColor = new Color(0.02f, 0.06f, 0.08f),
             SunAngleMax = 30.0f,
             SunCurve = 0.12f,
         };
@@ -256,14 +266,15 @@ public partial class Main : Node3D
 
     private void BuildTerrain()
     {
+        const string directory = "res://assets/terrain/normandy-1944";
         var timer = Stopwatch.StartNew();
-        _heightmap = Heightmap.Load("res://assets/terrain/normandy-1944");
-        var terrain = new TerrainRenderer();
-        terrain.Build(_heightmap);
-        AddChild(terrain);
+        _heightmap = Heightmap.Load(directory);
+        _terrain = new TerrainWorld();
+        _terrain.Build(_heightmap, directory);
+        AddChild(_terrain);
         timer.Stop();
         GD.Print($"Terrain: {_heightmap.Width}×{_heightmap.Height} @ {_heightmap.Spacing:0} m, " +
-                 $"{_heightmap.Meta.Name}, built in {timer.ElapsedMilliseconds} ms");
+                 $"ortho {_heightmap.Meta.OrthoSize}px, base built in {timer.ElapsedMilliseconds} ms");
     }
 
     private static AircraftDefinition LoadAircraft()
@@ -304,8 +315,8 @@ public partial class Main : Node3D
         _camera = new Camera3D
         {
             Fov = 72.0f,
-            Near = 0.5f,
-            Far = 60000.0f,
+            Near = 1.0f,
+            Far = 250000.0f,
         };
         AddChild(_camera);
         _camera.MakeCurrent();

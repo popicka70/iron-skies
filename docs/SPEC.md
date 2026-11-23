@@ -220,12 +220,13 @@ reproducible from `theatre.toml` + pinned source URLs + mapgen version.
 
 ### 8.2 Runtime terrain
 
-- Quadtree clipmap centred on the camera, chunk size 1 km, 5 LOD rings (25 m → 400 m
-  vertex spacing), geomorphing between LODs to hide seams and popping. M0 ships a
-  static 4 × 4 tile proof at 50 m; the clipmap replaces it in M2.
+- Chunked LOD around the camera: 1 km tiles, 25/50/100/200 m vertex spacing, a 200 m
+  base mesh for the far field, built and swapped as the player moves. M0 ships this
+  streaming world; geomorphing/skirts replace the simple LOD switch in M2.
 - Heightfield collision queries use the same data as rendering (single source of truth).
-- Forest/grass via `MultiMesh` with distance-based density and dithered fade; no
-  per-tree nodes.
+- Sentinel-2 true-colour orthophoto (10 m) draped over the terrain, with a
+  Sentinel-2-derived landcover mask (water / vegetation / bare-urban / forest) driving
+  colour and roughness. `MultiMesh` vegetation replaces the texture-only canopy in M2.
 - Water: planar reflection + depth-based absorption; rivers from vector data.
 
 ### 8.3 Persistence
@@ -250,6 +251,9 @@ reproducible from `theatre.toml` + pinned source URLs + mapgen version.
 6. Author the colour layer from Sentinel-2 (10 m) + NAIP (US) + hand-painted detail
    near the playable airfields; keep a documented fallback for cloudy scenes.
 7. Bake ambient occlusion and macro variation; validate in-engine against reference photos.
+
+**M0 status:** DEM → 16-bit heightmap, Sentinel-2 true colour (two tiles, cloud < 1%),
+and landcover masks are implemented. OSM vectors, buildings and object placement are next.
 
 Data licence obligations (ODbL for OSM-derived bundles, attribution for Copernicus) are
 recorded in [assets-and-licensing.md](assets-and-licensing.md).

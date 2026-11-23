@@ -23,7 +23,7 @@ it ships.
 | Dataset | Licence | Attribution | Ships in bundle |
 | --- | --- | --- | --- |
 | Copernicus DEM GLO-30 | free, Copernicus terms | "© DLR e.V. 2010-2014 and © Airbus DS GmbH 2017-2021" (per product) | yes |
-| Sentinel-2 L2A | free, Copernicus terms | "Contains modified Copernicus Sentinel data [year]" | yes |
+| Sentinel-2 L2A (Earth Search COGs) | free, Copernicus terms | "Contains modified Copernicus Sentinel data 2025" | yes |
 | SRTM 1″ | public domain (NASA/USGS) | none required | optional |
 | USGS 3DEP | public domain | none required | optional (US theatres) |
 | NAIP | public domain | none required | optional (US theatres) |
