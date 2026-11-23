@@ -29,6 +29,11 @@ public partial class Main : Node3D
 
     private double _throttle = 0.75;
     private double _brake;
+    private double _flapTarget;
+    private double _gearTarget = 1.0;
+    private double _trimElevator;
+    private bool _prevFlapKey;
+    private bool _prevGearKey;
     private bool _airStart;
     private double _accumulator;
     private double _hudTimer;
@@ -75,7 +80,10 @@ public partial class Main : Node3D
                 Aileron: _aileron,
                 Rudder: _rudder,
                 Throttle: _throttle,
-                Brake: _brake), PhysicsDt);
+                Brake: _brake,
+                Flaps: _flapTarget,
+                GearDown: _gearTarget,
+                TrimElevator: _trimElevator), PhysicsDt);
             _accumulator -= PhysicsDt;
             _tick++;
             steps++;
@@ -173,10 +181,14 @@ public partial class Main : Node3D
         _hudText.Append("Throttle  ").Append((_throttle * 100.0).ToString("F0")).Append(" %\n");
         _hudText.Append("Brake     ").Append((_brake * 100.0).ToString("F0")).Append(" %   ")
             .Append(_sim.Telemetry.OnGround ? "ON GROUND" : "AIRBORNE").Append('\n');
+        _hudText.Append("Trim      ").Append(_trimElevator.ToString("+0.00;-0.00;0.00"))
+            .Append("   Flaps ").Append((_sim.FlapPosition * 100.0).ToString("F0")).Append("%   Gear ")
+            .Append(_sim.GearPosition > 0.95 ? "DOWN" : _sim.GearPosition < 0.05 ? "UP" : "MOVING")
+            .Append('\n');
         _hudText.Append("Chunks    ").Append(_terrain.ResidentChunks).Append("   FPS ")
             .Append(Engine.GetFramesPerSecond()).Append('\n');
         _hudText.Append("Tick      ").Append(_tick).Append("\n\n");
-        _hudText.Append("W/S throttle   B brakes   ↑/↓ pitch   ←/→ roll   A/D rudder   R reset");
+        _hudText.Append("W/S throttle  B brakes  F flaps  G gear  , . trim  ↑/↓ pitch  ←/→ roll  A/D rudder");
         _hud.Text = _hudText.ToString();
     }
 
@@ -214,6 +226,26 @@ public partial class Main : Node3D
             - (Input.IsPhysicalKeyPressed(Key.S) ? 1.0 : 0.0);
         _brake = Input.IsPhysicalKeyPressed(Key.B) ? 1.0 : 0.0;
 
+        bool flapKey = Input.IsPhysicalKeyPressed(Key.F);
+        if (flapKey && !_prevFlapKey)
+        {
+            _flapTarget = _flapTarget > 0.5 ? 0.0 : 1.0;
+        }
+
+        _prevFlapKey = flapKey;
+
+        bool gearKey = Input.IsPhysicalKeyPressed(Key.G);
+        if (gearKey && !_prevGearKey && !_sim.Telemetry.OnGround)
+        {
+            _gearTarget = _gearTarget > 0.5 ? 0.0 : 1.0;
+        }
+
+        _prevGearKey = gearKey;
+
+        double trimDelta = (Input.IsPhysicalKeyPressed(Key.Period) ? 1.0 : 0.0)
+            - (Input.IsPhysicalKeyPressed(Key.Comma) ? 1.0 : 0.0);
+        _trimElevator = Mathf.Clamp(_trimElevator + trimDelta * 0.6 * PhysicsDt, -1.0, 1.0);
+
         // Simple first-order response stands in for stick forces until M1 input mapping.
         double k = 4.0 * PhysicsDt;
         _elevator += (pitch - _elevator) * k;
@@ -238,6 +270,9 @@ public partial class Main : Node3D
         _sim = new AircraftSimulator(_definition, state, _heightmap);
         _throttle = _airStart ? 0.75 : 0.0;
         _brake = 0.0;
+        _flapTarget = 0.0;
+        _gearTarget = 1.0;
+        _trimElevator = 0.0;
         _elevator = 0.0;
         _aileron = 0.0;
         _rudder = 0.0;

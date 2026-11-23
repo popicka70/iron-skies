@@ -25,10 +25,18 @@ public sealed class AircraftSimulator
     private const double MinSpeedForAero = 0.5;
 
     private readonly IGroundSurface _ground;
+    private double _flapPosition;
+    private double _gearPosition = 1.0;
 
     public AircraftDefinition Definition { get; }
     public AircraftState State { get; }
     public FlightTelemetry Telemetry { get; private set; }
+
+    /// <summary>Actual flap position, 0 (up) … 1 (full down).</summary>
+    public double FlapPosition => _flapPosition;
+
+    /// <summary>Actual gear position, 0 (up) … 1 (down).</summary>
+    public double GearPosition => _gearPosition;
 
     public AircraftSimulator(
         AircraftDefinition definition,
@@ -52,6 +60,16 @@ public sealed class AircraftSimulator
         Controls c = rawControls.Clamped();
         AircraftDefinition d = Definition;
 
+        _flapPosition = MoveToward(_flapPosition, c.Flaps, dt, d.FlapTravelSeconds);
+        _gearPosition = MoveToward(_gearPosition, c.GearDown, dt, d.GearTravelSeconds);
+
+        double elevator = DeterministicMath.Clamp(
+            c.Elevator + c.TrimElevator * d.TrimElevatorAuthority, -1.0, 1.0);
+        double aileron = DeterministicMath.Clamp(
+            c.Aileron + c.TrimAileron * d.TrimAileronAuthority, -1.0, 1.0);
+        double rudder = DeterministicMath.Clamp(
+            c.Rudder + c.TrimRudder * d.TrimRudderAuthority, -1.0, 1.0);
+
         Quat q = State.Orientation;
         Vec3 vBody = q.InverseRotate(State.VelocityEnu);
         double speed = vBody.Length;
@@ -69,8 +87,8 @@ public sealed class AircraftSimulator
         double qbar = 0.5 * atm.DensityKgM3 * speed * speed;
         Vec3 vhat = speed > MinSpeedForAero ? vBody / speed : Vec3.Zero;
 
-        double cl = AeroModel.LiftCoefficient(d, alpha, c.Elevator, c.Flaps);
-        double cd = AeroModel.DragCoefficient(d, alpha, c.Elevator, c.Flaps, c.GearDown, c.Radiator);
+        double cl = AeroModel.LiftCoefficient(d, alpha, elevator, _flapPosition);
+        double cd = AeroModel.DragCoefficient(d, alpha, elevator, _flapPosition, _gearPosition, c.Radiator);
         double cy = AeroModel.SideCoefficient(d, beta);
 
         double lift = qbar * d.WingAreaM2 * cl;
@@ -104,16 +122,16 @@ public sealed class AircraftSimulator
         double phat = speed > MinSpeedForAero ? omega.X * d.WingSpanM / (2.0 * speed) : 0.0;
         double rhat = speed > MinSpeedForAero ? omega.Z * d.WingSpanM / (2.0 * speed) : 0.0;
 
-        double cm = AeroModel.PitchMomentCoefficient(d, alpha, c.Elevator, qhat);
-        double rollCoef = d.ClBetaPerRad * beta + d.ClAileronPerRad * c.Aileron + d.ClP * phat;
-        double yawCoef = d.CnBetaPerRad * beta + d.CnRudderPerRad * c.Rudder + d.CnR * rhat;
+        double cm = AeroModel.PitchMomentCoefficient(d, alpha, elevator, qhat);
+        double rollCoef = d.ClBetaPerRad * beta + d.ClAileronPerRad * aileron + d.ClP * phat;
+        double yawCoef = d.CnBetaPerRad * beta + d.CnRudderPerRad * rudder + d.CnR * rhat;
 
         Vec3 momentBody = new(
             qbar * d.WingAreaM2 * d.WingSpanM * rollCoef,
             qbar * d.WingAreaM2 * d.MeanChordM * cm,
             qbar * d.WingAreaM2 * d.WingSpanM * yawCoef);
 
-        bool onGround = ApplyGearForces(ref forceBody, ref momentBody, c, q, omega);
+        bool onGround = ApplyGearForces(ref forceBody, ref momentBody, c.Brake, rudder, q, omega);
 
         // Translational acceleration in the body frame (including ω × v).
         Vec3 accelBody = forceBody / State.MassKg - Vec3.Cross(omega, vBody);
@@ -159,8 +177,13 @@ public sealed class AircraftSimulator
     /// normal force and a moment, plus rolling/lateral friction and tail-wheel steering.
     /// </summary>
     private bool ApplyGearForces(
-        ref Vec3 forceBody, ref Vec3 momentBody, in Controls c, Quat q, Vec3 omega)
+        ref Vec3 forceBody, ref Vec3 momentBody, double brake, double rudder, Quat q, Vec3 omega)
     {
+        if (_gearPosition <= 0.95)
+        {
+            return false;
+        }
+
         Vec3 omegaWorld = q.Rotate(omega);
         Vec3 bodyForward = q.Rotate(Vec3.UnitX);
         Vec3 forward = new Vec3(bodyForward.X, bodyForward.Y, 0.0).NormalizedOrZero();
@@ -196,7 +219,7 @@ public sealed class AircraftSimulator
 
             double vForward = velocityPoint.Dot(forward);
             double vLateral = velocityPoint.Dot(right);
-            double forwardMu = leg.RollingFriction + (leg.Braked ? c.Brake * 0.60 : 0.0);
+            double forwardMu = leg.RollingFriction + (leg.Braked ? brake * 0.60 : 0.0);
 
             double fForward = -DeterministicMath.Sign(vForward)
                 * DeterministicMath.Min(DeterministicMath.Abs(vForward) * 1.5, 1.0)
@@ -207,9 +230,9 @@ public sealed class AircraftSimulator
 
             force += forward * fForward + right * fLateral;
 
-            if (leg.Steerable && c.Rudder != 0.0)
+            if (leg.Steerable && rudder != 0.0)
             {
-                force += right * (-c.Rudder * 0.8 * normalForce);
+                force += right * (-rudder * 0.8 * normalForce);
             }
 
             forceBody += q.InverseRotate(force);
@@ -218,6 +241,28 @@ public sealed class AircraftSimulator
         }
 
         return anyContact;
+    }
+
+    private static double MoveToward(double current, double target, double dt, double seconds)
+    {
+        if (seconds <= 0.0)
+        {
+            return target;
+        }
+
+        double step = dt / seconds;
+        double delta = target - current;
+        if (delta > step)
+        {
+            return current + step;
+        }
+
+        if (delta < -step)
+        {
+            return current - step;
+        }
+
+        return target;
     }
 
     /// <summary>

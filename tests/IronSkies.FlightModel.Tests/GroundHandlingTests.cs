@@ -9,6 +9,13 @@ public class GroundHandlingTests
     private const double Dt = 1.0 / 240.0;
 
     [Fact]
+    public void NeutralControls_KeepGearDown()
+    {
+        Assert.Equal(1.0, Controls.Neutral.GearDown);
+        Assert.Equal(1.0, new Controls(Throttle: 0.5).GearDown);
+    }
+
+    [Fact]
     public void Aircraft_SettlesOnItsGearNoseUp()
     {
         AircraftDefinition d = AircraftDefinition.TrainingAircraft;
@@ -82,6 +89,75 @@ public class GroundHandlingTests
         Assert.False(sim.Telemetry.OnGround);
         Assert.True(sim.State.Position.Z > 5.0);
         Assert.True(sim.State.VelocityEnu.Length > 35.0);
+    }
+
+    [Fact]
+    public void Flaps_DeployAtTheConfiguredRate()
+    {
+        AircraftDefinition d = AircraftDefinition.TrainingAircraft;
+        var sim = new AircraftSimulator(d, AircraftState.CreateAirborne(d, 2000.0, 120.0));
+
+        for (int i = 0; i < 2 * 240; i++)
+        {
+            sim.Step(new Controls(Flaps: 1.0), Dt);
+        }
+
+        Assert.InRange(sim.FlapPosition, 0.20, 0.30);
+
+        for (int i = 0; i < 10 * 240; i++)
+        {
+            sim.Step(new Controls(Flaps: 1.0), Dt);
+        }
+
+        Assert.Equal(1.0, sim.FlapPosition, 1e-9);
+    }
+
+    [Fact]
+    public void Gear_RetractsOverTimeAndStopsSupporting()
+    {
+        AircraftDefinition d = AircraftDefinition.TrainingAircraft;
+        var sim = new AircraftSimulator(d, AircraftState.CreateAirborne(d, 2000.0, 120.0));
+
+        for (int i = 0; i < 13 * 240; i++)
+        {
+            sim.Step(new Controls(GearDown: 0.0), Dt);
+        }
+
+        Assert.Equal(0.0, sim.GearPosition, 1e-9);
+        Assert.False(sim.Telemetry.OnGround);
+    }
+
+    [Fact]
+    public void ElevatorTrim_PitchesTheAircraftUp()
+    {
+        AircraftDefinition d = AircraftDefinition.TrainingAircraft;
+
+        static double PitchAfterTrim(AircraftDefinition d, double trim)
+        {
+            var sim = new AircraftSimulator(
+                d, AircraftState.CreateAirborne(d, 2000.0, 120.0), FlatGround.Instance);
+            for (int i = 0; i < 240; i++)
+            {
+                sim.Step(new Controls(TrimElevator: trim, Throttle: 0.7), 1.0 / 240.0);
+            }
+
+            return sim.State.Orientation.Rotate(Vec3.UnitX).Z;
+        }
+
+        double neutral = PitchAfterTrim(d, 0.0);
+        double trimmed = PitchAfterTrim(d, 1.0);
+        Assert.True(trimmed > neutral + 0.01);
+    }
+
+    [Fact]
+    public void SpitfireData_HasTrimAndActuatorTravel()
+    {
+        AircraftDefinition d = AircraftLoader.LoadFromDirectory(
+            Path.Combine(AppContext.BaseDirectory, "aircraft", "spitfire-mk9"));
+
+        Assert.Equal(0.30, d.TrimElevatorAuthority, 1e-9);
+        Assert.Equal(8.0, d.FlapTravelSeconds, 1e-9);
+        Assert.Equal(12.0, d.GearTravelSeconds, 1e-9);
     }
 
     [Fact]

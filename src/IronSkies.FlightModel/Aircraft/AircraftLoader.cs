@@ -133,6 +133,11 @@ public static class AircraftLoader
             Table = table,
             EnginePower = enginePower,
             GearLegs = gear,
+            TrimElevatorAuthority = dto.TrimElevatorAuthority,
+            TrimAileronAuthority = dto.TrimAileronAuthority,
+            TrimRudderAuthority = dto.TrimRudderAuthority,
+            FlapTravelSeconds = dto.FlapTravelSeconds,
+            GearTravelSeconds = dto.GearTravelSeconds,
         };
 
         definition.Validate();
@@ -192,6 +197,11 @@ internal sealed class AircraftDto
 
     public double[][]? EnginePowerHp { get; init; }
     public GearDto[]? Gear { get; init; }
+    public double TrimElevatorAuthority { get; init; } = 0.30;
+    public double TrimAileronAuthority { get; init; } = 0.10;
+    public double TrimRudderAuthority { get; init; } = 0.20;
+    public double FlapTravelSeconds { get; init; } = 8.0;
+    public double GearTravelSeconds { get; init; } = 12.0;
 }
 
 internal sealed class GearDto

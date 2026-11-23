@@ -63,6 +63,15 @@ public sealed class AircraftDefinition
     // Landing gear (taildragger by default). Override per aircraft.
     public GearLeg[] GearLegs { get; init; } = DefaultGear();
 
+    // Trim authority as a fraction of full control deflection.
+    public double TrimElevatorAuthority { get; init; } = 0.30;
+    public double TrimAileronAuthority { get; init; } = 0.10;
+    public double TrimRudderAuthority { get; init; } = 0.20;
+
+    // Actuator travel times (0 = instant).
+    public double FlapTravelSeconds { get; init; } = 8.0;
+    public double GearTravelSeconds { get; init; } = 12.0;
+
     // Optional table-driven data. When present these override the linear coefficients
     // above (but control-surface and flap deltas still apply).
     public AeroTable? Table { get; init; }
@@ -96,6 +105,11 @@ public sealed class AircraftDefinition
         for (int i = 0; i < GearLegs.Length; i++)
         {
             GearLegs[i].Validate(Id, i);
+        }
+
+        if (FlapTravelSeconds < 0.0 || GearTravelSeconds < 0.0)
+        {
+            throw new InvalidOperationException($"{Id}: travel times must not be negative.");
         }
     }
 
@@ -135,11 +149,16 @@ public readonly record struct Controls(
     double Rudder = 0.0,
     double Throttle = 0.0,
     double Flaps = 0.0,
-    double GearDown = 0.0,
+    double GearDown = 1.0,
     double Radiator = 0.5,
-    double Brake = 0.0)
+    double Brake = 0.0,
+    double TrimElevator = 0.0,
+    double TrimAileron = 0.0,
+    double TrimRudder = 0.0)
 {
-    public static readonly Controls Neutral = new();
+    // Explicit values: `new()` on a struct runs the zeroing constructor and would
+    // ignore the primary constructor's optional defaults (e.g. gear down).
+    public static readonly Controls Neutral = new(GearDown: 1.0);
 
     public Controls Clamped() => new(
         DeterministicMath.Clamp(Elevator, -1.0, 1.0),
@@ -149,5 +168,8 @@ public readonly record struct Controls(
         DeterministicMath.Clamp(Flaps, 0.0, 1.0),
         DeterministicMath.Clamp(GearDown, 0.0, 1.0),
         DeterministicMath.Clamp(Radiator, 0.0, 1.0),
-        DeterministicMath.Clamp(Brake, 0.0, 1.0));
+        DeterministicMath.Clamp(Brake, 0.0, 1.0),
+        DeterministicMath.Clamp(TrimElevator, -1.0, 1.0),
+        DeterministicMath.Clamp(TrimAileron, -1.0, 1.0),
+        DeterministicMath.Clamp(TrimRudder, -1.0, 1.0));
 }
