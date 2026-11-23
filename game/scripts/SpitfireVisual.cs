@@ -1,0 +1,294 @@
+using System;
+using Godot;
+using IronSkies.FlightModel.Aircraft;
+
+namespace IronSkies.Game;
+
+/// <summary>
+/// Low-poly Spitfire built from primitives and one custom elliptical wing mesh.
+/// Local axes follow the body frame: −Z forward, +X right, +Y up, origin at the CoG.
+/// This is a placeholder silhouette; the art pass replaces it with a proper model.
+/// </summary>
+public sealed partial class SpitfireVisual : Node3D
+{
+    private Node3D _propeller = null!;
+    private MeshInstance3D _propDisc = null!;
+    private readonly System.Collections.Generic.List<MeshInstance3D> _propBlades = new();
+    private Node3D _gearGroup = null!;
+    private Node3D _leftFlap = null!;
+    private Node3D _rightFlap = null!;
+
+    private StandardMaterial3D _camo = null!;
+    private StandardMaterial3D _dark = null!;
+    private StandardMaterial3D _metal = null!;
+    private StandardMaterial3D _glass = null!;
+    private StandardMaterial3D _tyre = null!;
+
+    public void Build()
+    {
+        _camo = Material(new Color(0.20f, 0.27f, 0.17f), 0.65f, 0.05f);
+        _dark = Material(new Color(0.08f, 0.08f, 0.08f), 0.80f);
+        _metal = Material(new Color(0.55f, 0.57f, 0.55f), 0.30f, 0.75f);
+        _tyre = Material(new Color(0.04f, 0.04f, 0.04f), 0.95f);
+        _glass = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.55f, 0.70f, 0.75f, 0.22f),
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            Roughness = 0.05f,
+            Metallic = 0.20f,
+        };
+
+        BuildFuselage();
+        BuildWings();
+        BuildTail();
+        BuildGear();
+        BuildPropeller();
+        BuildCockpit();
+    }
+
+    public void UpdateFrom(AircraftSimulator sim, double delta)
+    {
+        float rpm = (float)(sim.EngineRpm / 3000.0);
+        _propeller.RotateZ((float)(rpm * 90.0 * delta));
+
+        bool blurred = sim.EngineRpm > 350.0;
+        _propDisc.Visible = blurred;
+        foreach (MeshInstance3D blade in _propBlades)
+        {
+            blade.Visible = !blurred;
+        }
+
+        float flap = (float)sim.FlapPosition * 0.7f;
+        _leftFlap.Rotation = new Vector3(flap, 0.0f, 0.0f);
+        _rightFlap.Rotation = new Vector3(flap, 0.0f, 0.0f);
+
+        _gearGroup.Visible = sim.GearPosition > 0.04;
+        _gearGroup.Scale = new Vector3(1.0f, (float)Math.Max(0.04, sim.GearPosition), 1.0f);
+    }
+
+    private void BuildFuselage()
+    {
+        var fuselage = new CapsuleMesh { Radius = 0.56f, Height = 5.6f, RadialSegments = 20 };
+        AddPart(this, fuselage, _camo, new Vector3(0, 0, 0.15f), new Vector3(90, 0, 0));
+
+        var nose = new CylinderMesh
+        {
+            TopRadius = 0.56f,
+            BottomRadius = 0.30f,
+            Height = 1.4f,
+            RadialSegments = 20,
+            CapTop = false,
+            CapBottom = false,
+        };
+        AddPart(this, nose, _camo, new Vector3(0, 0, -2.85f), new Vector3(90, 0, 0));
+
+        var tailCone = new CylinderMesh
+        {
+            TopRadius = 0.10f,
+            BottomRadius = 0.56f,
+            Height = 2.5f,
+            RadialSegments = 16,
+            CapTop = false,
+            CapBottom = false,
+        };
+        AddPart(this, tailCone, _camo, new Vector3(0, 0, 3.05f), new Vector3(90, 0, 0));
+
+        var spinner = new CylinderMesh
+        {
+            TopRadius = 0.30f,
+            BottomRadius = 0.02f,
+            Height = 0.65f,
+            RadialSegments = 20,
+        };
+        AddPart(this, spinner, _metal, new Vector3(0, 0, -4.02f), new Vector3(90, 0, 0));
+
+        var radiator = new BoxMesh { Size = new Vector3(0.55f, 0.22f, 1.1f) };
+        AddPart(this, radiator, _dark, new Vector3(0, -0.52f, 0.15f));
+
+        var exhaust = new BoxMesh { Size = new Vector3(0.10f, 0.10f, 0.55f) };
+        AddPart(this, exhaust, _dark, new Vector3(-0.48f, 0.10f, -2.45f));
+        AddPart(this, exhaust, _dark, new Vector3(0.48f, 0.10f, -2.45f));
+    }
+
+    private void BuildWings()
+    {
+        ArrayMesh wing = BuildWingMesh(
+            span: 5.55, rootChord: 2.35, tipChord: 0.70, thickness: 0.13,
+            yBase: -0.34, dihedral: 0.34, zCenter: 0.10);
+        AddPart(this, wing, _camo, Vector3.Zero);
+
+        _leftFlap = BuildFlap(-1.25f);
+        _rightFlap = BuildFlap(1.25f);
+    }
+
+    private Node3D BuildFlap(float x)
+    {
+        var pivot = new Node3D { Position = new Vector3(x, -0.31f, 0.62f) };
+        AddChild(pivot);
+        var flap = new BoxMesh { Size = new Vector3(1.45f, 0.06f, 0.46f) };
+        AddPart(pivot, flap, _camo, new Vector3(0, 0, 0.24f));
+        return pivot;
+    }
+
+    private void BuildTail()
+    {
+        ArrayMesh tailplane = BuildWingMesh(
+            span: 1.75, rootChord: 1.35, tipChord: 0.45, thickness: 0.08,
+            yBase: 0.14, dihedral: 0.02, zCenter: 3.65);
+        AddPart(this, tailplane, _camo, Vector3.Zero);
+
+        var fin = new BoxMesh { Size = new Vector3(0.07f, 1.15f, 0.95f) };
+        AddPart(this, fin, _camo, new Vector3(0, 0.62f, 4.02f), new Vector3(-8, 0, 0));
+
+        var rudder = new BoxMesh { Size = new Vector3(0.06f, 1.05f, 0.35f) };
+        AddPart(this, rudder, _camo, new Vector3(0, 0.58f, 4.55f));
+    }
+
+    private void BuildGear()
+    {
+        _gearGroup = new Node3D { Name = "Gear" };
+        AddChild(_gearGroup);
+
+        foreach (float side in new[] { -1.0f, 1.0f })
+        {
+            var leg = new BoxMesh { Size = new Vector3(0.08f, 1.10f, 0.08f) };
+            AddPart(_gearGroup, leg, _metal, new Vector3(side * 0.85f, -0.95f, -0.85f),
+                new Vector3(0, 0, side * 4.0f));
+
+            var wheel = new CylinderMesh { TopRadius = 0.33f, BottomRadius = 0.33f, Height = 0.20f, RadialSegments = 16 };
+            AddPart(_gearGroup, wheel, _tyre, new Vector3(side * 0.85f, -1.50f, -0.85f),
+                new Vector3(0, 0, 90));
+
+            var hub = new CylinderMesh { TopRadius = 0.10f, BottomRadius = 0.10f, Height = 0.22f, RadialSegments = 12 };
+            AddPart(_gearGroup, hub, _metal, new Vector3(side * 0.85f, -1.50f, -0.85f),
+                new Vector3(0, 0, 90));
+        }
+
+        var tailLeg = new BoxMesh { Size = new Vector3(0.06f, 0.40f, 0.06f) };
+        AddPart(_gearGroup, tailLeg, _metal, new Vector3(0, -0.22f, 4.72f));
+        var tailWheel = new CylinderMesh { TopRadius = 0.15f, BottomRadius = 0.15f, Height = 0.10f, RadialSegments = 12 };
+        AddPart(_gearGroup, tailWheel, _tyre, new Vector3(0, -0.41f, 4.90f), new Vector3(0, 0, 90));
+    }
+
+    private void BuildPropeller()
+    {
+        _propeller = new Node3D { Name = "Propeller", Position = new Vector3(0, 0, -4.38f) };
+        AddChild(_propeller);
+
+        for (int i = 0; i < 3; i++)
+        {
+            float angle = Mathf.DegToRad(i * 120.0f);
+            var blade = new BoxMesh { Size = new Vector3(0.13f, 1.55f, 0.05f) };
+            _propBlades.Add(AddPart(_propeller, blade, _dark,
+                new Vector3(Mathf.Sin(angle) * 0.82f, Mathf.Cos(angle) * 0.82f, 0.0f),
+                new Vector3(0, 0, Mathf.RadToDeg(angle))));
+        }
+
+        var disc = new CylinderMesh { TopRadius = 1.65f, BottomRadius = 1.65f, Height = 0.01f, RadialSegments = 32 };
+        _propDisc = AddPart(this, disc, new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.10f, 0.10f, 0.10f, 0.09f),
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+        }, new Vector3(0, 0, -4.40f), new Vector3(90, 0, 0));
+        _propDisc.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+        _propDisc.Visible = false;
+    }
+
+    private void BuildCockpit()
+    {
+        var canopy = new SphereMesh { Radius = 0.5f, Height = 0.7f, RadialSegments = 16, Rings = 8 };
+        AddPart(this, canopy, _glass, new Vector3(0, 0.55f, -0.75f),
+            Vector3.Zero, new Vector3(0.95f, 0.75f, 1.50f));
+
+        var panel = new BoxMesh { Size = new Vector3(0.80f, 0.30f, 0.08f) };
+        AddPart(this, panel, _dark, new Vector3(0, 0.28f, -1.38f), new Vector3(-10, 0, 0));
+
+        for (int i = -1; i <= 1; i++)
+        {
+            var gauge = new CylinderMesh { TopRadius = 0.055f, BottomRadius = 0.055f, Height = 0.02f, RadialSegments = 12 };
+            AddPart(this, gauge, _metal, new Vector3(i * 0.20f, 0.30f, -1.43f), new Vector3(90, 0, 0));
+        }
+
+        var sight = new TorusMesh
+        {
+            InnerRadius = 0.075f,
+            OuterRadius = 0.105f,
+            Rings = 16,
+            RingSegments = 8,
+        };
+        AddPart(this, sight, _dark, new Vector3(0, 0.48f, -1.44f), new Vector3(90, 0, 0));
+    }
+
+    private static StandardMaterial3D Material(Color color, float roughness, float metallic = 0.0f) =>
+        new()
+        {
+            AlbedoColor = color,
+            Roughness = roughness,
+            Metallic = metallic,
+        };
+
+    private static MeshInstance3D AddPart(
+        Node3D parent, Mesh mesh, Material material, Vector3 position,
+        Vector3 rotationDegrees = default, Vector3? scale = null)
+    {
+        var node = new MeshInstance3D
+        {
+            Mesh = mesh,
+            MaterialOverride = material,
+            Position = position,
+            RotationDegrees = rotationDegrees,
+            Scale = scale ?? Vector3.One,
+        };
+        parent.AddChild(node);
+        return node;
+    }
+
+    /// <summary>Closed, tapered elliptical wing slab centred on the local X axis.</summary>
+    private static ArrayMesh BuildWingMesh(
+        double span, double rootChord, double tipChord, double thickness,
+        double yBase, double dihedral, double zCenter)
+    {
+        const int segments = 16;
+        var st = new SurfaceTool();
+        st.Begin(Mesh.PrimitiveType.Triangles);
+
+        double Chord(double t) => tipChord + (rootChord - tipChord) * Math.Sqrt(Math.Max(0.0, 1.0 - t * t));
+        double Thickness(double t) => thickness * (1.0 - 0.65 * Math.Abs(t));
+        double Y(double t) => yBase + dihedral * Math.Abs(t);
+        double X(double t) => span * t;
+
+        void Top(double t, double z, double yOffset) => st.AddVertex(new Vector3(
+            (float)X(t), (float)(Y(t) + yOffset), (float)z));
+        void Bottom(double t, double z, double yOffset) => st.AddVertex(new Vector3(
+            (float)X(t), (float)(Y(t) - yOffset), (float)z));
+
+        for (int i = 0; i < segments; i++)
+        {
+            double t0 = -1.0 + 2.0 * i / segments;
+            double t1 = -1.0 + 2.0 * (i + 1) / segments;
+            double c0 = Chord(t0), c1 = Chord(t1);
+            double th0 = Thickness(t0), th1 = Thickness(t1);
+            double le0 = zCenter - c0 / 2.0, te0 = zCenter + c0 / 2.0;
+            double le1 = zCenter - c1 / 2.0, te1 = zCenter + c1 / 2.0;
+
+            // Top (normals up).
+            Top(t0, le0, th0 / 2); Top(t0, te0, th0 / 2); Top(t1, te1, th1 / 2);
+            Top(t0, le0, th0 / 2); Top(t1, te1, th1 / 2); Top(t1, le1, th1 / 2);
+
+            // Bottom (normals down).
+            Bottom(t0, te0, th0 / 2); Bottom(t0, le0, th0 / 2); Bottom(t1, le1, th1 / 2);
+            Bottom(t0, te0, th0 / 2); Bottom(t1, le1, th1 / 2); Bottom(t1, te1, th1 / 2);
+
+            // Leading and trailing edge strips.
+            Top(t0, le0, th0 / 2); Bottom(t0, le0, th0 / 2); Bottom(t1, le1, th1 / 2);
+            Top(t0, le0, th0 / 2); Bottom(t1, le1, th1 / 2); Top(t1, le1, th1 / 2);
+
+            Top(t1, te1, th1 / 2); Bottom(t1, te1, th1 / 2); Bottom(t0, te0, th0 / 2);
+            Top(t1, te1, th1 / 2); Bottom(t0, te0, th0 / 2); Top(t0, te0, th0 / 2);
+        }
+
+        st.GenerateNormals();
+        return st.Commit();
+    }
+}

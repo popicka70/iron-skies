@@ -21,7 +21,7 @@ public partial class Main : Node3D
     private AircraftDefinition _definition = null!;
     private Heightmap _heightmap = null!;
     private TerrainWorld _terrain = null!;
-    private MeshInstance3D _aircraft = null!;
+    private SpitfireVisual _aircraft = null!;
     private Camera3D _camera = null!;
     private Label _hud = null!;
 
@@ -111,6 +111,7 @@ public partial class Main : Node3D
         }
 
         _aircraft.GlobalTransform = SimBridge.ToGodot(_sim.State.Orientation, _sim.State.Position);
+        _aircraft.UpdateFrom(_sim, delta);
         _terrain.SetFocus(_aircraft.GlobalPosition);
         UpdateCamera(delta);
 
@@ -452,18 +453,8 @@ public partial class Main : Node3D
 
     private void BuildAircraft()
     {
-        var material = new StandardMaterial3D
-        {
-            AlbedoColor = new Color(0.36f, 0.42f, 0.30f),
-            Metallic = 0.55f,
-            Roughness = 0.35f,
-        };
-
-        _aircraft = new MeshInstance3D
-        {
-            Mesh = new BoxMesh { Size = new Vector3(11.0f, 2.2f, 9.0f) },
-            MaterialOverride = material,
-        };
+        _aircraft = new SpitfireVisual();
+        _aircraft.Build();
         AddChild(_aircraft);
     }
 
@@ -503,7 +494,7 @@ public partial class Main : Node3D
         {
             var cockpitBasis = SimBridge.ToGodot(_sim.State.Orientation);
             Vector3 aircraft = SimBridge.ToGodot(_sim.State.Position);
-            Vector3 eye = aircraft + cockpitBasis.Y * 0.55f + cockpitBasis.Z * -1.6f;
+            Vector3 eye = aircraft + cockpitBasis.Y * 0.55f + cockpitBasis.Z * -0.35f;
             _camera.GlobalTransform = new Transform3D(cockpitBasis, eye);
             return;
         }
@@ -513,7 +504,7 @@ public partial class Main : Node3D
         Vector3 forward = -basis.Z;
         Vector3 up = basis.Y;
 
-        Vector3 desired = position - forward * 34.0f + up * 9.0f;
+        Vector3 desired = position - forward * 26.0f + up * 7.0f;
         double ground = _heightmap.HeightAt(desired.X, -desired.Z);
         desired.Y = Mathf.Max(desired.Y, (float)ground + 3.0f);
 
