@@ -211,13 +211,23 @@ public sealed class AircraftSimulator
 
             Vec3 velocityPoint = State.VelocityEnu + Vec3.Cross(omegaWorld, rWorld);
             double compression = DeterministicMath.Min(penetration, leg.MaxCompressionMeters);
-            double normalForce = leg.SpringNPerMeter * compression
-                - leg.DampingNsPerMeter * velocityPoint.Z;
-            if (normalForce <= 0.0)
+            double springForce = leg.SpringNPerMeter * compression;
+            double normalForce = springForce - leg.DampingNsPerMeter * velocityPoint.Z;
+
+            // A real strut's rebound damping pulls the aircraft down as the spring
+            // extends; without that, every touchdown becomes an elastic bounce.
+            double minimumForce = -0.6 * springForce;
+            if (normalForce < minimumForce)
+            {
+                normalForce = minimumForce;
+            }
+
+            if (normalForce == 0.0)
             {
                 continue;
             }
 
+            double normalLoad = DeterministicMath.Abs(normalForce);
             Vec3 force = new Vec3(0.0, 0.0, normalForce);
 
             double vForward = velocityPoint.Dot(forward);
@@ -226,16 +236,16 @@ public sealed class AircraftSimulator
 
             double fForward = -DeterministicMath.Sign(vForward)
                 * DeterministicMath.Min(DeterministicMath.Abs(vForward) * 1.5, 1.0)
-                * forwardMu * normalForce;
+                * forwardMu * normalLoad;
             double fLateral = -DeterministicMath.Sign(vLateral)
                 * DeterministicMath.Min(DeterministicMath.Abs(vLateral) * 3.0, 1.0)
-                * leg.LateralFriction * normalForce;
+                * leg.LateralFriction * normalLoad;
 
             force += forward * fForward + right * fLateral;
 
             if (leg.Steerable && rudder != 0.0)
             {
-                force += right * (-rudder * 0.8 * normalForce);
+                force += right * (-rudder * 0.8 * normalLoad);
             }
 
             forceBody += q.InverseRotate(force);

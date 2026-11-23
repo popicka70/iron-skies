@@ -254,4 +254,35 @@ public class GroundHandlingTests
         Assert.Equal(300.0, d.BoostLimitSeconds, 1e-9);
         Assert.Equal(135.0, d.CoolantMaxC, 1e-9);
     }
+
+    [Fact]
+    public void Landing_TouchesDownAndSettles()
+    {
+        AircraftDefinition d = AircraftLoader.LoadFromDirectory(
+            Path.Combine(AppContext.BaseDirectory, "aircraft", "spitfire-mk9"));
+
+        Quat orientation = Quat.FromHeading(0.0)
+            * Quat.FromAxisAngle(Vec3.UnitY, 10.0 * DeterministicMath.DegToRad);
+        var state = new AircraftState
+        {
+            Position = new Vec3(0.0, 0.0, 2.0),
+            VelocityEnu = new Vec3(0.0, 42.0, -1.0),
+            Orientation = orientation,
+            AngularVelocityBody = Vec3.Zero,
+            MassKg = d.MassKg,
+            FuelKg = d.FuelMassKg,
+        };
+
+        var sim = new AircraftSimulator(d, state, FlatGround.Instance);
+        for (int i = 0; i < 12 * 240; i++)
+        {
+            sim.Step(new Controls(Throttle: 0.0, Elevator: 0.08), Dt);
+        }
+
+        Assert.True(sim.State.IsFinite);
+        Assert.True(sim.Telemetry.OnGround);
+        Assert.InRange(sim.State.Position.Z, 1.10, 1.45);
+        Assert.True(DeterministicMath.Abs(sim.State.VelocityEnu.Z) < 0.25);
+        Assert.True(sim.State.VelocityEnu.Length < 40.0);
+    }
 }

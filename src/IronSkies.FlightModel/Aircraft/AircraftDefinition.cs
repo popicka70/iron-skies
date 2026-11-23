@@ -128,14 +128,26 @@ public sealed class AircraftDefinition
     /// </summary>
     public static GearLeg[] DefaultGear() => new[]
     {
-        new GearLeg { ContactBody = new Vec3(0.8, -0.85, 1.50) },
-        new GearLeg { ContactBody = new Vec3(0.8, 0.85, 1.50) },
+        new GearLeg
+        {
+            ContactBody = new Vec3(0.8, -0.85, 1.50),
+            SpringNPerMeter = 70_000.0,
+            DampingNsPerMeter = 22_000.0,
+            MaxCompressionMeters = 0.40,
+        },
+        new GearLeg
+        {
+            ContactBody = new Vec3(0.8, 0.85, 1.50),
+            SpringNPerMeter = 70_000.0,
+            DampingNsPerMeter = 22_000.0,
+            MaxCompressionMeters = 0.40,
+        },
         new GearLeg
         {
             ContactBody = new Vec3(-4.9, 0.0, 0.41),
-            SpringNPerMeter = 60_000.0,
-            DampingNsPerMeter = 6_000.0,
-            MaxCompressionMeters = 0.35,
+            SpringNPerMeter = 50_000.0,
+            DampingNsPerMeter = 12_000.0,
+            MaxCompressionMeters = 0.45,
             RollingFriction = 0.05,
             LateralFriction = 0.50,
             Braked = false,
