@@ -33,7 +33,8 @@ simulation runs at 240 Hz with a stable 60 FPS render; CI is green on both OSes.
 **Goal:** one aircraft that feels and performs like a real one.
 
 - Coefficient tables for the Spitfire Mk IX and Bf 109 G-6
-- Engine + propeller model (boost, mixture, radiators, temperature, fuel burn)
+- [x] Engine model (RPM, manifold pressure, boost timer, coolant/oil, radiator, fuel burn)
+- [ ] Full Merlin 66 supercharger stages and mixture leaning
 - [x] Spring-damper gear, brakes, tail-wheel steering and taildragger takeoff
 - [x] Trim, flaps and retractable gear (position/rate modelled; animation next)
 - Damage primitives: structure, control surfaces, engine, fuel, fire

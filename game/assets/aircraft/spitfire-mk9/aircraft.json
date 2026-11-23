@@ -43,6 +43,14 @@
   "fuelBurnKgPerSecondAtFullThrottle": 0.12,
   "propellerEfficiency": 0.85,
 
+  "idleRpm": 700,
+  "maxRpm": 3000,
+  "rpmLagSeconds": 1.2,
+  "maxManifoldPressureInHg": 67,
+  "boostLimitSeconds": 300,
+  "coolantMaxC": 135,
+  "oilMaxC": 95,
+
   "trimElevatorAuthority": 0.30,
   "trimAileronAuthority": 0.10,
   "trimRudderAuthority": 0.20,

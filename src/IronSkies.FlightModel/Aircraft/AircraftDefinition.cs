@@ -60,6 +60,15 @@ public sealed class AircraftDefinition
     public double FuelBurnKgPerSecondAtFullThrottle { get; init; } = 0.05;
     public double PropellerEfficiency { get; init; } = 0.85;
 
+    // Engine behaviour
+    public double IdleRpm { get; init; } = 700.0;
+    public double MaxRpm { get; init; } = 3000.0;
+    public double RpmLagSeconds { get; init; } = 1.0;
+    public double MaxManifoldPressureInHg { get; init; } = 67.0;
+    public double BoostLimitSeconds { get; init; } = 300.0;
+    public double CoolantMaxC { get; init; } = 135.0;
+    public double OilMaxC { get; init; } = 95.0;
+
     // Landing gear (taildragger by default). Override per aircraft.
     public GearLeg[] GearLegs { get; init; } = DefaultGear();
 
@@ -154,7 +163,8 @@ public readonly record struct Controls(
     double Brake = 0.0,
     double TrimElevator = 0.0,
     double TrimAileron = 0.0,
-    double TrimRudder = 0.0)
+    double TrimRudder = 0.0,
+    double Mixture = 0.8)
 {
     // Explicit values: `new()` on a struct runs the zeroing constructor and would
     // ignore the primary constructor's optional defaults (e.g. gear down).
@@ -171,5 +181,6 @@ public readonly record struct Controls(
         DeterministicMath.Clamp(Brake, 0.0, 1.0),
         DeterministicMath.Clamp(TrimElevator, -1.0, 1.0),
         DeterministicMath.Clamp(TrimAileron, -1.0, 1.0),
-        DeterministicMath.Clamp(TrimRudder, -1.0, 1.0));
+        DeterministicMath.Clamp(TrimRudder, -1.0, 1.0),
+        DeterministicMath.Clamp(Mixture, 0.0, 1.0));
 }

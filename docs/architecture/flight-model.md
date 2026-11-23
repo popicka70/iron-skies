@@ -93,8 +93,11 @@ fraction; this is what makes the aircraft rotate and climb differently at high p
 
 ### Engine
 
-State: throttle, manifold pressure, RPM, mixture, boost, coolant/oil temperature,
-damage. Power available is modelled as:
+State: throttle, manifold pressure, RPM, mixture, boost timer, coolant/oil temperature,
+fuel. The implementation is `Propulsion/EngineModel.cs`: power follows the altitude
+table at full throttle, RPM lags the throttle, mixture below 10% cuts the engine,
+coolant heats with power and cools through the radiator, and sustained over-boost or
+overheat derates the engine. Power available is modelled as:
 
 ```
 P = P_sl · σ^a · boost_factor · mixture_efficiency · temperature_derate

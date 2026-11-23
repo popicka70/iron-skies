@@ -1,5 +1,6 @@
 using IronSkies.FlightModel.Aero;
 using IronSkies.FlightModel.Atmosphere;
+using IronSkies.FlightModel.Propulsion;
 using IronSkies.FlightModel.Math;
 
 namespace IronSkies.FlightModel.Aircraft;
@@ -25,6 +26,7 @@ public sealed class AircraftSimulator
     private const double MinSpeedForAero = 0.5;
 
     private readonly IGroundSurface _ground;
+    private readonly EngineModel _engine;
     private double _flapPosition;
     private double _gearPosition = 1.0;
 
@@ -38,6 +40,13 @@ public sealed class AircraftSimulator
     /// <summary>Actual gear position, 0 (up) … 1 (down).</summary>
     public double GearPosition => _gearPosition;
 
+    public double EngineRpm => _engine.Rpm;
+    public double ManifoldPressureInHg => _engine.ManifoldPressureInHg;
+    public double CoolantC => _engine.CoolantC;
+    public double OilC => _engine.OilC;
+    public double EnginePowerWatts => _engine.PowerWatts;
+    public double BoostSeconds => _engine.BoostSeconds;
+
     public AircraftSimulator(
         AircraftDefinition definition,
         AircraftState? initialState = null,
@@ -48,6 +57,7 @@ public sealed class AircraftSimulator
         Definition = definition;
         State = initialState ?? AircraftState.CreateAirborne(definition);
         _ground = ground ?? FlatGround.Instance;
+        _engine = new EngineModel(definition);
     }
 
     public void Step(Controls rawControls, double dt)
@@ -74,6 +84,7 @@ public sealed class AircraftSimulator
         Vec3 vBody = q.InverseRotate(State.VelocityEnu);
         double speed = vBody.Length;
         AtmosphereSample atm = Isa.Sample(State.AltitudeMeters);
+        _engine.Step(c, atm, dt, State.FuelKg);
 
         double alpha = 0.0;
         double beta = 0.0;
@@ -98,19 +109,11 @@ public sealed class AircraftSimulator
         // Lift is perpendicular to the relative wind, in the body X–Z plane, toward "up" (−Z).
         Vec3 liftDirection = new Vec3(vhat.Z, 0.0, -vhat.X).NormalizedOrZero();
 
-        double thrust;
-        if (d.EnginePower is { } enginePower)
-        {
-            // Power-limited propeller: T = ηP/V, capped by static thrust.
-            double availablePower = enginePower.PowerWattsAt(State.AltitudeMeters) * d.PropellerEfficiency;
-            double effectiveSpeed = DeterministicMath.Clamp(speed, 10.0, 450.0);
-            thrust = DeterministicMath.Clamp(
-                availablePower / effectiveSpeed, 0.0, d.MaxStaticThrustN) * c.Throttle;
-        }
-        else
-        {
-            thrust = c.Throttle * d.MaxStaticThrustN * atm.DensityRatio;
-        }
+        // Power-limited propeller: T = ηP/V, capped by static thrust.
+        double availablePower = _engine.PowerWatts * d.PropellerEfficiency;
+        double effectiveSpeed = DeterministicMath.Clamp(speed, 10.0, 450.0);
+        double thrust = DeterministicMath.Clamp(
+            availablePower / effectiveSpeed, 0.0, d.MaxStaticThrustN);
         Vec3 forceBody = liftDirection * lift
             - vhat * drag
             + new Vec3(0.0, side, 0.0)
@@ -151,7 +154,7 @@ public sealed class AircraftSimulator
         State.AngularVelocityBody = omega;
         State.Orientation = Quat.Integrate(q, omega, dt);
 
-        BurnFuel(c, dt);
+        BurnFuel(dt);
         PreventTunnel();
 
         double mach = speed / atm.SpeedOfSoundMs;
@@ -160,9 +163,9 @@ public sealed class AircraftSimulator
             alpha, beta, mach, loadFactor, thrust, qbar, speed, atm.DensityKgM3, onGround);
     }
 
-    private void BurnFuel(in Controls c, double dt)
+    private void BurnFuel(double dt)
     {
-        double burn = Definition.FuelBurnKgPerSecondAtFullThrottle * c.Throttle * dt;
+        double burn = _engine.FuelBurnKgPerSecond * dt;
         if (burn <= 0.0 || State.FuelKg <= 0.0)
         {
             return;

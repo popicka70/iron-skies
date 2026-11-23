@@ -29,6 +29,7 @@ public partial class Main : Node3D
 
     private double _throttle = 0.75;
     private double _brake;
+    private double _radiator = 0.5;
     private double _flapTarget;
     private double _gearTarget = 1.0;
     private double _trimElevator;
@@ -81,6 +82,8 @@ public partial class Main : Node3D
                 Rudder: _rudder,
                 Throttle: _throttle,
                 Brake: _brake,
+                Radiator: _radiator,
+                Mixture: 0.85,
                 Flaps: _flapTarget,
                 GearDown: _gearTarget,
                 TrimElevator: _trimElevator), PhysicsDt);
@@ -181,6 +184,10 @@ public partial class Main : Node3D
         _hudText.Append("Throttle  ").Append((_throttle * 100.0).ToString("F0")).Append(" %\n");
         _hudText.Append("Brake     ").Append((_brake * 100.0).ToString("F0")).Append(" %   ")
             .Append(_sim.Telemetry.OnGround ? "ON GROUND" : "AIRBORNE").Append('\n');
+        _hudText.Append("Engine    ").Append(_sim.EngineRpm.ToString("F0")).Append(" RPM   ")
+            .Append(_sim.ManifoldPressureInHg.ToString("F1")).Append(" inHg   ")
+            .Append(_sim.CoolantC.ToString("F0")).Append("°C   Fuel ")
+            .Append(_sim.State.FuelKg.ToString("F0")).Append(" kg\n");
         _hudText.Append("Trim      ").Append(_trimElevator.ToString("+0.00;-0.00;0.00"))
             .Append("   Flaps ").Append((_sim.FlapPosition * 100.0).ToString("F0")).Append("%   Gear ")
             .Append(_sim.GearPosition > 0.95 ? "DOWN" : _sim.GearPosition < 0.05 ? "UP" : "MOVING")
@@ -188,7 +195,7 @@ public partial class Main : Node3D
         _hudText.Append("Chunks    ").Append(_terrain.ResidentChunks).Append("   FPS ")
             .Append(Engine.GetFramesPerSecond()).Append('\n');
         _hudText.Append("Tick      ").Append(_tick).Append("\n\n");
-        _hudText.Append("W/S throttle  B brakes  F flaps  G gear  , . trim  ↑/↓ pitch  ←/→ roll  A/D rudder");
+        _hudText.Append("W/S throttle  B brakes  F flaps  G gear  K/L radiator  , . trim  ↑/↓ pitch  ←/→ roll  A/D rudder");
         _hud.Text = _hudText.ToString();
     }
 
@@ -225,6 +232,10 @@ public partial class Main : Node3D
         double throttleDelta = (Input.IsPhysicalKeyPressed(Key.W) ? 1.0 : 0.0)
             - (Input.IsPhysicalKeyPressed(Key.S) ? 1.0 : 0.0);
         _brake = Input.IsPhysicalKeyPressed(Key.B) ? 1.0 : 0.0;
+
+        double radiatorDelta = (Input.IsPhysicalKeyPressed(Key.L) ? 1.0 : 0.0)
+            - (Input.IsPhysicalKeyPressed(Key.K) ? 1.0 : 0.0);
+        _radiator = Mathf.Clamp(_radiator + radiatorDelta * 0.4 * PhysicsDt, 0.0, 1.0);
 
         bool flapKey = Input.IsPhysicalKeyPressed(Key.F);
         if (flapKey && !_prevFlapKey)
@@ -270,6 +281,7 @@ public partial class Main : Node3D
         _sim = new AircraftSimulator(_definition, state, _heightmap);
         _throttle = _airStart ? 0.75 : 0.0;
         _brake = 0.0;
+        _radiator = 0.5;
         _flapTarget = 0.0;
         _gearTarget = 1.0;
         _trimElevator = 0.0;
