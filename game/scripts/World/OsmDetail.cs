@@ -88,7 +88,7 @@ public sealed partial class OsmDetail : Node3D
 
         AddMesh(roadTool, new StandardMaterial3D
         {
-            AlbedoColor = new Color(0.16f, 0.15f, 0.14f),
+            AlbedoColor = new Color(0.30f, 0.28f, 0.24f),
             Roughness = 0.95f,
             CullMode = BaseMaterial3D.CullModeEnum.Disabled,
         }, "OSM_Roads");
@@ -138,14 +138,22 @@ public sealed partial class OsmDetail : Node3D
 
             double px = -dn / length * half;
             double py = de / length * half;
+            int steps = Math.Max(1, (int)Math.Ceiling(length / 10.0));
+            for (int step = 0; step < steps; step++)
+            {
+                double t0 = (double)step / steps;
+                double t1 = (double)(step + 1) / steps;
+                double ea = e0 + de * t0, na = n0 + dn * t0;
+                double eb = e0 + de * t1, nb = n0 + dn * t1;
 
-            Vector3 a = Vertex(map, e0 + px, n0 + py, lift);
-            Vector3 b = Vertex(map, e0 - px, n0 - py, lift);
-            Vector3 c = Vertex(map, e1 + px, n1 + py, lift);
-            Vector3 d = Vertex(map, e1 - px, n1 - py, lift);
+                Vector3 a = Vertex(map, ea + px, na + py, lift);
+                Vector3 b = Vertex(map, ea - px, na - py, lift);
+                Vector3 c = Vertex(map, eb + px, nb + py, lift);
+                Vector3 d = Vertex(map, eb - px, nb - py, lift);
 
-            AddTriangle(tool, a, b, c);
-            AddTriangle(tool, b, d, c);
+                AddTriangle(tool, a, b, c);
+                AddTriangle(tool, b, d, c);
+            }
         }
     }
 
@@ -161,15 +169,25 @@ public sealed partial class OsmDetail : Node3D
                 continue;
             }
 
-            float h0 = (float)map.HeightAt(e0, n0);
-            float h1 = (float)map.HeightAt(e1, n1);
-            Vector3 b0 = new((float)e0, h0 + 0.05f, (float)-n0);
-            Vector3 b1 = new((float)e1, h1 + 0.05f, (float)-n1);
-            Vector3 t0 = new((float)e0, h0 + (float)height, (float)-n0);
-            Vector3 t1 = new((float)e1, h1 + (float)height, (float)-n1);
+            double de = e1 - e0, dn = n1 - n0;
+            double length = Math.Sqrt(de * de + dn * dn);
+            int steps = Math.Max(1, (int)Math.Ceiling(length / 10.0));
+            for (int step = 0; step < steps; step++)
+            {
+                double t0 = (double)step / steps;
+                double t1 = (double)(step + 1) / steps;
+                double ea = e0 + de * t0, na = n0 + dn * t0;
+                double eb = e0 + de * t1, nb = n0 + dn * t1;
+                float h0 = (float)map.HeightAt(ea, na);
+                float h1 = (float)map.HeightAt(eb, nb);
+                Vector3 b0 = new((float)ea, h0 + 0.05f, (float)-na);
+                Vector3 b1 = new((float)eb, h1 + 0.05f, (float)-nb);
+                Vector3 t0 = new((float)ea, h0 + (float)height, (float)-na);
+                Vector3 t1 = new((float)eb, h1 + (float)height, (float)-nb);
 
-            AddTriangle(tool, b0, b1, t1);
-            AddTriangle(tool, b0, t1, t0);
+                AddTriangle(tool, b0, b1, t1);
+                AddTriangle(tool, b0, t1, t0);
+            }
         }
     }
 
