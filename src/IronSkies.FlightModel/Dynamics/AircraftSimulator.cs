@@ -1,3 +1,4 @@
+using IronSkies.FlightModel.Combat;
 using IronSkies.FlightModel.Aero;
 using IronSkies.FlightModel.Atmosphere;
 using IronSkies.FlightModel.Propulsion;
@@ -27,6 +28,7 @@ public sealed class AircraftSimulator
 
     private readonly IGroundSurface _ground;
     private readonly EngineModel _engine;
+    private readonly WeaponSystem _weapons;
     private double _flapPosition;
     private double _gearPosition = 1.0;
 
@@ -46,11 +48,14 @@ public sealed class AircraftSimulator
     public double OilC => _engine.OilC;
     public double EnginePowerWatts => _engine.PowerWatts;
     public double BoostSeconds => _engine.BoostSeconds;
+    public WeaponSystem Weapons => _weapons;
+    public void AddTarget(DamageTarget target) => _weapons.AddTarget(target);
 
     public AircraftSimulator(
         AircraftDefinition definition,
         AircraftState? initialState = null,
-        IGroundSurface? ground = null)
+        IGroundSurface? ground = null,
+        ulong randomSeed = 0x1F2E3D4C5B6A7988UL)
     {
         ArgumentNullException.ThrowIfNull(definition);
         definition.Validate();
@@ -58,6 +63,7 @@ public sealed class AircraftSimulator
         State = initialState ?? AircraftState.CreateAirborne(definition);
         _ground = ground ?? FlatGround.Instance;
         _engine = new EngineModel(definition);
+        _weapons = new WeaponSystem(definition, randomSeed);
     }
 
     public void Step(Controls rawControls, double dt)
@@ -156,6 +162,7 @@ public sealed class AircraftSimulator
 
         BurnFuel(dt);
         PreventTunnel();
+        _weapons.Step(c.Fire, State.Orientation, State.Position, State.VelocityEnu, _ground, dt);
 
         double mach = speed / atm.SpeedOfSoundMs;
         double loadFactor = State.MassKg > 0.0 ? lift / (State.MassKg * Isa.Gravity) : 0.0;

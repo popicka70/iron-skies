@@ -4,6 +4,8 @@ using System.Runtime;
 using System.Text;
 using Godot;
 using IronSkies.FlightModel.Aircraft;
+using IronSkies.FlightModel.Combat;
+using IronSkies.FlightModel.Math;
 using IronSkies.Game.World;
 
 namespace IronSkies.Game;
@@ -23,6 +25,7 @@ public partial class Main : Node3D
     private TerrainWorld _terrain = null!;
     private SpitfireVisual _aircraft = null!;
     private EngineAudio _audio = null!;
+    private CombatVisual _combat = null!;
     private Camera3D _camera = null!;
     private Label _hud = null!;
 
@@ -34,9 +37,12 @@ public partial class Main : Node3D
     private double _flapTarget;
     private double _gearTarget = 1.0;
     private double _trimElevator;
+    private bool _fire;
     private bool _prevFlapKey;
     private bool _prevGearKey;
     private bool _airStart;
+    private bool _strikeStart;
+    private bool _autoFire;
     private double _accumulator;
 
     private enum CameraMode
@@ -66,6 +72,8 @@ public partial class Main : Node3D
         GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
         _screenshotPath = ReadUserOption("--screenshot");
         _airStart = HasUserFlag("--air-start");
+        _strikeStart = HasUserFlag("--strike");
+        _autoFire = HasUserFlag("--autofire");
         string? cameraOption = ReadUserOption("--camera");
         if (cameraOption == "cockpit")
         {
@@ -86,6 +94,9 @@ public partial class Main : Node3D
         BuildTerrain();
         _definition = LoadAircraft();
         BuildAircraft();
+        _combat = new CombatVisual();
+        _combat.Build();
+        AddChild(_combat);
         BuildCamera();
         BuildHud();
         ResetFlight();
@@ -113,7 +124,8 @@ public partial class Main : Node3D
                 Mixture: 0.85,
                 Flaps: _flapTarget,
                 GearDown: _gearTarget,
-                TrimElevator: _trimElevator), PhysicsDt);
+                TrimElevator: _trimElevator,
+                Fire: _fire), PhysicsDt);
             _accumulator -= PhysicsDt;
             _tick++;
             steps++;
@@ -264,12 +276,15 @@ public partial class Main : Node3D
             .Append("   Flaps ").Append((_sim.FlapPosition * 100.0).ToString("F0")).Append("%   Gear ")
             .Append(_sim.GearPosition > 0.95 ? "DOWN" : _sim.GearPosition < 0.05 ? "UP" : "MOVING")
             .Append('\n');
+        _hudText.Append("Guns      ").Append(_sim.Weapons.TotalAmmo).Append(" rds   Targets ")
+            .Append(_sim.Weapons.AliveTargets).Append('/').Append(_sim.Weapons.Targets.Count)
+            .Append('\n');
         _hudText.Append("Camera    ").Append(_cameraMode)
             .Append(_joystick >= 0 ? $"   Stick {_joystickName}" : "   Stick keyboard").Append('\n');
         _hudText.Append("Chunks    ").Append(_terrain.ResidentChunks).Append("   FPS ")
             .Append(Engine.GetFramesPerSecond()).Append('\n');
         _hudText.Append("Tick      ").Append(_tick).Append("\n\n");
-        _hudText.Append("W/S throttle  B brakes  C camera  RMB look  F flaps  G gear  K/L radiator  , . trim  ↑/↓ pitch  ←/→ roll  A/D rudder");
+        _hudText.Append("W/S throttle  B brakes  SPACE fire  C camera  RMB look  F flaps  G gear  K/L radiator  , . trim  ↑/↓ pitch  ←/→ roll  A/D rudder");
         _hud.Text = _hudText.ToString();
     }
 
@@ -341,6 +356,8 @@ public partial class Main : Node3D
         double throttleDelta = (Input.IsPhysicalKeyPressed(Key.W) ? 1.0 : 0.0)
             - (Input.IsPhysicalKeyPressed(Key.S) ? 1.0 : 0.0);
         _brake = Input.IsPhysicalKeyPressed(Key.B) ? 1.0 : 0.0;
+        _fire = _autoFire || Input.IsPhysicalKeyPressed(Key.Space)
+            || Input.IsMouseButtonPressed(MouseButton.Left);
 
         double radiatorDelta = (Input.IsPhysicalKeyPressed(Key.L) ? 1.0 : 0.0)
             - (Input.IsPhysicalKeyPressed(Key.K) ? 1.0 : 0.0);
@@ -381,17 +398,21 @@ public partial class Main : Node3D
 
     private void ResetFlight()
     {
-        const double east = 700.0;
-        const double north = 6750.0;
+        double east = _strikeStart ? 900.0 : 700.0;
+        double north = _strikeStart ? 7000.0 : 6750.0;
         double ground = _heightmap.HeightAt(east, north);
-        AircraftState state = _airStart
+        bool airborne = _airStart || _strikeStart;
+        AircraftState state = airborne
             ? AircraftState.CreateAirborne(
-                _definition, altitudeMeters: ground + 2000.0, speedMs: 120.0,
+                _definition,
+                altitudeMeters: ground + (_strikeStart ? 250.0 : 2000.0),
+                speedMs: _strikeStart ? 90.0 : 120.0,
                 eastMeters: east, northMeters: north)
             : AircraftState.CreateOnGround(
                 _definition, ground, eastMeters: east, northMeters: north);
         _sim = new AircraftSimulator(_definition, state, _heightmap);
-        _throttle = _airStart ? 0.75 : 0.0;
+        AddTargets(_sim);
+        _throttle = airborne ? 0.75 : 0.0;
         _brake = 0.0;
         _radiator = 0.5;
         _flapTarget = 0.0;
@@ -403,6 +424,31 @@ public partial class Main : Node3D
         _tick = 0;
         _accumulator = 0.0;
         _terrain.Prewarm(SimBridge.ToGodot(_sim.State.Position));
+        _combat.Bind(_sim);
+    }
+
+    private void AddTargets(AircraftSimulator sim)
+    {
+        (double East, double North)[] positions =
+        {
+            (200.0, 400.0),
+            (260.0, 380.0),
+            (320.0, 430.0),
+        };
+
+        foreach ((double east, double north) in positions)
+        {
+            double e = 700.0 + east;
+            double n = 6750.0 + north;
+            double ground = _heightmap.HeightAt(e, n);
+            sim.AddTarget(new DamageTarget
+            {
+                Position = new Vec3(e, n, ground + 1.5),
+                Radius = 4.5,
+                MaxHealth = 100.0,
+                Health = 100.0,
+            });
+        }
     }
 
     private void BuildEnvironment()
@@ -518,6 +564,24 @@ public partial class Main : Node3D
         _hud.AddThemeConstantOverride("shadow_offset_x", 1);
         _hud.AddThemeConstantOverride("shadow_offset_y", 1);
         layer.AddChild(_hud);
+
+        var crosshair = new Label
+        {
+            Text = "+",
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            AnchorLeft = 0.5f,
+            AnchorTop = 0.5f,
+            AnchorRight = 0.5f,
+            AnchorBottom = 0.5f,
+            OffsetLeft = -12.0f,
+            OffsetTop = -18.0f,
+            OffsetRight = 12.0f,
+            OffsetBottom = 18.0f,
+        };
+        crosshair.AddThemeFontSizeOverride("font_size", 22);
+        crosshair.AddThemeColorOverride("font_color", new Color(1.0f, 0.85f, 0.4f, 0.9f));
+        layer.AddChild(crosshair);
     }
 
     public override void _UnhandledInput(InputEvent @event)
