@@ -18,6 +18,10 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 
 *M0: low-poly Spitfire over 40 × 40 km streamed terrain with Sentinel-2 orthophoto and landcover.*
 
+![Iron Skies M0 cockpit](docs/media/m0-cockpit.png)
+
+*Cockpit view with the live instrument panel: airspeed, artificial horizon, altimeter, engine, fuel and ammunition.*
+
 ---
 
 ## Why this project
