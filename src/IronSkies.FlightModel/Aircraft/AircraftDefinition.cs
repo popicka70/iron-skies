@@ -60,6 +60,9 @@ public sealed class AircraftDefinition
     public double FuelBurnKgPerSecondAtFullThrottle { get; init; } = 0.05;
     public double PropellerEfficiency { get; init; } = 0.85;
 
+    // Landing gear (taildragger by default). Override per aircraft.
+    public GearLeg[] GearLegs { get; init; } = DefaultGear();
+
     // Optional table-driven data. When present these override the linear coefficients
     // above (but control-surface and flap deltas still apply).
     public AeroTable? Table { get; init; }
@@ -84,7 +87,38 @@ public sealed class AircraftDefinition
         {
             throw new InvalidOperationException($"{Id}: stall angles must be positive.");
         }
+
+        if (GearLegs.Length == 0)
+        {
+            throw new InvalidOperationException($"{Id}: at least one gear leg is required.");
+        }
+
+        for (int i = 0; i < GearLegs.Length; i++)
+        {
+            GearLegs[i].Validate(Id, i);
+        }
     }
+
+    /// <summary>
+    /// Spitfire-like taildragger geometry. Main wheels just ahead of the CoG, tail wheel
+    /// far aft and higher in body coordinates, so the aircraft settles nose-up.
+    /// </summary>
+    public static GearLeg[] DefaultGear() => new[]
+    {
+        new GearLeg { ContactBody = new Vec3(0.8, -0.85, 1.50) },
+        new GearLeg { ContactBody = new Vec3(0.8, 0.85, 1.50) },
+        new GearLeg
+        {
+            ContactBody = new Vec3(-4.9, 0.0, 0.41),
+            SpringNPerMeter = 60_000.0,
+            DampingNsPerMeter = 6_000.0,
+            MaxCompressionMeters = 0.35,
+            RollingFriction = 0.05,
+            LateralFriction = 0.50,
+            Braked = false,
+            Steerable = true,
+        },
+    };
 
     /// <summary>Placeholder airframe used by the M0 demo; coefficients are not flight-test derived.</summary>
     public static AircraftDefinition TrainingAircraft => new()
@@ -102,7 +136,8 @@ public readonly record struct Controls(
     double Throttle = 0.0,
     double Flaps = 0.0,
     double GearDown = 0.0,
-    double Radiator = 0.5)
+    double Radiator = 0.5,
+    double Brake = 0.0)
 {
     public static readonly Controls Neutral = new();
 
@@ -113,5 +148,6 @@ public readonly record struct Controls(
         DeterministicMath.Clamp(Throttle, 0.0, 1.0),
         DeterministicMath.Clamp(Flaps, 0.0, 1.0),
         DeterministicMath.Clamp(GearDown, 0.0, 1.0),
-        DeterministicMath.Clamp(Radiator, 0.0, 1.0));
+        DeterministicMath.Clamp(Radiator, 0.0, 1.0),
+        DeterministicMath.Clamp(Brake, 0.0, 1.0));
 }

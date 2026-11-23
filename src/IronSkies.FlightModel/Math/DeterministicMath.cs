@@ -25,6 +25,10 @@ public static class DeterministicMath
 
     public static double Lerp(double a, double b, double t) => a + (b - a) * t;
 
+    public static double Min(double a, double b) => a < b ? a : b;
+
+    public static double Sign(double value) => value > 0.0 ? 1.0 : value < 0.0 ? -1.0 : 0.0;
+
     public static double Sin(double radians)
     {
         // Reduce to [-π, π], then to [-π/4, π/4] using quadrant symmetry.

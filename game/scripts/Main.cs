@@ -28,6 +28,8 @@ public partial class Main : Node3D
     private readonly StringBuilder _hudText = new(512);
 
     private double _throttle = 0.75;
+    private double _brake;
+    private bool _airStart;
     private double _accumulator;
     private double _hudTimer;
     private int _tick;
@@ -41,6 +43,7 @@ public partial class Main : Node3D
         // Fewer full blocking collections while flying; the hot path allocates nothing.
         GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
         _screenshotPath = ReadUserOption("--screenshot");
+        _airStart = HasUserFlag("--air-start");
         if (int.TryParse(ReadUserOption("--screenshot-delay"), out int delaySeconds))
         {
             _screenshotTicks = delaySeconds * 240;
@@ -71,7 +74,8 @@ public partial class Main : Node3D
                 Elevator: _elevator,
                 Aileron: _aileron,
                 Rudder: _rudder,
-                Throttle: _throttle), PhysicsDt);
+                Throttle: _throttle,
+                Brake: _brake), PhysicsDt);
             _accumulator -= PhysicsDt;
             _tick++;
             steps++;
@@ -105,6 +109,20 @@ public partial class Main : Node3D
             _screenshotStarted = true;
             CaptureScreenshot(_screenshotPath);
         }
+    }
+
+    private static bool HasUserFlag(string name)
+    {
+        string[] args = OS.GetCmdlineUserArgs();
+        for (int i = 0; i < args.Length; i++)
+        {
+            if (args[i] == name)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static string? ReadUserOption(string name)
@@ -153,10 +171,12 @@ public partial class Main : Node3D
         _hudText.Append("Mach      ").Append(t.Mach.ToString("F3")).Append('\n');
         _hudText.Append("Load      ").Append(t.LoadFactorG.ToString("F2")).Append(" g\n");
         _hudText.Append("Throttle  ").Append((_throttle * 100.0).ToString("F0")).Append(" %\n");
+        _hudText.Append("Brake     ").Append((_brake * 100.0).ToString("F0")).Append(" %   ")
+            .Append(_sim.Telemetry.OnGround ? "ON GROUND" : "AIRBORNE").Append('\n');
         _hudText.Append("Chunks    ").Append(_terrain.ResidentChunks).Append("   FPS ")
             .Append(Engine.GetFramesPerSecond()).Append('\n');
         _hudText.Append("Tick      ").Append(_tick).Append("\n\n");
-        _hudText.Append("W/S throttle   ↑/↓ pitch   ←/→ roll   A/D rudder   R reset");
+        _hudText.Append("W/S throttle   B brakes   ↑/↓ pitch   ←/→ roll   A/D rudder   R reset");
         _hud.Text = _hudText.ToString();
     }
 
@@ -192,6 +212,7 @@ public partial class Main : Node3D
             - (Input.IsPhysicalKeyPressed(Key.A) ? 1.0 : 0.0);
         double throttleDelta = (Input.IsPhysicalKeyPressed(Key.W) ? 1.0 : 0.0)
             - (Input.IsPhysicalKeyPressed(Key.S) ? 1.0 : 0.0);
+        _brake = Input.IsPhysicalKeyPressed(Key.B) ? 1.0 : 0.0;
 
         // Simple first-order response stands in for stick forces until M1 input mapping.
         double k = 4.0 * PhysicsDt;
@@ -210,12 +231,13 @@ public partial class Main : Node3D
     {
         const double north = 6000.0;
         double ground = _heightmap.HeightAt(0.0, north);
-        _sim = new AircraftSimulator(
-            _definition,
-            AircraftState.CreateAirborne(
-                _definition, altitudeMeters: ground + 2000.0, speedMs: 120.0, northMeters: north),
-            _heightmap);
-        _throttle = 0.75;
+        AircraftState state = _airStart
+            ? AircraftState.CreateAirborne(
+                _definition, altitudeMeters: ground + 2000.0, speedMs: 120.0, northMeters: north)
+            : AircraftState.CreateOnGround(_definition, ground, northMeters: north);
+        _sim = new AircraftSimulator(_definition, state, _heightmap);
+        _throttle = _airStart ? 0.75 : 0.0;
+        _brake = 0.0;
         _elevator = 0.0;
         _aileron = 0.0;
         _rudder = 0.0;
@@ -347,9 +369,15 @@ public partial class Main : Node3D
         Vector3 forward = -basis.Z;
         Vector3 up = basis.Y;
 
-        Vector3 desired = position - forward * 28.0f + up * 7.0f;
+        Vector3 desired = position - forward * 34.0f + up * 9.0f;
+        double ground = _heightmap.HeightAt(desired.X, -desired.Z);
+        desired.Y = Mathf.Max(desired.Y, (float)ground + 3.0f);
+
         float smoothing = 1.0f - Mathf.Exp(-6.0f * (float)delta);
-        _camera.GlobalPosition = _camera.GlobalPosition.Lerp(desired, smoothing);
+        Vector3 smoothed = _camera.GlobalPosition.Lerp(desired, smoothing);
+        double smoothedGround = _heightmap.HeightAt(smoothed.X, -smoothed.Z);
+        smoothed.Y = Mathf.Max(smoothed.Y, (float)smoothedGround + 2.0f);
+        _camera.GlobalPosition = smoothed;
         _camera.LookAt(position + forward * 10.0f, up);
     }
 }
