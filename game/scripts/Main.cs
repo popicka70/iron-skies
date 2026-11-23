@@ -37,6 +37,18 @@ public partial class Main : Node3D
     private bool _prevGearKey;
     private bool _airStart;
     private double _accumulator;
+
+    private enum CameraMode
+    {
+        Chase,
+        Cockpit,
+    }
+
+    private CameraMode _cameraMode = CameraMode.Chase;
+    private int _joystick = -1;
+    private string _joystickName = "";
+    private double _joyPollTimer;
+    private bool _prevCameraKey;
     private double _hudTimer;
     private int _tick;
 
@@ -50,6 +62,12 @@ public partial class Main : Node3D
         GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
         _screenshotPath = ReadUserOption("--screenshot");
         _airStart = HasUserFlag("--air-start");
+        if (ReadUserOption("--camera") == "cockpit")
+        {
+            _cameraMode = CameraMode.Cockpit;
+        }
+
+        DetectJoystick();
         if (int.TryParse(ReadUserOption("--screenshot-delay"), out int delaySeconds))
         {
             _screenshotTicks = delaySeconds * 240;
@@ -115,11 +133,50 @@ public partial class Main : Node3D
         _hudTimer = 0.0;
         UpdateHud();
 
+        _joyPollTimer += delta;
+        if (_joyPollTimer > 2.0)
+        {
+            _joyPollTimer = 0.0;
+            DetectJoystick();
+        }
+
         if (_screenshotPath is not null && !_screenshotStarted && _tick >= _screenshotTicks)
         {
             _screenshotStarted = true;
             CaptureScreenshot(_screenshotPath);
         }
+    }
+
+    private double Axis(JoyAxis axis, double deadzone = 0.08)
+    {
+        if (_joystick < 0)
+        {
+            return 0.0;
+        }
+
+        double value = Input.GetJoyAxis(_joystick, axis);
+        double magnitude = System.Math.Abs(value);
+        if (magnitude < deadzone)
+        {
+            return 0.0;
+        }
+
+        double scaled = (magnitude - deadzone) / (1.0 - deadzone);
+        return System.Math.Sign(value) * scaled * scaled;
+    }
+
+    private void DetectJoystick()
+    {
+        Godot.Collections.Array<int> pads = Input.GetConnectedJoypads();
+        int device = pads.Count > 0 ? pads[0] : -1;
+        if (device == _joystick)
+        {
+            return;
+        }
+
+        _joystick = device;
+        _joystickName = device >= 0 ? Input.GetJoyName(device) : "";
+        GD.Print(device >= 0 ? $"Joystick: {_joystickName}" : "Joystick: none (keyboard)");
     }
 
     private static bool HasUserFlag(string name)
@@ -192,10 +249,12 @@ public partial class Main : Node3D
             .Append("   Flaps ").Append((_sim.FlapPosition * 100.0).ToString("F0")).Append("%   Gear ")
             .Append(_sim.GearPosition > 0.95 ? "DOWN" : _sim.GearPosition < 0.05 ? "UP" : "MOVING")
             .Append('\n');
+        _hudText.Append("Camera    ").Append(_cameraMode)
+            .Append(_joystick >= 0 ? $"   Stick {_joystickName}" : "   Stick keyboard").Append('\n');
         _hudText.Append("Chunks    ").Append(_terrain.ResidentChunks).Append("   FPS ")
             .Append(Engine.GetFramesPerSecond()).Append('\n');
         _hudText.Append("Tick      ").Append(_tick).Append("\n\n");
-        _hudText.Append("W/S throttle  B brakes  F flaps  G gear  K/L radiator  , . trim  ↑/↓ pitch  ←/→ roll  A/D rudder");
+        _hudText.Append("W/S throttle  B brakes  C camera  F flaps  G gear  K/L radiator  , . trim  ↑/↓ pitch  ←/→ roll  A/D rudder");
         _hud.Text = _hudText.ToString();
     }
 
@@ -229,6 +288,35 @@ public partial class Main : Node3D
             - (Input.IsPhysicalKeyPressed(Key.Left) ? 1.0 : 0.0);
         double yaw = (Input.IsPhysicalKeyPressed(Key.D) ? 1.0 : 0.0)
             - (Input.IsPhysicalKeyPressed(Key.A) ? 1.0 : 0.0);
+
+        if (_joystick >= 0)
+        {
+            double joyPitch = Axis(JoyAxis.LeftY);
+            double joyRoll = Axis(JoyAxis.LeftX);
+            double joyYaw = Axis(JoyAxis.RightX);
+            if (joyPitch != 0.0)
+            {
+                pitch = joyPitch;
+            }
+
+            if (joyRoll != 0.0)
+            {
+                roll = joyRoll;
+            }
+
+            if (joyYaw != 0.0)
+            {
+                yaw = joyYaw;
+            }
+        }
+
+        bool cameraKey = Input.IsPhysicalKeyPressed(Key.C);
+        if (cameraKey && !_prevCameraKey)
+        {
+            _cameraMode = _cameraMode == CameraMode.Chase ? CameraMode.Cockpit : CameraMode.Chase;
+        }
+
+        _prevCameraKey = cameraKey;
         double throttleDelta = (Input.IsPhysicalKeyPressed(Key.W) ? 1.0 : 0.0)
             - (Input.IsPhysicalKeyPressed(Key.S) ? 1.0 : 0.0);
         _brake = Input.IsPhysicalKeyPressed(Key.B) ? 1.0 : 0.0;
@@ -411,6 +499,15 @@ public partial class Main : Node3D
 
     private void UpdateCamera(double delta)
     {
+        if (_cameraMode == CameraMode.Cockpit)
+        {
+            var cockpitBasis = SimBridge.ToGodot(_sim.State.Orientation);
+            Vector3 aircraft = SimBridge.ToGodot(_sim.State.Position);
+            Vector3 eye = aircraft + cockpitBasis.Y * 0.55f + cockpitBasis.Z * -1.6f;
+            _camera.GlobalTransform = new Transform3D(cockpitBasis, eye);
+            return;
+        }
+
         Vector3 position = SimBridge.ToGodot(_sim.State.Position);
         var basis = SimBridge.ToGodot(_sim.State.Orientation);
         Vector3 forward = -basis.Z;
