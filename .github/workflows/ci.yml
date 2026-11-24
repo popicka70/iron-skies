@@ -57,6 +57,9 @@ jobs:
       - name: Smoke test (headless, 120 frames)
         run: godot --headless --path game --quit-after 120
 
+      - name: Multiplayer smoke test (server + 2 clients)
+        run: ./tools/net_smoke_test.sh
+
   licences:
     name: Asset licence check
     runs-on: ubuntu-latest

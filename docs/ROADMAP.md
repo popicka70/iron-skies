@@ -73,14 +73,16 @@ popping in normal flight; an external art review calls it "convincing".
 
 **Goal:** two players dogfight over the internet without visible lag artefacts.
 
-- Headless server export + Docker image
-- ENet transport, snapshot codec, delta compression, interest management
-- Client prediction and reconciliation for the local aircraft
-- Interpolation for remote aircraft; extrapolation limits
-- Server-authoritative guns, damage, and lag-compensated hitboxes
-- Server browser (heartbeat registry), direct connect, password/whitelist
-- Load test: 16 players + 16 AI; profiling and bandwidth report
-- Basic anti-cheat validation and admin commands
+- [x] Headless server + ENet transport (UDP, 30 Hz snapshots)
+- [x] Client input frames, prediction with snapshot blending, remote interpolation
+- [x] Server-authoritative health/damage and 5-second respawn
+- [x] Headless two-client smoke test in CI
+- [ ] Delta compression and interest management
+- [ ] Lag-compensated hitboxes and rewind
+- [ ] Server browser (heartbeat registry), direct connect, password/whitelist
+- [ ] Load test: 16 players + 16 AI; profiling and bandwidth report
+- [ ] Basic anti-cheat validation and admin commands
+- [ ] Docker image and deployment workflow
 
 **Acceptance:** 16-player session at 60 ms RTT shows no rubber-banding; hits register
 within one tick; server CPU < 50% of one core per 16 players; 8-hour soak test clean.
