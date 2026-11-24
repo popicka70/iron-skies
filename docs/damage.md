@@ -20,7 +20,9 @@ victim's `DamageModel`; single-player does the same from its damage targets.
 - **Engine damage:** reduces available power and target RPM (down to 20% power at 100%);
   at 98% the engine **seizes**, producing no power and winding down to zero RPM.
 - **Control damage:** reduces elevator/aileron/rudder authority (down to 30%) and adds a
-  persistent roll bias above 35%, so a damaged wing must be trimmed against.
+  persistent roll bias above 35%. Surfaces progressively jam: trim at 40%, rudder at 55%,
+  aileron at 70% and elevator at 85%. Jammed surfaces ignore pilot input (the elevator
+  sticks at a slight nose-up deflection); the HUD names the failed surface.
 - **Fuel damage:** opens a leak of up to 4 kg/s. Above 45% the tanks can **catch fire**,
   which burns up to 6 kg/s and feeds the smoke/fire effects.
 - **Structural damage:** still degrades all systems, so an aircraft at very low health is
