@@ -12,7 +12,7 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 > M0 already starts the Spitfire on a marked runway, takes off, flies over a streamed
 > 40 × 40 km Normandy terrain with Sentinel-2 orthophoto/landcover, OSM roads and
 > hedgerows, two flyable aircraft on placeholder airframes, cockpit view, engine
-> simulation, procedural audio and four working guns, up to six AI bandits, progressive battle damage
+> simulation, procedural audio and four working guns, up to six AI bandits, hit-zone battle damage
 > (engine, controls, fuel) and a live cockpit instrument panel. Linux and Windows release packages are configured.
 
 ![Iron Skies launcher](docs/media/m0-launcher.png)
@@ -166,8 +166,8 @@ godot --path game scenes/Multiplayer.tscn -- --connect 127.0.0.1 --port 7777
 
 30 Hz snapshots, local prediction with snapshot blending, interpolated remote aircraft,
 server-owned damage and 5-second respawns. Spitfires and Bf 109s share a server. Up to
-**64 players**; measured at **1.15 MB/s and ~5.7 ms/tick** with delta snapshots on a
-shared 16-core machine (worst-case relevance).
+**64 players**; measured at **1.48 MB/s and ~6.5 ms/tick** with delta and component
+snapshots on a shared 16-core machine (worst-case relevance).
 
 ```bash
 ./tools/net_smoke_test.sh        # 2 clients (CI)

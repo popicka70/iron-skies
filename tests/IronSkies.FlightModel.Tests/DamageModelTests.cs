@@ -40,6 +40,24 @@ public sealed class DamageModelTests
     }
 
     [Fact]
+    public void ExplicitComponentDamageAffectsEachSystem()
+    {
+        var damage = new DamageModel();
+        damage.SetComponents(0.6, 0.0, 0.0);
+        damage.Update(1000.0, 1000.0);
+
+        Assert.Equal(0.6, damage.EngineDamage, 1e-6);
+        Assert.True(damage.EnginePowerScale < 0.6);
+        Assert.Equal(1.0, damage.ControlScale, 1e-6);
+        Assert.Equal(0.0, damage.FuelLeakKgPerSecond, 1e-6);
+
+        damage.SetComponents(0.0, 0.0, 0.4);
+        damage.Update(1000.0, 1000.0);
+        Assert.True(damage.FuelLeakKgPerSecond > 1.0);
+        Assert.Equal(1.0, damage.EnginePowerScale, 1e-6);
+    }
+
+    [Fact]
     public void DamagedEngineMakesLessPowerAndLowerRpm()
     {
         AircraftDefinition d = AircraftDefinition.TrainingAircraft;

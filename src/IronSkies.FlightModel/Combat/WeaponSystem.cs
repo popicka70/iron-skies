@@ -121,10 +121,14 @@ public sealed class WeaponSystem
                 }
 
                 double radius = target.Radius;
-                if (DistanceSquaredToSegment(previous, projectile.Position, target.Position)
-                    <= radius * radius)
+                double distance = DistanceSquaredToSegment(
+                    previous, projectile.Position, target.Position, out Vec3 hitPoint);
+                if (distance <= radius * radius)
                 {
                     target.Health -= projectile.Damage;
+                    Vec3 impact = FirstSphereEntry(
+                        previous, projectile.Position, target.Position, radius);
+                    ApplyZoneDamage(target, impact, projectile.Damage);
                     if (target.Health < 0.0)
                     {
                         target.Health = 0.0;
@@ -161,18 +165,77 @@ public sealed class WeaponSystem
         });
     }
 
-    private static double DistanceSquaredToSegment(Vec3 a, Vec3 b, Vec3 point)
+    private static Vec3 FirstSphereEntry(
+        Vec3 a, Vec3 b, Vec3 center, double radius)
+    {
+        Vec3 d = b - a;
+        Vec3 f = a - center;
+        double c = f.LengthSquared - radius * radius;
+        if (c <= 0.0)
+        {
+            return a;
+        }
+
+        double aa = d.LengthSquared;
+        if (aa < 1e-12)
+        {
+            return a;
+        }
+
+        double bb = 2.0 * f.Dot(d);
+        double discriminant = bb * bb - 4.0 * aa * c;
+        if (discriminant < 0.0)
+        {
+            return a;
+        }
+
+        double t = (-bb - DeterministicMath.Sqrt(discriminant)) / (2.0 * aa);
+        t = DeterministicMath.Clamp(t, 0.0, 1.0);
+        return a + d * t;
+    }
+
+    private static void ApplyZoneDamage(
+        DamageTarget target, Vec3 hitPoint, double damage)
+    {
+        if (target.Static)
+        {
+            return;
+        }
+
+        // Body axes: +X forward (nose), +Y right (wings), +Z down.
+        Vec3 local = target.Orientation.InverseRotate(hitPoint - target.Position);
+        double amount = damage / 600.0;
+        if (local.X > 1.2 && System.Math.Abs(local.Y) < 3.0)
+        {
+            target.EngineDamage = DeterministicMath.Clamp(
+                target.EngineDamage + amount, 0.0, 1.0);
+        }
+        else if (System.Math.Abs(local.Y) > 3.0)
+        {
+            target.ControlDamage = DeterministicMath.Clamp(
+                target.ControlDamage + amount, 0.0, 1.0);
+        }
+        else if (local.X < -1.0 && System.Math.Abs(local.Y) < 3.0)
+        {
+            target.FuelDamage = DeterministicMath.Clamp(
+                target.FuelDamage + amount * 1.4, 0.0, 1.0);
+        }
+    }
+
+    private static double DistanceSquaredToSegment(
+        Vec3 a, Vec3 b, Vec3 point, out Vec3 closest)
     {
         Vec3 ab = b - a;
         double lengthSquared = ab.LengthSquared;
         if (lengthSquared < 1e-12)
         {
+            closest = a;
             return (point - a).LengthSquared;
         }
 
         double t = (point - a).Dot(ab) / lengthSquared;
         t = DeterministicMath.Clamp(t, 0.0, 1.0);
-        Vec3 closest = a + ab * t;
+        closest = a + ab * t;
         return (point - closest).LengthSquared;
     }
 }

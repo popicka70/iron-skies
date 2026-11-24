@@ -54,6 +54,58 @@ public class WeaponsTests
     }
 
     [Fact]
+    public void NoseHit_DamagesTheEngine()
+    {
+        AircraftDefinition d = Load();
+        var sim = new AircraftSimulator(d, AircraftState.CreateAirborne(d, 1000.0, 100.0));
+        var target = new DamageTarget
+        {
+            Position = new Vec3(0.0, 300.0, 1000.0),
+            Orientation = Quat.FromHeading(System.Math.PI),
+            Radius = 5.0,
+            MaxHealth = 1000.0,
+            Health = 1000.0,
+            Static = false,
+        };
+        sim.AddTarget(target);
+
+        for (int i = 0; i < 120; i++)
+        {
+            sim.Step(new Controls(Fire: true), Dt);
+        }
+
+        Assert.True(target.Health < target.MaxHealth);
+        Assert.True(target.EngineDamage > 0.0,
+            $"nose hits: engine={target.EngineDamage:F3} control={target.ControlDamage:F3} " +
+            $"fuel={target.FuelDamage:F3}");
+    }
+
+    [Fact]
+    public void WingHit_DamagesTheControls()
+    {
+        AircraftDefinition d = Load();
+        var sim = new AircraftSimulator(d, AircraftState.CreateAirborne(d, 1000.0, 100.0));
+        var target = new DamageTarget
+        {
+            Position = new Vec3(0.0, 300.0, 1000.0),
+            Orientation = Quat.FromHeading(System.Math.PI / 2.0),
+            Radius = 5.0,
+            MaxHealth = 1000.0,
+            Health = 1000.0,
+            Static = false,
+        };
+        sim.AddTarget(target);
+
+        for (int i = 0; i < 120; i++)
+        {
+            sim.Step(new Controls(Fire: true), Dt);
+        }
+
+        Assert.True(target.Health < target.MaxHealth);
+        Assert.True(target.ControlDamage > 0.0, "wing hits did not damage the controls");
+    }
+
+    [Fact]
     public void Projectile_HitsAndDestroysATarget()
     {
         AircraftDefinition d = Load();

@@ -200,6 +200,7 @@ public sealed partial class MultiplayerMain : Node3D
                 if (_remotes.TryGetValue(id, out RemotePlayer? remote) && remote.HasState)
                 {
                     target.Position = remote.Current.Position;
+                    target.Orientation = remote.Current.Orientation;
                 }
             }
 
@@ -302,6 +303,10 @@ public sealed partial class MultiplayerMain : Node3D
 
         _localSim = new AircraftSimulator(_definition, localState, _ground, 0xC0FFEE1234UL);
         _localSim.Health = state.Health;
+        _localSim.Damage.SetComponents(
+            state.EngineDamage / 255.0,
+            state.ControlDamage / 255.0,
+            state.FuelDamage / 255.0);
         if (!_headlessClient)
         {
             _playerVisual.Visible = true;
@@ -444,6 +449,10 @@ public sealed partial class MultiplayerMain : Node3D
         }
 
         _localSim.Health = server.Health;
+        _localSim.Damage.SetComponents(
+            server.EngineDamage / 255.0,
+            server.ControlDamage / 255.0,
+            server.FuelDamage / 255.0);
     }
 
     private void UpdateRemote(NetPlayerState state)
@@ -552,8 +561,10 @@ public sealed partial class MultiplayerMain : Node3D
             double healthFraction = remote.MaxHealth > 0.0
                 ? remote.Current.Health / remote.MaxHealth
                 : 1.0;
+            double engine = remote.Current.EngineDamage / 255.0;
+            double structural = 1.0 - healthFraction;
             remote.Smoke.Update(Math.Clamp(
-                (1.0 - healthFraction - 0.35) / 0.65, 0.0, 1.0));
+                System.Math.Max(engine * 1.1, structural * 0.8), 0.0, 1.0));
         }
     }
 

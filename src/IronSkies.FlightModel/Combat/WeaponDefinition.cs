@@ -38,9 +38,26 @@ public sealed class Projectile
 public sealed class DamageTarget
 {
     public Vec3 Position;
+
+    /// <summary>Victim body orientation, used to classify hit zones.</summary>
+    public Quat Orientation = Quat.Identity;
+
     public double Radius = 4.0;
     public double MaxHealth = 100.0;
     public double Health = 100.0;
+
+    /// <summary>Accumulated zone damage, 0 (healthy) … 1 (destroyed).</summary>
+    public double EngineDamage;
+    public double ControlDamage;
+    public double FuelDamage;
+
+    public void Reset()
+    {
+        Health = MaxHealth;
+        EngineDamage = 0.0;
+        ControlDamage = 0.0;
+        FuelDamage = 0.0;
+    }
 
     /// <summary>Static props are drawn by CombatVisual. Aircraft use their own visual.</summary>
     public bool Static { get; init; } = true;
