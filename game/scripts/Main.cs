@@ -47,14 +47,25 @@ public partial class Main : Node3D
     private Camera3D _camera = null!;
     private Label _hud = null!;
 
+    private sealed class Wingman
+    {
+        public required AircraftSimulator Sim { get; init; }
+        public required SpitfireVisual Visual { get; init; }
+        public required DamageSmoke Smoke { get; init; }
+        public PursuitPilot Pilot { get; } = new();
+        public int Side;
+    }
+
     private readonly StringBuilder _hudText = new(512);
     private readonly List<Enemy> _enemies = new();
+    private readonly List<Wingman> _wingmen = new();
 
     private DamageTarget _playerTarget = null!;
     private MissionState? _mission;
     private readonly List<DamageTarget> _missionTargets = new();
     private bool _playerDown;
     private int _banditCount = 1;
+    private int _wingmanCount;
     private double _downTimer;
 
     private double _throttle = 0.75;
@@ -144,6 +155,10 @@ public partial class Main : Node3D
         {
             _banditCount = 1;
         }
+
+        _wingmanCount = int.TryParse(ReadUserOption("--wingmen"), out int wingmen)
+            ? System.Math.Clamp(wingmen, 0, 3)
+            : _duel ? 0 : 2;
         _strikeStart = HasUserFlag("--strike") || LaunchConfig.Mission == "strike"
             || _missionTest;
         _autoFire = HasUserFlag("--autofire");
@@ -272,6 +287,17 @@ public partial class Main : Node3D
             {
                 enemy.Down = true;
             }
+        }
+
+        foreach (Wingman wingman in _wingmen)
+        {
+            wingman.Smoke.Update(wingman.Sim.Damage.Smoke, wingman.Sim.Damage.Fire);
+            wingman.Visual.GlobalTransform = SimBridge.ToGodot(
+                wingman.Sim.State.Orientation, wingman.Sim.State.Position);
+            wingman.Visual.UpdateFrom(wingman.Sim, delta);
+            wingman.Visual.Visible = !wingman.Sim.Destroyed
+                || wingman.Sim.State.Position.Z > _heightmap.HeightAt(
+                    wingman.Sim.State.Position.X, wingman.Sim.State.Position.Y) + 2.0;
         }
         _audio.UpdateFrom(_sim, _throttle);
         _cockpitPanel.Visible = _cameraMode == CameraMode.Cockpit;
@@ -507,10 +533,10 @@ public partial class Main : Node3D
         {
             _hudText.Append(' ')
                 .Append((enemy.Target.Health / _aiDefinition.StructuralHealth * 100.0)
-                    .ToString("F0"));
+                    .ToString("F0")).Append('%');
         }
 
-        _hudText.Append("%\n");
+        _hudText.Append("   Wingmen ").Append(_wingmen.Count).Append('\n');
         DamageModel damage = _sim.Damage;
         if (damage.EnginePowerScale < 0.99 || damage.ControlScale < 0.99
             || damage.FuelLeakKgPerSecond > 0.0)
@@ -807,6 +833,7 @@ public partial class Main : Node3D
         };
         AddTargets(_sim);
         CreateEnemies(east, north, _sim.State.Position.Z);
+        CreateWingmen();
         _throttle = airborne ? 0.75 : 0.0;
         _brake = 0.0;
         _radiator = 0.5;
@@ -819,13 +846,115 @@ public partial class Main : Node3D
         _tick = 0;
         _accumulator = 0.0;
         _terrain.Prewarm(SimBridge.ToGodot(_sim.State.Position));
-        var fighters = new AircraftSimulator[_enemies.Count];
+        var fighters = new AircraftSimulator[_enemies.Count + _wingmen.Count];
         for (int i = 0; i < _enemies.Count; i++)
         {
             fighters[i] = _enemies[i].Sim;
         }
 
+        for (int i = 0; i < _wingmen.Count; i++)
+        {
+            fighters[_enemies.Count + i] = _wingmen[i].Sim;
+        }
+
         _combat.Bind(_sim, fighters);
+    }
+
+    private void CreateWingmen()
+    {
+        foreach (Wingman existing in _wingmen)
+        {
+            existing.Visual.QueueFree();
+        }
+
+        _wingmen.Clear();
+        if (_wingmanCount <= 0 || _enemies.Count == 0)
+        {
+            return;
+        }
+
+        Vec3 forward = _sim.State.Orientation.Rotate(Vec3.UnitX);
+        Vec3 right = _sim.State.Orientation.Rotate(Vec3.UnitY);
+        double heading = System.Math.Atan2(forward.X, forward.Y);
+        double speed = System.Math.Max(120.0, _sim.State.VelocityEnu.Length);
+
+        for (int i = 0; i < _wingmanCount; i++)
+        {
+            int side = i % 2 == 0 ? -1 : 1;
+            double lateral = 120.0 + (i / 2) * 90.0;
+            double ahead = 80.0 + (i / 2) * 50.0;
+            Vec3 position = _sim.State.Position + forward * ahead + right * (side * lateral);
+            AircraftState state = AircraftState.CreateAirborne(
+                _definition,
+                position.Z + 40.0,
+                speed,
+                heading,
+                position.X, position.Y);
+
+            var sim = new AircraftSimulator(
+                _definition, state, _ground,
+                0x7E11C0DE12345678UL + (ulong)i * 0x9E3779B9UL);
+            foreach (Enemy enemy in _enemies)
+            {
+                sim.AddTarget(enemy.Target);
+            }
+
+            var visual = new SpitfireVisual();
+            visual.Build(_definition.Id == "bf109-g6"
+                ? new Color(0.42f, 0.44f, 0.42f)
+                : new Color(0.20f, 0.27f, 0.17f));
+            AddChild(visual);
+            var smoke = new DamageSmoke();
+            visual.AddChild(smoke);
+            smoke.Build();
+            visual.GlobalTransform = SimBridge.ToGodot(state.Orientation, state.Position);
+
+            _wingmen.Add(new Wingman
+            {
+                Sim = sim,
+                Visual = visual,
+                Smoke = smoke,
+                Side = side,
+            });
+        }
+    }
+
+    private AircraftState NearestEnemyState(Wingman wingman)
+    {
+        Enemy? best = null;
+        double bestDistance = double.MaxValue;
+        foreach (Enemy enemy in _enemies)
+        {
+            if (enemy.Down)
+            {
+                continue;
+            }
+
+            double distance = (enemy.Sim.State.Position - wingman.Sim.State.Position).Length;
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                best = enemy;
+            }
+        }
+
+        if (best is not null)
+        {
+            return best.Sim.State;
+        }
+
+        Vec3 forward = _sim.State.Orientation.Rotate(Vec3.UnitX);
+        Vec3 right = _sim.State.Orientation.Rotate(Vec3.UnitY);
+        Vec3 point = _sim.State.Position + forward * 100.0
+            + right * (wingman.Side * 120.0);
+        return new AircraftState
+        {
+            Position = point,
+            VelocityEnu = _sim.State.VelocityEnu,
+            Orientation = _sim.State.Orientation,
+            MassKg = _definition.MassKg,
+            FuelKg = _definition.FuelMassKg,
+        };
     }
 
     private void CreateEnemies(double playerEast, double playerNorth, double playerAltitude)

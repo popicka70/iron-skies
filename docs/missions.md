@@ -9,7 +9,8 @@ three supply trucks below and two Bf 109s patrolling.
 shoot both down, then land back at the strip.
 
 The launcher's **Duel** button (or `--duel`) starts a head-on 1v1 400 m from a bandit.
-`--bandits 0-6` overrides the number of AI fighters in any single-player mode.
+`--bandits 0-6` overrides the number of AI fighters; `--wingmen 0-3` sets the
+number of friendly AI wingmen (default 2, none in a duel).
 
 Command line:
 
