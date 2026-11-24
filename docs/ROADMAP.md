@@ -84,9 +84,10 @@ popping in normal flight; an external art review calls it "convincing".
 - [x] Client input frames, prediction with snapshot blending, remote interpolation
 - [x] Server-authoritative health/damage and 5-second respawn
 - [x] Headless two-client smoke test in CI
+- [x] Per-player aircraft selection (Spitfire / Bf 109) over the network
 - [x] Distance-based interest management (15 km), compact quantised snapshots
-- [x] 64-client load test: 1.06 MB/s, 5.5 ms/tick (delta snapshots)
-- [x] Ack-based delta snapshots: 1.06 MB/s, ~17 KB/s/client at 64 players
+- [x] 64-client load test: 1.15 MB/s, 5.7 ms/tick (delta + mixed aircraft)
+- [x] Ack-based delta snapshots: ~18 KB/s/client at 64 players
 - [x] Lag-compensated hitboxes: 240 Hz pose history + view-delay rewind
 - [x] LAN server discovery and browser, direct connect, `--name`
 - [x] Password challenge/response and `[PW]` browser marker

@@ -24,6 +24,8 @@ public sealed partial class MultiplayerMain : Node3D
     {
         public required SpitfireVisual Visual { get; init; }
         public required DamageSmoke Smoke { get; init; }
+        public byte AircraftType;
+        public double MaxHealth = 1000.0;
         public NetPlayerState Previous = new();
         public NetPlayerState Current = new();
         public bool HasState;
@@ -32,7 +34,9 @@ public sealed partial class MultiplayerMain : Node3D
 
     private Heightmap _map = null!;
     private IGroundSurface _ground = null!;
+    private AircraftDefinition[] _definitions = null!;
     private AircraftDefinition _definition = null!;
+    private byte _localType;
 
     private TerrainWorld _terrain = null!;
     private SpitfireVisual _playerVisual = null!;
@@ -130,14 +134,17 @@ public sealed partial class MultiplayerMain : Node3D
 
         _map = Heightmap.Load(TerrainDirectory);
         _ground = new AirfieldSurface(_map);
-        _definition = LoadAircraft("spitfire-mk9");
+        _definitions = new[] { LoadAircraft("spitfire-mk9"), LoadAircraft("bf109-g6") };
+        string requestedAircraft = ReadOption("--aircraft") ?? GameSettings.PlayerAircraft;
+        _localType = requestedAircraft is "bf109" or "bf109-g6" ? (byte)1 : (byte)0;
+        _definition = _definitions[_localType];
 
         if (_serverMode)
         {
             _server = new NetworkServer();
             AddChild(_server);
             _server.Start(
-                _port, _ground, _definition, hosted, serverName, discoveryPort, password);
+                _port, _ground, _definitions, hosted, serverName, discoveryPort, password);
             return;
         }
 
@@ -152,7 +159,7 @@ public sealed partial class MultiplayerMain : Node3D
         _client.WelcomeReceived += OnWelcome;
         _client.SnapshotPacketReceived += OnSnapshotPacket;
         _client.AuthenticationFailed += OnAuthenticationFailed;
-        _client.Start(_serverAddress, _port, password);
+        _client.Start(_serverAddress, _port, password, _localType);
     }
 
     public override void _PhysicsProcess(double delta)
@@ -280,6 +287,8 @@ public sealed partial class MultiplayerMain : Node3D
     {
         _localId = playerId;
         _hasWelcome = true;
+        byte type = (byte)System.Math.Clamp((int)state.AircraftType, 0, _definitions.Length - 1);
+        _definition = _definitions[type];
 
         var localState = new AircraftState
         {
@@ -442,14 +451,25 @@ public sealed partial class MultiplayerMain : Node3D
         if (!_remotes.TryGetValue(state.PlayerId, out RemotePlayer? remote))
         {
             var visual = new SpitfireVisual();
-            visual.Build(new Color(0.42f, 0.44f, 0.42f));
+            visual.Build(state.AircraftType == 1
+                ? new Color(0.42f, 0.44f, 0.42f)
+                : new Color(0.20f, 0.27f, 0.17f));
             AddChild(visual);
             var smoke = new DamageSmoke();
             visual.AddChild(smoke);
             smoke.Build();
-            remote = new RemotePlayer { Visual = visual, Smoke = smoke };
+            remote = new RemotePlayer
+            {
+                Visual = visual,
+                Smoke = smoke,
+                AircraftType = state.AircraftType,
+                MaxHealth = _definitions[
+                    System.Math.Clamp((int)state.AircraftType, 0, _definitions.Length - 1)]
+                    .StructuralHealth,
+            };
             _remotes[state.PlayerId] = remote;
-            GD.Print($"[mp] remote player {state.PlayerId} appeared");
+            GD.Print($"[mp] remote player {state.PlayerId} appeared " +
+                     $"(type {state.AircraftType})");
         }
 
         remote.LastSeen = Time.GetTicksMsec() / 1000.0;
@@ -472,8 +492,8 @@ public sealed partial class MultiplayerMain : Node3D
             {
                 Position = state.Position,
                 Radius = 8.0,
-                MaxHealth = _definition.StructuralHealth,
-                Health = _definition.StructuralHealth,
+                MaxHealth = remote.MaxHealth,
+                Health = remote.MaxHealth,
                 Static = false,
             };
             _remoteTargets[state.PlayerId] = target;
@@ -529,8 +549,8 @@ public sealed partial class MultiplayerMain : Node3D
             remote.Visual.SetExternalTransform(position, orientation);
             remote.Visual.UpdateExternal(rpm, flap, gear, delta);
 
-            double healthFraction = _definition.StructuralHealth > 0.0
-                ? remote.Current.Health / _definition.StructuralHealth
+            double healthFraction = remote.MaxHealth > 0.0
+                ? remote.Current.Health / remote.MaxHealth
                 : 1.0;
             remote.Smoke.Update(Math.Clamp(
                 (1.0 - healthFraction - 0.35) / 0.65, 0.0, 1.0));
@@ -589,7 +609,9 @@ public sealed partial class MultiplayerMain : Node3D
         _terrain.Prewarm(new Vector3(0.0f, (float)_map.HeightAt(0, 6000) + 1500.0f, -6000.0f));
 
         _playerVisual = new SpitfireVisual();
-        _playerVisual.Build();
+        _playerVisual.Build(_localType == 1
+            ? new Color(0.42f, 0.44f, 0.42f)
+            : new Color(0.20f, 0.27f, 0.17f));
         _playerVisual.Visible = false;
         AddChild(_playerVisual);
         _playerSmoke = new DamageSmoke();
@@ -908,7 +930,8 @@ public sealed partial class MultiplayerMain : Node3D
                  $"dropped={_droppedSnapshotCount}");
         if (welcome)
         {
-            GD.Print($"[net-test] health={_localSim!.Health:F0} pos={_localSim.State.Position}");
+            GD.Print($"[net-test] aircraft={_definition.Id} " +
+                     $"health={_localSim!.Health:F0} pos={_localSim.State.Position}");
         }
 
         ServerProcessManager.Instance?.Stop();

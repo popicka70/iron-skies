@@ -32,6 +32,7 @@ public class NetProtocolTests
         var state = new NetPlayerState
         {
             PlayerId = 3,
+            AircraftType = 1,
             Health = 850.0,
             Position = new Vec3(100.0, 200.0, 1500.0),
             Orientation = Quat.FromHeading(0.7),
@@ -46,11 +47,21 @@ public class NetProtocolTests
         Assert.True(NetProtocol.TryDecodeWelcome(data, out byte id, out NetPlayerState decoded));
 
         Assert.Equal(3, id);
+        Assert.Equal(1, decoded.AircraftType);
         Assert.Equal(850.0, decoded.Health, 1e-3);
         Assert.Equal(100.0, decoded.Position.X, 0.01);
         Assert.Equal(1500.0, decoded.Position.Z, 0.01);
         Assert.Equal(2400.0, decoded.Rpm, 0.5);
         Assert.Equal(1.0, decoded.Gear, 1e-6);
+    }
+
+    [Fact]
+    public void JoinRequest_RoundTrips()
+    {
+        byte[] data = NetProtocol.EncodeJoinRequest(1);
+        Assert.True(NetProtocol.TryDecodeJoinRequest(data, out byte type));
+        Assert.Equal(1, type);
+        Assert.False(NetProtocol.TryDecodeJoinRequest(new byte[] { 8 }, out _));
     }
 
     [Fact]
@@ -91,6 +102,8 @@ public class NetProtocolTests
 
         Assert.Equal(12345u, decoded.Tick);
         Assert.Equal(2, decoded.Players.Length);
+        Assert.Equal(snapshot.Players[0].AircraftType, decoded.Players[0].AircraftType);
+        Assert.Equal(snapshot.Players[1].AircraftType, decoded.Players[1].AircraftType);
         Assert.Equal(2, decoded.Players[1].PlayerId);
         Assert.Equal(420.0, decoded.Players[1].Health, 1e-3);
         Assert.Equal(1400.0, decoded.Players[1].Position.Y, 1.0);
@@ -130,7 +143,7 @@ public class NetProtocolTests
             {
                 new NetPlayerState
                 {
-                    PlayerId = 1, Health = 1000, Position = new Vec3(0, 0, 1000),
+                    PlayerId = 1, AircraftType = 1, Health = 1000, Position = new Vec3(0, 0, 1000),
                     Orientation = Quat.FromHeading(0), Velocity = new Vec3(0, 120, 0),
                     Rpm = 2300, Gear = 1,
                 },
@@ -164,7 +177,7 @@ public class NetProtocolTests
                 },
                 new NetPlayerState
                 {
-                    PlayerId = 3, Health = 1000, Position = new Vec3(0, 600, 1000),
+                    PlayerId = 3, AircraftType = 1, Health = 1000, Position = new Vec3(0, 600, 1000),
                     Orientation = Quat.FromHeading(0), Rpm = 2300, Gear = 1,
                 },
             },
@@ -180,6 +193,8 @@ public class NetProtocolTests
         Assert.Equal(960.0, decoded.Players[0].Health, 1e-6);
         Assert.Equal(500.0, decoded.Players[1].Position.Y, 1.0);
         Assert.Equal(3, decoded.Players[2].PlayerId);
+        Assert.Equal(1, decoded.Players[0].AircraftType);
+        Assert.Equal(1, decoded.Players[2].AircraftType);
         Assert.Equal(121.0, decoded.Players[0].Velocity.Y, 0.1);
         Assert.True(data.Length < 150, $"delta too large: {data.Length} bytes");
     }
