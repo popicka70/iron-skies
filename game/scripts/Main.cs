@@ -730,11 +730,11 @@ public partial class Main : Node3D
         }
         else if (_missionTestTick >= 600)
         {
-            GD.Print($"[mission-test] bombers={_bombers.Count} " +
-                     $"complete={_mission?.Complete} " +
+            GD.Print($"[mission-test] complete={_mission?.Complete} " +
                      $"failed={_mission?.Failed} " +
                      $"objective0={_mission?.Objectives[0].Progress}/{_mission?.Objectives[0].Required} " +
                      $"landed={_mission?.Objectives[1].Progress} " +
+                     $"bombers={_bombers.Count} " +
                      $"elapsed={_mission?.ElapsedText()}");
             GetTree().Quit();
         }
