@@ -2,9 +2,10 @@
 
 > **Implementation status (M0 slice):** a dedicated ENet server and predicted clients
 > exist in `game/scenes/Multiplayer.tscn`; see [../multiplayer.md](../multiplayer.md).
-> Snapshots are currently uncompressed and broadcast to every client; interest
-> management, delta compression and lag-compensated rewind are the next steps.
-> The design below remains the target.
+> Snapshots are uncompressed; interest management is a 15 km radius (self always
+> included). Measured: 16 clients, 0.9 ms/tick, ~520 KB/s server outbound. Delta
+> compression and lag-compensated rewind are the next steps. The design below remains
+> the target.
 
 ## 1. Model
 

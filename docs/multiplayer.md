@@ -34,16 +34,29 @@ Options:
 | `--connect <ip>` | Connect to a server |
 | `--port <n>` | UDP port (default 7777) |
 | `--net-test <seconds>` | Headless client exits after N seconds and prints a summary |
+| `--headless-client` | No terrain/visuals; used by the load test |
 | `--screenshot <path>` / `--screenshot-delay <s>` | Capture and exit (client) |
 
-Smoke test:
+Smoke tests:
 
 ```bash
-./tools/net_smoke_test.sh
+./tools/net_smoke_test.sh        # 2 clients, runs in CI
+./tools/net_load_test.sh 16      # 16 lightweight clients, manual
 ```
 
-It starts a server, two headless clients, checks that both received a spawn and saw
-the other player, and that at least 10 snapshots arrived.
+The two-client test checks spawns, mutual visibility and snapshots. The load test uses
+`--headless-client` (no terrain/visuals) and prints server timing and bandwidth.
+
+Measured on the development machine, 16 clients:
+
+```
+[server] players=16 tick=421 outKBps=520.3 avgTick=0.88ms
+clients welcome=16/16 joined=16
+```
+
+That is ~32 KB/s per client and under 1 ms of server work per 33 ms tick. The 16
+aircraft are all within the 15 km relevance radius, so this is the worst case for
+bandwidth at this player count.
 
 ## Protocol
 
@@ -54,8 +67,12 @@ Little-endian, float32 payloads, type-tagged:
 - `Snapshot` (server → client, unreliable): tick + up to 255 player states
   (id, health, pose, velocity, rates, RPM, flap, gear).
 
-Input and snapshot packets are small (~50 B and ~70 B/player). Interest management is
-not implemented; every client receives every player. Fine for the 8-player slice.
+Input and snapshot packets are small (~50 B and ~70 B/player).
+
+**Interest management:** each client receives itself plus every aircraft within 15 km.
+Remote aircraft disappear from the client five seconds after they last appeared in a
+snapshot, which avoids flicker at the radius boundary. Snapshots are uncompressed; delta
+encoding is the next optimisation.
 
 ## Prediction and correction
 
@@ -71,9 +88,11 @@ snapshot interval. No rewind/replay rollback is implemented yet.
 
 ## Boundaries
 
+- Up to 16 players per server (the load test target); the design target remains 64.
 - Both players fly Spitfires; the Bf 109 AI exists only in single-player.
 - No server browser, accounts, matchmaking or anti-cheat.
-- No interest management or lag-compensated hitboxes.
+- Interest management is distance-based only; no delta compression or lag-compensated
+  hitboxes yet.
 - Keyboard only in the multiplayer scene (the single-player scene has joystick input).
 - The MP scene is run from the project; the exported build's default scene remains
   single-player until a launcher scene is added.

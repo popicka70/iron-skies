@@ -77,10 +77,12 @@ popping in normal flight; an external art review calls it "convincing".
 - [x] Client input frames, prediction with snapshot blending, remote interpolation
 - [x] Server-authoritative health/damage and 5-second respawn
 - [x] Headless two-client smoke test in CI
-- [ ] Delta compression and interest management
+- [x] Distance-based interest management (15 km) and a 16-client load test
+- [ ] Delta compression and finer relevance tiers
 - [ ] Lag-compensated hitboxes and rewind
 - [ ] Server browser (heartbeat registry), direct connect, password/whitelist
-- [ ] Load test: 16 players + 16 AI; profiling and bandwidth report
+- [x] Load test: 16 players, 0.9 ms/tick, ~520 KB/s server outbound
+- [ ] 64-player load test with delta compression
 - [ ] Basic anti-cheat validation and admin commands
 - [ ] Docker image and deployment workflow
 

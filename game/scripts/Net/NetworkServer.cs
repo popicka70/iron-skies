@@ -17,7 +17,8 @@ public sealed partial class NetworkServer : Node
 {
     private const double NetworkTick = 1.0 / 30.0;
     private const int SimStepsPerTick = 8; // 240 Hz / 30 Hz
-    private const int MaxPlayers = 8;
+    private const int MaxPlayers = 16;
+    private const double RelevanceMeters = 15_000.0;
 
     private sealed class ServerPlayer
     {
@@ -36,6 +37,11 @@ public sealed partial class NetworkServer : Node
     private double _accumulator;
     private uint _tick;
     private int _nextPlayerId = 1;
+    private double _statsTimer;
+    private double _bytesThisSecond;
+    private double _tickMsAccum;
+    private int _tickSamples;
+    private readonly System.Diagnostics.Stopwatch _tickTimer = new();
 
     public void Start(int port, Heightmap map, AircraftDefinition definition)
     {
@@ -77,6 +83,18 @@ public sealed partial class NetworkServer : Node
         {
             ServerTick((float)NetworkTick);
             _accumulator -= NetworkTick;
+        }
+
+        _statsTimer += delta;
+        if (_statsTimer >= 1.0 && _players.Count > 0)
+        {
+            _statsTimer = 0.0;
+            double averageTick = _tickSamples > 0 ? _tickMsAccum / _tickSamples : 0.0;
+            GD.Print($"[server] players={_players.Count} tick={_tick} " +
+                     $"outKBps={_bytesThisSecond / 1024.0:F1} avgTick={averageTick:F2}ms");
+            _bytesThisSecond = 0.0;
+            _tickMsAccum = 0.0;
+            _tickSamples = 0;
         }
     }
 
@@ -156,6 +174,7 @@ public sealed partial class NetworkServer : Node
 
     private void ServerTick(float dt)
     {
+        _tickTimer.Restart();
         for (int step = 0; step < SimStepsPerTick; step++)
         {
             foreach (ServerPlayer player in _players.Values)
@@ -202,7 +221,11 @@ public sealed partial class NetworkServer : Node
             }
         }
 
+        _tick++;
         Broadcast();
+        _tickTimer.Stop();
+        _tickMsAccum += _tickTimer.Elapsed.TotalMilliseconds;
+        _tickSamples++;
     }
 
     private void Respawn(ServerPlayer player)
@@ -268,7 +291,22 @@ public sealed partial class NetworkServer : Node
             (700.0, 6000.0, -DeterministicMath.HalfPi),
         };
 
-        (double east, double north, double heading) = spawns[(playerId - 1) % spawns.Length];
+        double east;
+        double north;
+        double heading;
+        if (playerId <= spawns.Length)
+        {
+            (east, north, heading) = spawns[playerId - 1];
+        }
+        else
+        {
+            double angle = (playerId - spawns.Length - 1)
+                * DeterministicMath.TwoPi / (MaxPlayers - spawns.Length);
+            east = 1200.0 * DeterministicMath.Sin(angle);
+            north = 6000.0 + 1200.0 * DeterministicMath.Cos(angle);
+            heading = angle + DeterministicMath.Pi;
+        }
+
         double ground = _map.HeightAt(east, north);
         return AircraftState.CreateAirborne(
             _definition, ground + 1500.0, 120.0, heading, east, north);
@@ -281,15 +319,26 @@ public sealed partial class NetworkServer : Node
             return;
         }
 
-        var states = new NetPlayerState[_players.Count];
-        int index = 0;
-        foreach (ServerPlayer player in _players.Values)
+        // Interest management: each client receives itself plus aircraft within range.
+        foreach ((long peerId, ServerPlayer recipient) in _players)
         {
-            states[index++] = NetPlayerState.FromSimulator(player.Id, player.Sim);
-        }
+            var states = new List<NetPlayerState>(_players.Count);
+            foreach (ServerPlayer candidate in _players.Values)
+            {
+                bool self = candidate.Id == recipient.Id;
+                bool inRange = (candidate.Sim.State.Position - recipient.Sim.State.Position)
+                    .Length <= RelevanceMeters;
+                if (self || inRange)
+                {
+                    states.Add(NetPlayerState.FromSimulator(candidate.Id, candidate.Sim));
+                }
+            }
 
-        var snapshot = new NetSnapshot { Tick = _tick++, Players = states };
-        byte[] data = NetProtocol.EncodeSnapshot(snapshot);
-        _multiplayer.SendBytes(data, 0, MultiplayerPeer.TransferModeEnum.Unreliable, 1);
+            var snapshot = new NetSnapshot { Tick = _tick, Players = states.ToArray() };
+            byte[] data = NetProtocol.EncodeSnapshot(snapshot);
+            _multiplayer.SendBytes(
+                data, (int)peerId, MultiplayerPeer.TransferModeEnum.Unreliable, 1);
+            _bytesThisSecond += data.Length;
+        }
     }
 }
