@@ -66,7 +66,7 @@ def main() -> int:
     origin_e = float(meta["origin"]["easting"])
     origin_n = float(meta["origin"]["northing"])
     src = CRS.from_epsg(4326)
-    dst = CRS.from_epsg(32630)
+    dst = CRS.from_string(theatre["geodesy"]["crs"])
 
     buildings: list[dict] = []
     woods: list[list[list[float]]] = []

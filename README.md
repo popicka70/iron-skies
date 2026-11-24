@@ -15,7 +15,10 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 > placeholder airframes, cockpit view, engine
 > simulation, procedural audio and four working guns, up to six AI bandits plus AI wingmen,
 > hit-zone battle damage
-> (engine, controls, fuel) and a live cockpit instrument panel. Linux and Windows release packages are configured.
+> (engine, controls, fuel) and a live cockpit instrument panel. A generated
+> **400 × 400 km** North-west France theatre covers Normandy, eastern Brittany and the
+> approaches to Paris, with the 40 km sample layered over the airfield as a sharp inset.
+> Linux and Windows release packages are configured.
 
 ![Iron Skies launcher](docs/media/m0-launcher.png)
 
@@ -34,6 +37,31 @@ key bindings, or direct connect.*
 
 *The chase camera can be orbited with the right mouse button, zoomed with the wheel and
 re-centred with Home; the same axes/buttons can be bound on a HOTAS.*
+
+## Theatres
+
+The repository ships the **40 × 40 km Normandy** sample, so a clean clone and CI boot
+without downloading gigabytes. Larger terrain is generated locally from open data:
+
+```bash
+# 400 km North-west France theatre (height 50 m, regional ortho 4096²)
+python3 tools/mapgen/mapgen.py --theatre france-northwest-1944 \
+    --resolution 50 --ortho-size 4096
+python3 tools/mapgen/fetch_osm_objects.py \
+    --theatre france-northwest-1944 --radius 2000
+```
+
+Then choose **Settings → Theatre → North-west France — 400 km**. The runtime derives
+the map extents and chunk count from the bundle metadata and keeps the same 10 km
+detailed streaming ring; the committed Normandy ortho is blended over the centre as a
+10 m inset. The generated bundle is deliberately git-ignored. If a selected theatre is
+not installed, the game falls back to the Normandy sample.
+
+![Iron Skies 400 km North-west France theatre](docs/media/m0-france-400km.png)
+
+*The generated 400 × 400 km theatre: Normandy, the Brittany coast and the approaches to
+Paris. Chunk meshes stream within 10 km; the committed 40 km sample is blended over the
+airfield as a sharp 10 m inset.*
 
 ![Iron Skies M0 combat](docs/media/m0-duel.png)
 
@@ -119,7 +147,7 @@ Full rationale: [docs/SPEC.md](docs/SPEC.md) and [docs/adr/](docs/adr/).
 ```
 game/                       Godot project (client + server entry points)
 game/assets/aircraft/       Aircraft data sets (JSON + aero CSV + validation)
-game/assets/terrain/        Sample 40 × 40 km theatre bundle (DEM-derived)
+game/assets/terrain/        Committed 40 km sample; generated regional bundles are git-ignored
 src/IronSkies.FlightModel/  Pure .NET 6-DOF flight dynamics (engine-agnostic, unit-tested)
 tests/                      xUnit tests for simulation code
 tools/mapgen/               Offline geodata -> theatre bundle pipeline

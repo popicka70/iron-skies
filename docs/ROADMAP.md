@@ -51,6 +51,7 @@ simulation runs at 240 Hz with a stable 60 FPS render; CI is green on both OSes.
 - Validation harness: compare climb/speed/turn/stall vs published data
 - [x] Replay recording/playback of solo flights
 - [x] First-person cockpit: 3D cabin model and chase/cockpit/top views with orbit/look
+- [x] 400 km regional theatre with data-driven extents, multi-date imagery and a 40 km high-res inset
 - [ ] In-engine telemetry graphs
 - Audio: procedural engine/prop sound driven by RPM and load; wind and gunfire
 

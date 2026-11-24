@@ -1,0 +1,56 @@
+# North-west France — large regional theatre built around the original Normandy spawn.
+# The 400 × 400 km square keeps the existing airfield at local (700, 5900) m because
+# it shares the Normandy origin. Runtime rasters are generated, not committed.
+id = "france-northwest-1944"
+name = "North-west France, June 1944"
+description = "Normandy, eastern Brittany and the approaches to Paris — a 400 km theatre."
+generator_version = "0.2"
+seed = 19440606
+
+[geodesy]
+crs = "EPSG:32630"          # UTM zone 30N; the square extends into zone 31N
+origin = { lat = 49.2200, lon = -0.3700 }
+# Generous WGS-84 envelope for the 400 km square.
+bounds = { north = 51.40, south = 47.00, west = -3.60, east = 2.90 }
+vertical_datum = "EGM2008"
+
+[terrain]
+size_meters = 400000
+chunk_size_m = 1000
+lod_levels = 5
+heightmap_spacing_m = 50
+lod0_spacing_m = 50
+heightmap_bits = 16
+
+[runtime]
+default_weather = "broken"
+time_of_day = "09:30"
+osm_center = { lat = 49.2740, lon = -0.3700 }
+
+[[sources]]
+id = "copernicus-glo30"
+kind = "elevation"
+licence = "Copernicus DEM licence (free, attribution)"
+attribution = "© DLR e.V. 2010-2014 and © Airbus DS GmbH 2017-2021"
+resolution_m = 30
+
+[[sources]]
+id = "sentinel-2-l2a"
+kind = "imagery"
+licence = "Copernicus Sentinel Data Terms (free, attribution)"
+attribution = "Contains modified Copernicus Sentinel data 2026"
+resolution_m = 10
+
+[[sources]]
+id = "osm-normandy"
+kind = "vectors"
+licence = "ODbL 1.0"
+attribution = "© OpenStreetMap contributors"
+notes = "Derived bundles are ODbL; see docs/assets-and-licensing.md"
+
+[[sources]]
+id = "polyhaven-materials"
+kind = "materials"
+licence = "CC0"
+attribution = "Poly Haven (polyhaven.com)"
+notes = "Textures only; no geospatial component"

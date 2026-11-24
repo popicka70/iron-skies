@@ -9,6 +9,9 @@ public static class LaunchConfig
     public static int Port { get; set; } = DefaultPort;
     public static string Password { get; set; } = "";
     public static string Mission { get; set; } = "";
+    public static string Theatre { get; set; } = "";
+    public static string CurrentTheatre =>
+        string.IsNullOrEmpty(Theatre) ? GameSettings.Theatre : Theatre;
 
     public static void Reset()
     {
@@ -16,5 +19,6 @@ public static class LaunchConfig
         Port = DefaultPort;
         Password = "";
         Mission = "";
+        Theatre = GameSettings.Theatre;
     }
 }
