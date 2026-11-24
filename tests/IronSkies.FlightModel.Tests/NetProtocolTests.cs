@@ -107,6 +107,18 @@ public class NetProtocolTests
     }
 
     [Fact]
+    public void Input_RejectsNonFiniteControls()
+    {
+        byte[] nan = NetProtocol.EncodeInput(
+            new NetControlFrame(1, 0, new Controls(Elevator: double.NaN)));
+        Assert.False(NetProtocol.TryDecodeInput(nan, out _));
+
+        byte[] infinite = NetProtocol.EncodeInput(
+            new NetControlFrame(2, 0, new Controls(Throttle: double.PositiveInfinity)));
+        Assert.False(NetProtocol.TryDecodeInput(infinite, out _));
+    }
+
+    [Fact]
     public void DeltaSnapshot_RoundTrips()
     {
         var baseline = new NetSnapshot

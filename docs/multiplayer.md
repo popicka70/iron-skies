@@ -165,7 +165,9 @@ hitboxes occupy.
 
 - Up to 64 players per server, verified with the headless load test.
 - Both players fly Spitfires; the Bf 109 AI exists only in single-player.
-- No server browser, accounts, matchmaking or anti-cheat.
+- No accounts, matchmaking, admin commands or whitelist. Inputs are checked for
+  finite values, monotonic sequence numbers and a 180/s rate limit; divergent server
+  states respawn instead of poisoning snapshots.
 - Interest management is distance-based only; no relevance tiers yet.
 - Server discovery is LAN broadcast only; there is no internet server list or whitelist
   yet.
