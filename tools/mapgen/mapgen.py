@@ -416,6 +416,7 @@ def build_ortho(theatre: dict, out_dir: Path, meta: dict, size: int) -> dict:
     rgb = np.clip(lum + (rgb - lum) * 1.12, 0.0, 1.0)
     ortho = Image.fromarray((rgb.transpose(1, 2, 0) * 255).astype(np.uint8), "RGB")
     ortho.save(out_dir / "ortho.jpg", quality=90, optimize=True)
+    (out_dir / "ortho.jpg.bin").write_bytes((out_dir / "ortho.jpg").read_bytes())
 
     # --- landcover -----------------------------------------------------------
     lc_size = min(2048, size)
@@ -448,14 +449,15 @@ def build_ortho(theatre: dict, out_dir: Path, meta: dict, size: int) -> dict:
     rgba[..., 2] = np.where(built, 255, 0)
     rgba[..., 3] = np.where(forest, 255, 0)
     Image.fromarray(rgba, "RGBA").save(out_dir / "landcover.png", optimize=True)
+    (out_dir / "landcover.png.bin").write_bytes((out_dir / "landcover.png").read_bytes())
 
     meta.update(
         {
-            "orthoFile": "ortho.jpg",
+            "orthoFile": "ortho.jpg.bin",
             "orthoSize": size,
             "orthoResolutionMeters": round(resolution, 4),
             "orthoRowOrder": "north-to-south",
-            "landcoverFile": "landcover.png",
+            "landcoverFile": "landcover.png.bin",
             "landcoverSize": lc_size,
             "sentinel2": {
                 "date": date,

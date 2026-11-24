@@ -13,7 +13,7 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 > 40 × 40 km Normandy terrain with Sentinel-2 orthophoto/landcover, OSM roads and
 > hedgerows, a low-poly aircraft, cockpit view, engine simulation, procedural audio and
 > four working guns, a Bf 109 bandit with a pursuit AI, structural damage, and a live
-> cockpit instrument panel.
+> cockpit instrument panel. Linux and Windows release packages are configured.
 
 ![Iron Skies M0: 40 × 40 km Normandy terrain](docs/media/m0-normandy-40km.png)
 
@@ -116,6 +116,13 @@ godot --path game
 # Capture a deterministic screenshot and exit (used for art review/docs)
 godot --path game -- --screenshot /tmp/iron-skies.png
 ```
+
+## Packaging
+
+Linux and Windows export presets are committed in `game/export_presets.cfg`.
+See [docs/building.md](docs/building.md) for the export-template setup and
+`./tools/export_builds.sh`. A manual GitHub workflow
+(`.github/workflows/export.yml`) builds both packages and uploads them as artifacts.
 
 ## Contributing
 

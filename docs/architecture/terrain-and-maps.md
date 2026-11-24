@@ -16,8 +16,8 @@ theatres/normandy-1944/theatre.toml    definition: bounds, CRS, sources, seed
 game/assets/terrain/normandy-1944/     built bundle (shipped with the demo)
   meta.json                            size, spacing, CRS, height range, scene IDs
   heightmap.r16                        16-bit little-endian, row 0 = south
-  ortho.jpg                            Sentinel-2 true colour, north-up, 4096²
-  landcover.png                        RGBA masks: water/vegetation/bare/forest
+  ortho.jpg / ortho.jpg.bin            Sentinel-2 true colour (raw JPEG buffer for export)
+  landcover.png / landcover.png.bin    RGBA masks (raw PNG buffer for export)
   osm.json                             roads + hedges around the spawn (local metres)
   LICENSE-DATA.txt                     generated attribution
 ```

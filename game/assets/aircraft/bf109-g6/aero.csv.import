@@ -1,0 +1,16 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://co5dnq03k2jag"
+
+[deps]
+
+source_file="res://assets/aircraft/bf109-g6/aero.csv"
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true
