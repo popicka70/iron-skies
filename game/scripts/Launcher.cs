@@ -20,14 +20,14 @@ public sealed partial class Launcher : Control
         // Command-line dispatch (exported builds use the same executable).
         if (HasFlag("--server") || ReadOption("--connect") is not null)
         {
-            GetTree().ChangeSceneToFile("res://scenes/Multiplayer.tscn");
+            GetTree().CallDeferred("change_scene_to_file", "res://scenes/Multiplayer.tscn");
             return;
         }
 
         if (HasFlag("--screenshot") || HasFlag("--air-start") || HasFlag("--strike")
             || HasFlag("--duel") || HasFlag("--autofire"))
         {
-            GetTree().ChangeSceneToFile("res://scenes/Main.tscn");
+            GetTree().CallDeferred("change_scene_to_file", "res://scenes/Main.tscn");
             return;
         }
 

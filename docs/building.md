@@ -36,7 +36,12 @@ build/linux/iron-skies.x86_64
 build/linux/data_IronSkies.Game_linuxbsd_x86_64/
 build/windows/iron-skies.exe
 build/windows/data_IronSkies.Game_windows_x86_64/
+build/server/iron-skies-server.x86_64
+build/server/data_IronSkies.Game_linuxbsd_x86_64/
 ```
+
+The dedicated server package and container are described in
+[dedicated-server.md](dedicated-server.md).
 
 The exports embed the PCK; the .NET assemblies live in the `data_*` directory next to
 the executable, so ship both.

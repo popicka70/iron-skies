@@ -38,7 +38,7 @@ public sealed partial class ServerProcessManager : Node
                 "--port",
                 port.ToString(),
             }
-            : new[] { "--headless", "--server", "--hosted", "--port", port.ToString() };
+            : new[] { "--headless", "--", "--server", "--hosted", "--port", port.ToString() };
 
         _pid = OS.CreateProcess(executable, args, false);
         if (_pid <= 0)

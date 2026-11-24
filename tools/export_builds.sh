@@ -18,7 +18,7 @@ if ! command -v godot >/dev/null 2>&1; then
   exit 1
 fi
 
-mkdir -p build/linux build/windows
+mkdir -p build/linux build/windows build/server
 
 echo "==> Linux"
 godot --headless --path game --export-release "Linux" "$root/build/linux/iron-skies.x86_64"
@@ -26,5 +26,8 @@ godot --headless --path game --export-release "Linux" "$root/build/linux/iron-sk
 echo "==> Windows"
 godot --headless --path game --export-release "Windows" "$root/build/windows/iron-skies.exe"
 
+echo "==> Linux dedicated server"
+godot --headless --path game --export-release "Linux Server" "$root/build/server/iron-skies-server.x86_64"
+
 echo
-ls -lh build/linux build/windows
+ls -lh build/linux build/windows build/server
