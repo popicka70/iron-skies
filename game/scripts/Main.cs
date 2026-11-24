@@ -166,8 +166,20 @@ public partial class Main : Node3D
 
         BuildEnvironment();
         BuildTerrain();
-        _definition = LoadAircraft("spitfire-mk9");
-        _aiDefinition = LoadAircraft("bf109-g6");
+        string playerAircraft = ReadUserOption("--aircraft") ?? GameSettings.PlayerAircraft;
+        if (playerAircraft == "bf109")
+        {
+            playerAircraft = "bf109-g6";
+        }
+
+        if (playerAircraft != "bf109-g6")
+        {
+            playerAircraft = "spitfire-mk9";
+        }
+
+        _definition = LoadAircraft(playerAircraft);
+        string enemyAircraft = playerAircraft == "bf109-g6" ? "spitfire-mk9" : "bf109-g6";
+        _aiDefinition = LoadAircraft(enemyAircraft);
         BuildAircraft();
         _combat = new CombatVisual();
         _combat.Build();
@@ -559,7 +571,7 @@ public partial class Main : Node3D
     private MissionState CreateHuntMission() => new()
     {
         Name = "Free Hunt",
-        Brief = "Shoot down the Bf 109s, then land at the airfield.",
+        Brief = "Shoot down the enemy fighters, then land at the airfield.",
         Objectives = new[]
         {
             new MissionObjective
@@ -826,7 +838,9 @@ public partial class Main : Node3D
             };
 
             var visual = new SpitfireVisual();
-            visual.Build(new Color(0.42f, 0.44f, 0.42f));
+            visual.Build(_aiDefinition.Id == "bf109-g6"
+                ? new Color(0.42f, 0.44f, 0.42f)
+                : new Color(0.20f, 0.27f, 0.17f));
             AddChild(visual);
             var smoke = new DamageSmoke();
             visual.AddChild(smoke);
@@ -980,7 +994,9 @@ public partial class Main : Node3D
     private void BuildAircraft()
     {
         _aircraft = new SpitfireVisual();
-        _aircraft.Build();
+        _aircraft.Build(_definition.Id == "bf109-g6"
+            ? new Color(0.42f, 0.44f, 0.42f)
+            : new Color(0.20f, 0.27f, 0.17f));
         AddChild(_aircraft);
         _playerSmoke = new DamageSmoke();
         _aircraft.AddChild(_playerSmoke);
