@@ -59,6 +59,8 @@ jobs:
 
       - name: Multiplayer smoke test (server + 2 clients)
         run: ./tools/net_smoke_test.sh
+      - name: Password authentication test
+        run: ./tools/net_auth_test.sh
 
   licences:
     name: Asset licence check

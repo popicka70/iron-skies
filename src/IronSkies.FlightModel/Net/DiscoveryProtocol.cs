@@ -14,9 +14,10 @@ public static class DiscoveryProtocol
     public const int DefaultPort = 7778;
     public const int MaxNameLength = 64;
 
-    private static ReadOnlySpan<byte> QueryMagic => "IRONSKIES?1"u8;
-    private static ReadOnlySpan<byte> ResponseMagic => "IRONSKIES!1"u8;
-    private const int ResponseHeader = 11 + 2 + 1 + 1 + 1;
+    private static ReadOnlySpan<byte> QueryMagic => "IRONSKIES?2"u8;
+    private static ReadOnlySpan<byte> ResponseMagic => "IRONSKIES!2"u8;
+    private const int ResponseHeader = 11 + 2 + 1 + 1 + 1 + 1;
+    private const byte HasPasswordFlag = 1;
 
     public static byte[] EncodeQuery() => QueryMagic.ToArray();
 
@@ -24,7 +25,7 @@ public static class DiscoveryProtocol
         data.Length == QueryMagic.Length && data.AsSpan().SequenceEqual(QueryMagic);
 
     public static byte[] EncodeResponse(
-        string name, int port, int players, int maxPlayers)
+        string name, int port, int players, int maxPlayers, bool hasPassword = false)
     {
         byte[] nameBytes = Encoding.UTF8.GetBytes(name ?? string.Empty);
         int nameLength = System.Math.Min(nameBytes.Length, MaxNameLength);
@@ -35,25 +36,28 @@ public static class DiscoveryProtocol
         BinaryPrimitives.WriteUInt16LittleEndian(span.Slice(11), (ushort)port);
         span[13] = (byte)System.Math.Clamp(players, 0, 255);
         span[14] = (byte)System.Math.Clamp(maxPlayers, 0, 255);
-        span[15] = (byte)nameLength;
-        nameBytes.AsSpan(0, nameLength).CopyTo(span.Slice(16));
+        span[15] = hasPassword ? HasPasswordFlag : (byte)0;
+        span[16] = (byte)nameLength;
+        nameBytes.AsSpan(0, nameLength).CopyTo(span.Slice(17));
         return data;
     }
 
     public static bool TryDecodeResponse(
-        byte[] data, out string name, out int port, out int players, out int maxPlayers)
+        byte[] data, out string name, out int port, out int players, out int maxPlayers,
+        out bool hasPassword)
     {
         name = string.Empty;
         port = 0;
         players = 0;
         maxPlayers = 0;
+        hasPassword = false;
 
         if (data.Length < ResponseHeader || !data.AsSpan(0, 11).SequenceEqual(ResponseMagic))
         {
             return false;
         }
 
-        int nameLength = data[15];
+        int nameLength = data[16];
         if (data.Length < ResponseHeader + nameLength)
         {
             return false;
@@ -62,7 +66,8 @@ public static class DiscoveryProtocol
         port = BinaryPrimitives.ReadUInt16LittleEndian(data.AsSpan(11));
         players = data[13];
         maxPlayers = data[14];
-        name = Encoding.UTF8.GetString(data.AsSpan(16, nameLength));
+        hasPassword = (data[15] & HasPasswordFlag) != 0;
+        name = Encoding.UTF8.GetString(data.AsSpan(17, nameLength));
         return port > 0;
     }
 }

@@ -41,6 +41,7 @@ Options:
 | `--connect <ip>` | Connect to a server |
 | `--port <n>` | UDP port (default 7777) |
 | `--name <text>` | Server name shown in the LAN browser |
+| `--password <text>` | Require a password (server) / send it when joining (client) |
 | `--discovery-port <n>` | LAN discovery port (default 7778, `0` disables) |
 | `--scan-servers` | Print LAN servers and exit |
 | `--net-test <seconds>` | Headless client exits after N seconds and prints a summary |
@@ -51,6 +52,7 @@ Smoke tests:
 
 ```bash
 ./tools/net_smoke_test.sh        # 2 clients, runs in CI
+./tools/net_auth_test.sh         # correct + wrong password, runs in CI
 ./tools/net_load_test.sh 16      # 16 lightweight clients, manual
 ```
 
@@ -87,12 +89,25 @@ LAN-only by design; there is no global registry yet.
 In Docker, the container's discovery port is not published. Use `--network host` to make
 a container discoverable, or connect by IP and port.
 
+## Password protection
+
+A server started with `--password <text>` challenges each new peer with a fresh 16-byte
+salt (reliable `AuthRequest`). The client replies with
+`SHA-256(salt || SHA-256(password))`; the server stores only the inner hash and disconnects
+on a mismatch after sending an `AuthFailed` reason. The password never crosses the wire in
+clear text and a captured response cannot be replayed against another connection.
+
+The LAN browser marks protected servers with `[PW]`. Host & Play starts an open server; use
+a dedicated server with `--password` when protection is needed. ENet traffic itself is not
+encrypted, so use a VPN if the content of the session is sensitive.
+
 ## Protocol
 
 Little-endian, float32 payloads, type-tagged:
 
 - `Input` (client → server, unreliable): sequence, acked snapshot tick + 11 control
   floats.
+- `AuthRequest` / `AuthResponse` / `AuthFailed` (reliable): password challenge and result.
 - `Welcome` (server → client, reliable): player id + spawn state.
 - `Snapshot` (server → client, unreliable): tick + up to 255 player states
   (id, health, pose, velocity, rates, RPM, flap, gear). Full keyframe.
@@ -150,8 +165,8 @@ hitboxes occupy.
 - Both players fly Spitfires; the Bf 109 AI exists only in single-player.
 - No server browser, accounts, matchmaking or anti-cheat.
 - Interest management is distance-based only; no relevance tiers yet.
-- Server discovery is LAN broadcast only; there is no internet server list, password or
-  whitelist yet.
+- Server discovery is LAN broadcast only; there is no internet server list or whitelist
+  yet.
 - Lag compensation is validated by the load test (clients run ≈1.2-1.4 ticks behind);
   hit-registration quality against a manoeuvring target is not covered by an automated
   test yet.

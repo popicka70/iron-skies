@@ -20,6 +20,12 @@ public sealed partial class NetworkServer : Node
     public const int MaxPlayers = 64;
     private const double RelevanceMeters = 15_000.0;
 
+    private sealed class PendingPeer
+    {
+        public required byte[] Salt { get; init; }
+        public double Seconds;
+    }
+
     private sealed class ServerPlayer
     {
         public required byte Id { get; init; }
@@ -38,6 +44,9 @@ public sealed partial class NetworkServer : Node
 
     private readonly Dictionary<long, ServerPlayer> _players = new();
     private readonly Dictionary<byte, ServerPlayer> _playersById = new();
+    private readonly Dictionary<long, PendingPeer> _pending = new();
+    private readonly Dictionary<long, double> _disconnectAt = new();
+    private byte[]? _passwordHash;
     private Heightmap _map = null!;
     private AircraftDefinition _definition = null!;
     private SceneMultiplayer _multiplayer = null!;
@@ -56,11 +65,13 @@ public sealed partial class NetworkServer : Node
 
     public void Start(
         int port, Heightmap map, AircraftDefinition definition, bool hosted = false,
-        string name = "Iron Skies Server", int discoveryPort = DiscoveryProtocol.DefaultPort)
+        string name = "Iron Skies Server", int discoveryPort = DiscoveryProtocol.DefaultPort,
+        string? password = null)
     {
         _map = map;
         _definition = definition;
         _hosted = hosted;
+        _passwordHash = string.IsNullOrEmpty(password) ? null : NetAuth.HashPassword(password);
 
         var peer = new ENetMultiplayerPeer();
         Error error = peer.CreateServer(port, MaxPlayers);
@@ -76,9 +87,11 @@ public sealed partial class NetworkServer : Node
         _multiplayer.PeerDisconnected += OnPeerDisconnected;
         _multiplayer.PeerPacket += OnPeerPacket;
 
-        GD.Print($"Iron Skies server listening on UDP {port} (max {MaxPlayers} players)");
+        GD.Print($"Iron Skies server listening on UDP {port} (max {MaxPlayers} players, " +
+                 $"{(_passwordHash is null ? "open" : "password-protected")})");
 
-        var beacon = new ServerBeacon(name, port, () => _players.Count, discoveryPort);
+        var beacon = new ServerBeacon(
+            name, port, () => _players.Count, discoveryPort, _passwordHash is not null);
         AddChild(beacon);
         beacon.Start();
     }
@@ -95,9 +108,41 @@ public sealed partial class NetworkServer : Node
             return;
         }
 
+        double now = Time.GetTicksMsec() / 1000.0;
+        var rejected = new List<long>();
+        foreach ((long peerId, double at) in _disconnectAt)
+        {
+            if (now >= at)
+            {
+                rejected.Add(peerId);
+            }
+        }
+
+        foreach (long peerId in rejected)
+        {
+            _disconnectAt.Remove(peerId);
+            _multiplayer.DisconnectPeer((int)peerId);
+        }
+
+        var expired = new List<long>();
+        foreach ((long peerId, PendingPeer pending) in _pending)
+        {
+            pending.Seconds += delta;
+            if (pending.Seconds > 10.0)
+            {
+                expired.Add(peerId);
+            }
+        }
+
+        foreach (long peerId in expired)
+        {
+            _pending.Remove(peerId);
+            _multiplayer.DisconnectPeer((int)peerId);
+        }
+
         if (_players.Count == 0)
         {
-            if (_hosted)
+            if (_hosted && _pending.Count == 0 && _disconnectAt.Count == 0)
             {
                 _emptySeconds += delta;
                 if (_emptySeconds > 8.0)
@@ -144,13 +189,29 @@ public sealed partial class NetworkServer : Node
 
     private void OnPeerConnected(long peerId)
     {
-        if (_players.Count >= MaxPlayers)
+        if (_players.Count + _pending.Count >= MaxPlayers)
         {
             GD.Print($"Rejecting peer {peerId}: server full");
             _multiplayer.DisconnectPeer((int)peerId);
             return;
         }
 
+        if (_passwordHash is not null)
+        {
+            byte[] salt = NetAuth.CreateSalt();
+            _pending[peerId] = new PendingPeer { Salt = salt };
+            _multiplayer.SendBytes(
+                NetProtocol.EncodeAuthRequest(salt), (int)peerId,
+                MultiplayerPeer.TransferModeEnum.Reliable, 0);
+            GD.Print($"Peer {peerId} challenged for password");
+            return;
+        }
+
+        AddPlayer(peerId);
+    }
+
+    private void AddPlayer(long peerId)
+    {
         byte playerId = 0;
         for (byte candidate = 1; candidate <= MaxPlayers; candidate++)
         {
@@ -203,6 +264,9 @@ public sealed partial class NetworkServer : Node
 
     private void OnPeerDisconnected(long peerId)
     {
+        _pending.Remove(peerId);
+        _disconnectAt.Remove(peerId);
+
         if (!_players.Remove(peerId, out ServerPlayer? player))
         {
             return;
@@ -224,6 +288,31 @@ public sealed partial class NetworkServer : Node
 
     private void OnPeerPacket(long peerId, byte[] packet)
     {
+        if (_pending.TryGetValue(peerId, out PendingPeer? pending))
+        {
+            if (packet.Length > 0
+                && packet[0] == NetProtocol.TypeAuthResponse
+                && NetProtocol.TryDecodeAuthResponse(packet, out byte[] hash))
+            {
+                byte[] expected = NetAuth.ComputeResponse(pending.Salt, _passwordHash!);
+                if (NetAuth.Verify(expected, hash))
+                {
+                    _pending.Remove(peerId);
+                    AddPlayer(peerId);
+                    return;
+                }
+            }
+
+            _pending.Remove(peerId);
+            GD.Print($"Peer {peerId} failed authentication");
+            _multiplayer.SendBytes(
+                NetProtocol.EncodeAuthFailed(1), (int)peerId,
+                MultiplayerPeer.TransferModeEnum.Reliable, 0);
+            // Give ENet a moment to flush the reason before dropping the peer.
+            _disconnectAt[peerId] = Time.GetTicksMsec() / 1000.0 + 0.3;
+            return;
+        }
+
         if (!_players.TryGetValue(peerId, out ServerPlayer? player))
         {
             return;

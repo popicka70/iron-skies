@@ -15,14 +15,17 @@ public sealed partial class ServerBeacon : Node
     private readonly Func<int> _players;
     private readonly int _gamePort;
     private readonly int _discoveryPort;
+    private readonly bool _hasPassword;
     private bool _enabled;
 
-    public ServerBeacon(string name, int gamePort, Func<int> players, int discoveryPort)
+    public ServerBeacon(
+        string name, int gamePort, Func<int> players, int discoveryPort, bool hasPassword)
     {
         _name = name;
         _gamePort = gamePort;
         _players = players;
         _discoveryPort = discoveryPort;
+        _hasPassword = hasPassword;
     }
 
     public bool Start()
@@ -70,7 +73,7 @@ public sealed partial class ServerBeacon : Node
 
             _socket.SetDestAddress(address, port);
             _socket.PutPacket(DiscoveryProtocol.EncodeResponse(
-                _name, _gamePort, _players(), NetworkServer.MaxPlayers));
+                _name, _gamePort, _players(), NetworkServer.MaxPlayers, _hasPassword));
         }
     }
 

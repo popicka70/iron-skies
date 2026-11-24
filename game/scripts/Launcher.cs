@@ -12,6 +12,7 @@ public sealed partial class Launcher : Control
 {
     private LineEdit _address = null!;
     private LineEdit _port = null!;
+    private LineEdit _password = null!;
     private Label _status = null!;
     private ItemList _servers = null!;
     private Label _scanStatus = null!;
@@ -21,7 +22,8 @@ public sealed partial class Launcher : Control
     private double _scanRemaining;
     private bool _silentScan;
     private sealed record FoundServer(
-        string Name, string Address, int Port, int Players, int MaxPlayers);
+        string Name, string Address, int Port, int Players, int MaxPlayers,
+        bool HasPassword);
 
     private readonly Dictionary<string, FoundServer> _found = new();
 
@@ -182,6 +184,14 @@ public sealed partial class Launcher : Control
         };
         row.AddChild(_port);
 
+        _password = new LineEdit
+        {
+            Secret = true,
+            PlaceholderText = "password (only for protected servers)",
+            CustomMinimumSize = new Vector2(440.0f, 36.0f),
+        };
+        box.AddChild(_password);
+
         MakeButton("Join Server").Pressed += OnJoinPressed;
 
         _status = new Label
@@ -259,9 +269,10 @@ public sealed partial class Launcher : Control
             byte[] packet = _browserSocket.GetPacket();
             string ip = _browserSocket.GetPacketIP();
             if (DiscoveryProtocol.TryDecodeResponse(
-                packet, out string name, out int port, out int players, out int maxPlayers))
+                packet, out string name, out int port, out int players, out int maxPlayers,
+                out bool hasPassword))
             {
-                AddServer(ip, name, port, players, maxPlayers);
+                AddServer(ip, name, port, players, maxPlayers, hasPassword);
             }
         }
 
@@ -273,7 +284,7 @@ public sealed partial class Launcher : Control
     }
 
     private void AddServer(
-        string ip, string name, int port, int players, int maxPlayers)
+        string ip, string name, int port, int players, int maxPlayers, bool hasPassword)
     {
         // The same local server can answer both the broadcast and the loopback probe.
         // Prefer the non-loopback address when both arrive.
@@ -289,7 +300,7 @@ public sealed partial class Launcher : Control
             }
         }
 
-        _found[key] = new FoundServer(name, ip, port, players, maxPlayers);
+        _found[key] = new FoundServer(name, ip, port, players, maxPlayers, hasPassword);
         if (_silentScan)
         {
             return;
@@ -305,7 +316,8 @@ public sealed partial class Launcher : Control
         {
             int index = _servers.ItemCount;
             _servers.AddItem(
-                $"{server.Name}   {server.Players}/{server.MaxPlayers}   " +
+                $"{(server.HasPassword ? "[PW] " : "")}{server.Name}   " +
+                $"{server.Players}/{server.MaxPlayers}   " +
                 $"{server.Address}:{server.Port}");
             _servers.SetItemMetadata(index, $"{server.Address}\n{server.Port}");
         }
@@ -355,7 +367,8 @@ public sealed partial class Launcher : Control
         {
             foreach (FoundServer server in _found.Values)
             {
-                GD.Print($"[scan] {server.Name} | {server.Address}:{server.Port} | " +
+                GD.Print($"[scan] {(server.HasPassword ? "[PW] " : "")}{server.Name} | " +
+                         $"{server.Address}:{server.Port} | " +
                          $"{server.Players}/{server.MaxPlayers}");
             }
 
@@ -417,6 +430,7 @@ public sealed partial class Launcher : Control
             ? "127.0.0.1"
             : _address.Text.Trim();
         LaunchConfig.Port = ParsePort();
+        LaunchConfig.Password = _password?.Text ?? "";
         GetTree().ChangeSceneToFile("res://scenes/Multiplayer.tscn");
     }
 

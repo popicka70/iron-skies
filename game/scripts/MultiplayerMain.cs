@@ -101,6 +101,7 @@ public sealed partial class MultiplayerMain : Node3D
         int discoveryPort = int.TryParse(ReadOption("--discovery-port"), out int dp)
             ? dp
             : DiscoveryProtocol.DefaultPort;
+        string? password = ReadOption("--password") ?? LaunchConfig.Password;
         bool hosted = HasFlag("--hosted");
         if (double.TryParse(ReadOption("--net-test"), out double seconds))
         {
@@ -120,7 +121,8 @@ public sealed partial class MultiplayerMain : Node3D
         {
             _server = new NetworkServer();
             AddChild(_server);
-            _server.Start(_port, _map, _definition, hosted, serverName, discoveryPort);
+            _server.Start(
+                _port, _map, _definition, hosted, serverName, discoveryPort, password);
             return;
         }
 
@@ -133,7 +135,8 @@ public sealed partial class MultiplayerMain : Node3D
         AddChild(_client);
         _client.WelcomeReceived += OnWelcome;
         _client.SnapshotPacketReceived += OnSnapshotPacket;
-        _client.Start(_serverAddress, _port);
+        _client.AuthenticationFailed += OnAuthenticationFailed;
+        _client.Start(_serverAddress, _port, password);
     }
 
     public override void _PhysicsProcess(double delta)
@@ -229,6 +232,24 @@ public sealed partial class MultiplayerMain : Node3D
             _screenshotStarted = true;
             CaptureScreenshot(_screenshotPath);
         }
+    }
+
+    private async void OnAuthenticationFailed(string message)
+    {
+        GD.Print($"[mp] {message}");
+        if (_headlessClient)
+        {
+            return;
+        }
+
+        if (_message is not null)
+        {
+            _message.Visible = true;
+            _message.Text = message;
+        }
+
+        await ToSignal(GetTree().CreateTimer(2.5), SceneTreeTimer.SignalName.Timeout);
+        GetTree().ChangeSceneToFile("res://scenes/Launcher.tscn");
     }
 
     private void OnWelcome(byte playerId, NetPlayerState state)
