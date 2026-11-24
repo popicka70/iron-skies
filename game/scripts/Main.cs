@@ -100,6 +100,9 @@ public partial class Main : Node3D
     {
         // Fewer full blocking collections while flying; the hot path allocates nothing.
         GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
+        GameSettings.Load();
+        GameSettings.ApplyAudio();
+        GameSettings.ApplyDisplay();
         _screenshotPath = ReadUserOption("--screenshot");
         _airStart = HasUserFlag("--air-start");
         _missionTest = HasUserFlag("--mission-test");

@@ -16,6 +16,9 @@ public sealed partial class Launcher : Control
     private Label _status = null!;
     private ItemList _servers = null!;
     private Label _scanStatus = null!;
+    private Control _settingsOverlay = null!;
+    private HSlider _volumeSlider = null!;
+    private CheckButton _fullscreenCheck = null!;
     private ServerProcessManager? _serverProcess;
 
     private PacketPeerUdp? _browserSocket;
@@ -30,6 +33,9 @@ public sealed partial class Launcher : Control
     public override void _Ready()
     {
         SetAnchorsPreset(LayoutPreset.FullRect);
+        GameSettings.Load();
+        GameSettings.ApplyAudio();
+        GameSettings.ApplyDisplay();
 
         // Command-line dispatch (exported builds use the same executable).
         if (HasFlag("--server") || ReadOption("--connect") is not null)
@@ -54,6 +60,11 @@ public sealed partial class Launcher : Control
 
         BuildUi();
         StartScan();
+
+        if (HasFlag("--open-settings"))
+        {
+            ShowSettings();
+        }
 
         string? launcherShot = ReadOption("--launcher-shot");
         if (launcherShot is not null)
@@ -219,6 +230,8 @@ public sealed partial class Launcher : Control
 
         box.AddChild(new Control { CustomMinimumSize = new Vector2(0.0f, 6.0f) });
 
+        MakeButton("Settings").Pressed += ShowSettings;
+
         MakeButton("Quit").Pressed += () => GetTree().Quit();
 
         var hint = new Label
@@ -229,6 +242,106 @@ public sealed partial class Launcher : Control
         hint.AddThemeFontSizeOverride("font_size", 12);
         hint.AddThemeColorOverride("font_color", new Color(0.45f, 0.52f, 0.48f));
         box.AddChild(hint);
+
+        BuildSettingsOverlay();
+    }
+
+    private void BuildSettingsOverlay()
+    {
+        _settingsOverlay = new Control { Visible = false };
+        _settingsOverlay.SetAnchorsPreset(LayoutPreset.FullRect);
+        AddChild(_settingsOverlay);
+
+        var dim = new ColorRect { Color = new Color(0.0f, 0.0f, 0.0f, 0.68f) };
+        dim.SetAnchorsPreset(LayoutPreset.FullRect);
+        _settingsOverlay.AddChild(dim);
+
+        var panel = new PanelContainer
+        {
+            AnchorLeft = 0.5f,
+            AnchorTop = 0.5f,
+            AnchorRight = 0.5f,
+            AnchorBottom = 0.5f,
+            OffsetLeft = -240.0f,
+            OffsetTop = -150.0f,
+            OffsetRight = 240.0f,
+            OffsetBottom = 150.0f,
+        };
+        var style = new StyleBoxFlat
+        {
+            BgColor = new Color(0.075f, 0.095f, 0.11f),
+            BorderColor = new Color(0.22f, 0.27f, 0.25f),
+            BorderWidthLeft = 1,
+            BorderWidthTop = 1,
+            BorderWidthRight = 1,
+            BorderWidthBottom = 1,
+            ContentMarginLeft = 24.0f,
+            ContentMarginRight = 24.0f,
+            ContentMarginTop = 18.0f,
+            ContentMarginBottom = 18.0f,
+        };
+        panel.AddThemeStyleboxOverride("panel", style);
+        _settingsOverlay.AddChild(panel);
+
+        var content = new VBoxContainer();
+        content.AddThemeConstantOverride("separation", 14);
+        panel.AddChild(content);
+
+        var title = new Label
+        {
+            Text = "SETTINGS",
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        title.AddThemeFontSizeOverride("font_size", 24);
+        content.AddChild(title);
+
+        content.AddChild(new Label { Text = "Master volume" });
+        _volumeSlider = new HSlider
+        {
+            MinValue = 0.0,
+            MaxValue = 1.0,
+            Step = 0.01,
+            Value = GameSettings.MasterVolume,
+            CustomMinimumSize = new Vector2(0.0f, 24.0f),
+        };
+        _volumeSlider.ValueChanged += value =>
+        {
+            GameSettings.MasterVolume = (float)value;
+            GameSettings.ApplyAudio();
+            GameSettings.Save();
+        };
+        content.AddChild(_volumeSlider);
+
+        _fullscreenCheck = new CheckButton
+        {
+            Text = "Fullscreen",
+            ButtonPressed = GameSettings.Fullscreen,
+        };
+        _fullscreenCheck.Toggled += pressed =>
+        {
+            GameSettings.Fullscreen = pressed;
+            GameSettings.ApplyDisplay();
+            GameSettings.Save();
+        };
+        content.AddChild(_fullscreenCheck);
+
+        content.AddChild(new Control { CustomMinimumSize = new Vector2(0.0f, 6.0f) });
+
+        var close = new Button { Text = "Close", CustomMinimumSize = new Vector2(0.0f, 38.0f) };
+        close.Pressed += HideSettings;
+        content.AddChild(close);
+    }
+
+    private void ShowSettings()
+    {
+        _settingsOverlay.Visible = true;
+        _volumeSlider.Value = GameSettings.MasterVolume;
+        _fullscreenCheck.ButtonPressed = GameSettings.Fullscreen;
+    }
+
+    private void HideSettings()
+    {
+        _settingsOverlay.Visible = false;
     }
 
     private void OnServerSelected(long index)

@@ -124,7 +124,8 @@ continuous streaming.
 - [x] Multiple AI bandits (0-6) with per-aircraft damage and smoke
 - [x] Objective/mission framework and the Supply Dump Strike sortie
 - [ ] Mission editor + 10 scripted missions; lightweight campaign
-- UI/UX pass, settings, rebinding, accessibility
+- [x] Settings: master volume, fullscreen and persistence
+- [ ] UI/UX pass, key rebinding, accessibility
 - Localisation framework (English first)
 - Installer/archives, auto-update check (optional), crash reporting (opt-in)
 - Store pages (itch.io; Steam only if the project chooses to pay the fee)

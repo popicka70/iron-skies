@@ -95,6 +95,13 @@ public sealed partial class MultiplayerMain : Node3D
 
     public override void _Ready()
     {
+        GameSettings.Load();
+        GameSettings.ApplyAudio();
+        if (!HasFlag("--server") && !HasFlag("--headless-client"))
+        {
+            GameSettings.ApplyDisplay();
+        }
+
         _port = int.TryParse(ReadOption("--port"), out int port) ? port : LaunchConfig.Port;
         _serverAddress = ReadOption("--connect") ?? LaunchConfig.Address;
         _serverMode = HasFlag("--server");
