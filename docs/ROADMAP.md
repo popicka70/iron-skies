@@ -122,7 +122,7 @@ continuous streaming.
 
 - Third flyable aircraft, bomber formations and AI wingmen
 - [x] Multiple AI bandits (0-6) with per-aircraft damage and smoke
-- [x] Objective/mission framework and the Supply Dump Strike sortie
+- [x] Objective/mission framework with Supply Dump Strike and Free Hunt
 - [ ] Mission editor + 10 scripted missions; lightweight campaign
 - [x] Settings: master volume, fullscreen and persistence
 - [ ] UI/UX pass, key rebinding, accessibility

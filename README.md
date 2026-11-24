@@ -17,7 +17,7 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 
 ![Iron Skies launcher](docs/media/m0-launcher.png)
 
-*Launcher: single-player, strike mission, duel, host-and-play, LAN server browser, settings, or direct connect.*
+*Launcher: single-player, missions, duel, host-and-play, LAN server browser, settings, or direct connect.*
 
 ![Iron Skies M0: 40 × 40 km Normandy terrain](docs/media/m0-normandy-40km.png)
 
@@ -31,9 +31,13 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 
 *A Bf 109 bandit (placeholder airframe) in a head-on pass. Hits degrade the engine, controls and fuel tanks.*
 
+![Iron Skies missions](docs/media/m0-missions.png)
+
+*Two scripted sorties: Supply Dump Strike and Free Hunt. See [docs/missions.md](docs/missions.md).*
+
 ![Iron Skies strike mission](docs/media/m0-mission.png)
 
-*Supply Dump Strike: destroy the trucks, then land. See [docs/missions.md](docs/missions.md).*
+*Supply Dump Strike: destroy the trucks, then land.*
 
 ![Damaged Spitfire trailing smoke](docs/media/m0-damage.png)
 
