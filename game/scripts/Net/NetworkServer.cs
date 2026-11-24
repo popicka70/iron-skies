@@ -27,6 +27,8 @@ public sealed partial class NetworkServer : Node
         public readonly Dictionary<byte, DamageTarget> Targets = new();
         public Controls Controls = new(GearDown: 0.0, Throttle: 0.6, Mixture: 0.9);
         public uint LastSequence;
+        public uint LastAckTick;
+        public readonly Dictionary<uint, NetSnapshot> History = new();
         public double DeadSeconds;
     }
 
@@ -38,6 +40,8 @@ public sealed partial class NetworkServer : Node
     private uint _tick;
     private double _statsTimer;
     private double _bytesThisSecond;
+    private long _fullSent;
+    private long _deltaSent;
     private bool _hosted;
     private double _emptySeconds;
     private double _tickMsAccum;
@@ -110,8 +114,11 @@ public sealed partial class NetworkServer : Node
             _statsTimer = 0.0;
             double averageTick = _tickSamples > 0 ? _tickMsAccum / _tickSamples : 0.0;
             GD.Print($"[server] players={_players.Count} tick={_tick} " +
-                     $"outKBps={_bytesThisSecond / 1024.0:F1} avgTick={averageTick:F2}ms");
+                     $"outKBps={_bytesThisSecond / 1024.0:F1} avgTick={averageTick:F2}ms " +
+                     $"full={_fullSent} delta={_deltaSent}");
             _bytesThisSecond = 0.0;
+            _fullSent = 0;
+            _deltaSent = 0;
             _tickMsAccum = 0.0;
             _tickSamples = 0;
         }
@@ -213,6 +220,10 @@ public sealed partial class NetworkServer : Node
 
         player.LastSequence = frame.Sequence;
         player.Controls = frame.Controls;
+        if (frame.AckTick != 0)
+        {
+            player.LastAckTick = frame.AckTick;
+        }
     }
 
     private void ServerTick(float dt)
@@ -384,10 +395,48 @@ public sealed partial class NetworkServer : Node
                 Anchor = recipient.Sim.State.Position,
                 Players = states.ToArray(),
             };
-            byte[] data = NetProtocol.EncodeSnapshot(snapshot);
+
+            // Acknowledge-based delta: the client tells us the newest snapshot it has.
+            // Send a full keyframe when it has none, every second, or when the acked
+            // snapshot is no longer in our history.
+            NetSnapshot? baseline = null;
+            bool hasBaseline = recipient.LastAckTick != 0
+                && _tick % 30 != 0
+                && recipient.History.TryGetValue(recipient.LastAckTick, out baseline);
+            byte[] data = hasBaseline
+                ? NetProtocol.EncodeSnapshotDelta(snapshot, baseline!)
+                : NetProtocol.EncodeSnapshot(snapshot);
+
             _multiplayer.SendBytes(
                 data, (int)peerId, MultiplayerPeer.TransferModeEnum.Unreliable, 1);
             _bytesThisSecond += data.Length;
+            if (hasBaseline)
+            {
+                _deltaSent++;
+            }
+            else
+            {
+                _fullSent++;
+            }
+
+            recipient.History[_tick] = snapshot;
+            if (recipient.History.Count > 90)
+            {
+                uint oldest = _tick > 90 ? _tick - 90 : 0;
+                var stale = new List<uint>();
+                foreach (uint tick in recipient.History.Keys)
+                {
+                    if (tick < oldest)
+                    {
+                        stale.Add(tick);
+                    }
+                }
+
+                foreach (uint tick in stale)
+                {
+                    recipient.History.Remove(tick);
+                }
+            }
         }
     }
 }

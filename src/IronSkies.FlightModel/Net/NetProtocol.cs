@@ -5,7 +5,7 @@ using IronSkies.FlightModel.Math;
 namespace IronSkies.FlightModel.Net;
 
 /// <summary>One client input frame. Sequence numbers let the server drop stale packets.</summary>
-public readonly record struct NetControlFrame(uint Sequence, Controls Controls);
+public readonly record struct NetControlFrame(uint Sequence, uint AckTick, Controls Controls);
 
 /// <summary>Wire state for one aircraft.</summary>
 public sealed class NetPlayerState
@@ -53,8 +53,9 @@ public static class NetProtocol
     public const byte TypeInput = 1;
     public const byte TypeWelcome = 2;
     public const byte TypeSnapshot = 3;
+    public const byte TypeSnapshotDelta = 4;
 
-    private const int InputSize = 1 + 4 + 11 * 4;
+    private const int InputSize = 1 + 4 + 4 + 11 * 4;
     private const int PlayerStateSize = 1 + 4 + 3 * 4 + 4 * 4 + 3 * 4 + 3 * 4 + 3 * 4;
     private const int WelcomeHeader = 1 + 1;
 
@@ -72,8 +73,9 @@ public static class NetProtocol
         Span<byte> span = data;
         span[0] = TypeInput;
         BinaryPrimitives.WriteUInt32LittleEndian(span.Slice(1), frame.Sequence);
+        BinaryPrimitives.WriteUInt32LittleEndian(span.Slice(5), frame.AckTick);
 
-        int offset = 5;
+        int offset = 9;
         Controls c = frame.Controls;
         Write(span, ref offset, c.Elevator);
         Write(span, ref offset, c.Aileron);
@@ -99,7 +101,8 @@ public static class NetProtocol
 
         Span<byte> span = data;
         uint sequence = BinaryPrimitives.ReadUInt32LittleEndian(span.Slice(1));
-        int offset = 5;
+        uint ackTick = BinaryPrimitives.ReadUInt32LittleEndian(span.Slice(5));
+        int offset = 9;
         var c = new Controls(
             Elevator: Read(span, ref offset),
             Aileron: Read(span, ref offset),
@@ -113,9 +116,248 @@ public static class NetProtocol
             Mixture: Read(span, ref offset),
             Fire: Read(span, ref offset) > 0.5);
 
-        frame = new NetControlFrame(sequence, c.Clamped());
+        frame = new NetControlFrame(sequence, ackTick, c.Clamped());
         return true;
     }
+
+    // Delta snapshots: fields are omitted when unchanged relative to the acked snapshot.
+    private const byte MaskHealth = 1;
+    private const byte MaskPosition = 2;
+    private const byte MaskOrientation = 4;
+    private const byte MaskRpm = 8;
+    private const byte MaskFlap = 16;
+    private const byte MaskGear = 32;
+    private const byte MaskSelfVelocity = 64;
+    private const byte MaskSelfAngular = 128;
+    private const int DeltaHeader = 1 + 4 + 1 + 4 + 1 + 12;
+    private const int DeltaPlayerMaxSize = 2 + 2 + 6 + 7 + 2 + 1 + 1 + 6 + 3;
+
+    public static byte[] EncodeSnapshotDelta(NetSnapshot current, NetSnapshot baseline)
+    {
+        if (current.Players.Length > 255)
+        {
+            throw new ArgumentException("At most 255 players per snapshot.");
+        }
+
+        var previous = new Dictionary<byte, NetPlayerState>(baseline.Players.Length);
+        foreach (NetPlayerState player in baseline.Players)
+        {
+            previous[player.PlayerId] = player;
+        }
+
+        byte[] data = new byte[
+            DeltaHeader + current.Players.Length * DeltaPlayerMaxSize];
+        Span<byte> span = data;
+        span[0] = TypeSnapshotDelta;
+        BinaryPrimitives.WriteUInt32LittleEndian(span.Slice(1), current.Tick);
+        span[5] = current.SelfId;
+        BinaryPrimitives.WriteUInt32LittleEndian(span.Slice(6), baseline.Tick);
+        span[10] = (byte)current.Players.Length;
+        WriteFloat(span, 11, (float)current.Anchor.X);
+        WriteFloat(span, 15, (float)current.Anchor.Y);
+        WriteFloat(span, 19, (float)current.Anchor.Z);
+
+        int offset = DeltaHeader;
+        foreach (NetPlayerState player in current.Players)
+        {
+            byte mask = 0;
+            if (previous.TryGetValue(player.PlayerId, out NetPlayerState? old))
+            {
+                if (System.Math.Abs(old.Health - player.Health) > 0.5) mask |= MaskHealth;
+                if (!Near(old.Position, player.Position, 0.25)) mask |= MaskPosition;
+                if (!Near(old.Orientation, player.Orientation, 1e-4)) mask |= MaskOrientation;
+                if (System.Math.Abs(old.Rpm - player.Rpm) > 0.5) mask |= MaskRpm;
+                if (System.Math.Abs(old.Flap - player.Flap) > 1.0 / 512.0) mask |= MaskFlap;
+                if (System.Math.Abs(old.Gear - player.Gear) > 1.0 / 512.0) mask |= MaskGear;
+                if (player.PlayerId == current.SelfId)
+                {
+                    if (!Near(old.Velocity, player.Velocity, 0.03)) mask |= MaskSelfVelocity;
+                    if (!Near(old.AngularVelocity, player.AngularVelocity, 0.03)) mask |= MaskSelfAngular;
+                }
+            }
+            else
+            {
+                mask = MaskHealth | MaskPosition | MaskOrientation | MaskRpm
+                    | MaskFlap | MaskGear;
+                if (player.PlayerId == current.SelfId)
+                {
+                    mask |= MaskSelfVelocity | MaskSelfAngular;
+                }
+            }
+
+            span[offset++] = player.PlayerId;
+            span[offset++] = mask;
+            if ((mask & MaskHealth) != 0) WriteUShort(span, ref offset, player.Health);
+            if ((mask & MaskPosition) != 0)
+            {
+                WriteShort(span, ref offset, player.Position.X - current.Anchor.X, PositionScale);
+                WriteShort(span, ref offset, player.Position.Y - current.Anchor.Y, PositionScale);
+                WriteShort(span, ref offset, player.Position.Z - current.Anchor.Z, PositionScale);
+            }
+
+            if ((mask & MaskOrientation) != 0) WriteQuat(span, ref offset, player.Orientation);
+            if ((mask & MaskRpm) != 0) WriteUShort(span, ref offset, player.Rpm);
+            if ((mask & MaskFlap) != 0) span[offset++] = ToByte(player.Flap);
+            if ((mask & MaskGear) != 0) span[offset++] = ToByte(player.Gear);
+            if ((mask & MaskSelfVelocity) != 0)
+            {
+                WriteShort(span, ref offset, player.Velocity.X, VelocityScale);
+                WriteShort(span, ref offset, player.Velocity.Y, VelocityScale);
+                WriteShort(span, ref offset, player.Velocity.Z, VelocityScale);
+            }
+
+            if ((mask & MaskSelfAngular) != 0)
+            {
+                WriteSByte(span, ref offset, player.AngularVelocity.X, RateScale);
+                WriteSByte(span, ref offset, player.AngularVelocity.Y, RateScale);
+                WriteSByte(span, ref offset, player.AngularVelocity.Z, RateScale);
+            }
+        }
+
+        if (offset != data.Length)
+        {
+            Array.Resize(ref data, offset);
+        }
+
+        return data;
+    }
+
+    public static bool TryReadDeltaBaseline(byte[] data, out uint baselineTick)
+    {
+        baselineTick = 0;
+        if (data.Length < DeltaHeader || data[0] != TypeSnapshotDelta)
+        {
+            return false;
+        }
+
+        baselineTick = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(6));
+        return true;
+    }
+
+    public static bool TryDecodeSnapshotDelta(
+        byte[] data, NetSnapshot baseline, out NetSnapshot current)
+    {
+        current = new NetSnapshot();
+        if (data.Length < DeltaHeader || data[0] != TypeSnapshotDelta)
+        {
+            return false;
+        }
+
+        Span<byte> span = data;
+        uint tick = BinaryPrimitives.ReadUInt32LittleEndian(span.Slice(1));
+        byte selfId = span[5];
+        uint baselineTick = BinaryPrimitives.ReadUInt32LittleEndian(span.Slice(6));
+        if (baseline.Tick != baselineTick)
+        {
+            return false;
+        }
+
+        int count = span[10];
+        var anchor = new Vec3(
+            BinaryPrimitives.ReadSingleLittleEndian(span.Slice(11)),
+            BinaryPrimitives.ReadSingleLittleEndian(span.Slice(15)),
+            BinaryPrimitives.ReadSingleLittleEndian(span.Slice(19)));
+
+        var previous = new Dictionary<byte, NetPlayerState>(baseline.Players.Length);
+        foreach (NetPlayerState player in baseline.Players)
+        {
+            previous[player.PlayerId] = player;
+        }
+
+        var players = new NetPlayerState[count];
+        int offset = DeltaHeader;
+        for (int i = 0; i < count; i++)
+        {
+            if (offset + 2 > span.Length)
+            {
+                return false;
+            }
+
+            byte playerId = span[offset++];
+            byte mask = span[offset++];
+            previous.TryGetValue(playerId, out NetPlayerState? old);
+            if (old is null && mask == 0)
+            {
+                return false;
+            }
+
+            var state = new NetPlayerState
+            {
+                PlayerId = playerId,
+                Health = old?.Health ?? 0.0,
+                Position = old?.Position ?? Vec3.Zero,
+                Orientation = old?.Orientation ?? Quat.Identity,
+                Velocity = old?.Velocity ?? Vec3.Zero,
+                AngularVelocity = old?.AngularVelocity ?? Vec3.Zero,
+                Rpm = old?.Rpm ?? 0.0,
+                Flap = old?.Flap ?? 0.0,
+                Gear = old?.Gear ?? 0.0,
+            };
+
+            if ((mask & MaskHealth) != 0 && offset + 2 <= span.Length)
+            {
+                state.Health = ReadUShort(span, ref offset);
+            }
+
+            if ((mask & MaskPosition) != 0 && offset + 6 <= span.Length)
+            {
+                state.Position = new Vec3(
+                    anchor.X + ReadShortRaw(span, ref offset) / PositionScale,
+                    anchor.Y + ReadShortRaw(span, ref offset) / PositionScale,
+                    anchor.Z + ReadShortRaw(span, ref offset) / PositionScale);
+            }
+
+            if ((mask & MaskOrientation) != 0 && offset + 7 <= span.Length)
+            {
+                state.Orientation = ReadQuat(span, ref offset);
+            }
+
+            if ((mask & MaskRpm) != 0 && offset + 2 <= span.Length)
+            {
+                state.Rpm = ReadUShort(span, ref offset);
+            }
+
+            if ((mask & MaskFlap) != 0 && offset < span.Length) state.Flap = span[offset++] / 255.0;
+            if ((mask & MaskGear) != 0 && offset < span.Length) state.Gear = span[offset++] / 255.0;
+            if ((mask & MaskSelfVelocity) != 0 && offset + 6 <= span.Length)
+            {
+                state.Velocity = new Vec3(
+                    ReadShort(span, ref offset, VelocityScale),
+                    ReadShort(span, ref offset, VelocityScale),
+                    ReadShort(span, ref offset, VelocityScale));
+            }
+
+            if ((mask & MaskSelfAngular) != 0 && offset + 3 <= span.Length)
+            {
+                state.AngularVelocity = new Vec3(
+                    ReadSByte(span, ref offset, RateScale),
+                    ReadSByte(span, ref offset, RateScale),
+                    ReadSByte(span, ref offset, RateScale));
+            }
+
+            players[i] = state;
+        }
+
+        current = new NetSnapshot
+        {
+            Tick = tick,
+            SelfId = selfId,
+            Anchor = anchor,
+            Players = players,
+        };
+        return true;
+    }
+
+    private static bool Near(Vec3 a, Vec3 b, double epsilon) =>
+        System.Math.Abs(a.X - b.X) <= epsilon
+        && System.Math.Abs(a.Y - b.Y) <= epsilon
+        && System.Math.Abs(a.Z - b.Z) <= epsilon;
+
+    private static bool Near(Quat a, Quat b, double epsilon) =>
+        System.Math.Abs(a.X - b.X) <= epsilon
+        && System.Math.Abs(a.Y - b.Y) <= epsilon
+        && System.Math.Abs(a.Z - b.Z) <= epsilon
+        && System.Math.Abs(a.W - b.W) <= epsilon;
 
     public static byte[] EncodeWelcome(byte playerId, NetPlayerState state)
     {

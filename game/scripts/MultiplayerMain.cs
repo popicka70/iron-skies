@@ -46,7 +46,9 @@ public sealed partial class MultiplayerMain : Node3D
     private AircraftSimulator? _localSim;
     private byte _localId;
     private bool _hasWelcome;
-    private NetSnapshot? _pendingSnapshot;
+    private byte[]? _pendingSnapshotPacket;
+    private readonly Dictionary<uint, NetSnapshot> _snapshotHistory = new();
+    private uint _lastSnapshotTick;
     private readonly Dictionary<byte, RemotePlayer> _remotes = new();
     private readonly Dictionary<byte, DamageTarget> _remoteTargets = new();
 
@@ -55,6 +57,9 @@ public sealed partial class MultiplayerMain : Node3D
     private double _snapshotTime;
     private double _snapshotInterval = 1.0 / 30.0;
     private long _snapshotCount;
+    private long _fullSnapshotCount;
+    private long _deltaSnapshotCount;
+    private long _droppedSnapshotCount;
 
     private double _throttle = 0.6;
     private double _elevator;
@@ -118,7 +123,7 @@ public sealed partial class MultiplayerMain : Node3D
         _client = new NetworkClient();
         AddChild(_client);
         _client.WelcomeReceived += OnWelcome;
-        _client.SnapshotReceived += OnSnapshot;
+        _client.SnapshotPacketReceived += OnSnapshotPacket;
         _client.Start(_serverAddress, _port);
     }
 
@@ -146,7 +151,7 @@ public sealed partial class MultiplayerMain : Node3D
                 headlessSteps++;
             }
 
-            _client?.SendControls(aiControls, delta);
+            _client?.SendControls(aiControls, delta, _lastSnapshotTick);
             return;
         }
 
@@ -169,7 +174,7 @@ public sealed partial class MultiplayerMain : Node3D
             steps++;
         }
 
-        _client?.SendControls(controls, delta);
+        _client?.SendControls(controls, delta, _lastSnapshotTick);
 
         _playerVisual.GlobalTransform = SimBridge.ToGodot(
             _localSim.State.Orientation, _localSim.State.Position);
@@ -245,22 +250,84 @@ public sealed partial class MultiplayerMain : Node3D
 
         GD.Print($"[mp] welcome: player {playerId} at {state.Position}");
 
-        if (_pendingSnapshot is not null)
+        _snapshotHistory.Clear();
+        _lastSnapshotTick = 0;
+
+        if (_pendingSnapshotPacket is not null)
         {
-            OnSnapshot(_pendingSnapshot);
-            _pendingSnapshot = null;
+            byte[] pending = _pendingSnapshotPacket;
+            _pendingSnapshotPacket = null;
+            OnSnapshotPacket(pending);
         }
     }
 
-    private void OnSnapshot(NetSnapshot snapshot)
+    private void OnSnapshotPacket(byte[] packet)
     {
         if (!_hasWelcome || _localSim is null)
         {
-            _pendingSnapshot = snapshot;
+            _pendingSnapshotPacket = packet;
             return;
         }
 
+        if (packet.Length == 0)
+        {
+            return;
+        }
+
+        if (packet[0] == NetProtocol.TypeSnapshot)
+        {
+            if (NetProtocol.TryDecodeSnapshot(packet, out NetSnapshot full))
+            {
+                _fullSnapshotCount++;
+                ApplySnapshot(full);
+            }
+
+            return;
+        }
+
+        if (packet[0] != NetProtocol.TypeSnapshotDelta
+            || !NetProtocol.TryReadDeltaBaseline(packet, out uint baselineTick)
+            || !_snapshotHistory.TryGetValue(baselineTick, out NetSnapshot? baseline))
+        {
+            // The acked baseline is gone; drop it and wait for the next keyframe.
+            _droppedSnapshotCount++;
+            return;
+        }
+
+        if (NetProtocol.TryDecodeSnapshotDelta(packet, baseline, out NetSnapshot delta))
+        {
+            _deltaSnapshotCount++;
+            ApplySnapshot(delta);
+        }
+        else
+        {
+            _droppedSnapshotCount++;
+        }
+    }
+
+    private void ApplySnapshot(NetSnapshot snapshot)
+    {
         _snapshotCount++;
+        _lastSnapshotTick = snapshot.Tick;
+        _snapshotHistory[snapshot.Tick] = snapshot;
+        if (_snapshotHistory.Count > 90)
+        {
+            var stale = new List<uint>();
+            uint oldest = snapshot.Tick > 90 ? snapshot.Tick - 90 : 0;
+            foreach (uint tick in _snapshotHistory.Keys)
+            {
+                if (tick < oldest)
+                {
+                    stale.Add(tick);
+                }
+            }
+
+            foreach (uint tick in stale)
+            {
+                _snapshotHistory.Remove(tick);
+            }
+        }
+
         double now = Time.GetTicksMsec() / 1000.0;
         if (_snapshotTime > 0.0)
         {
@@ -692,7 +759,9 @@ public sealed partial class MultiplayerMain : Node3D
     {
         bool welcome = _hasWelcome && _localSim is not null;
         GD.Print($"[net-test] connected={_client?.Connected} welcome={welcome} " +
-                 $"player={_localId} snapshots={_snapshotCount} remotes={_remotes.Count}");
+                 $"player={_localId} snapshots={_snapshotCount} remotes={_remotes.Count} " +
+                 $"full={_fullSnapshotCount} delta={_deltaSnapshotCount} " +
+                 $"dropped={_droppedSnapshotCount}");
         if (welcome)
         {
             GD.Print($"[net-test] health={_localSim!.Health:F0} pos={_localSim.State.Position}");

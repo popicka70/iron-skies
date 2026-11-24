@@ -12,7 +12,7 @@ namespace IronSkies.Game.Net;
 public sealed partial class NetworkClient : Node
 {
     public event Action<byte, NetPlayerState>? WelcomeReceived;
-    public event Action<NetSnapshot>? SnapshotReceived;
+    public event Action<byte[]>? SnapshotPacketReceived;
 
     public bool Connected { get; private set; }
     public bool Failed { get; private set; }
@@ -53,7 +53,7 @@ public sealed partial class NetworkClient : Node
         Multiplayer.MultiplayerPeer?.Close();
     }
 
-    public void SendControls(Controls controls, double delta)
+    public void SendControls(Controls controls, double delta, uint ackTick)
     {
         _sendTimer += delta;
         if (!Connected || _sendTimer < 1.0 / 30.0)
@@ -62,7 +62,7 @@ public sealed partial class NetworkClient : Node
         }
 
         _sendTimer = 0.0;
-        var frame = new NetControlFrame(++_sequence, controls);
+        var frame = new NetControlFrame(++_sequence, ackTick, controls);
         byte[] data = NetProtocol.EncodeInput(frame);
         _multiplayer.SendBytes(data, 1, MultiplayerPeer.TransferModeEnum.Unreliable, 1);
     }
@@ -99,9 +99,9 @@ public sealed partial class NetworkClient : Node
                 WelcomeReceived?.Invoke(playerId, state);
                 break;
 
-            case NetProtocol.TypeSnapshot when NetProtocol.TryDecodeSnapshot(
-                packet, out NetSnapshot snapshot):
-                SnapshotReceived?.Invoke(snapshot);
+            case NetProtocol.TypeSnapshot:
+            case NetProtocol.TypeSnapshotDelta:
+                SnapshotPacketReceived?.Invoke(packet);
                 break;
         }
     }

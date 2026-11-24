@@ -54,29 +54,33 @@ The two-client test checks spawns, mutual visibility and snapshots. The load tes
 
 Measured on the development machine:
 
-| Clients | Server outbound | Tick time |
-| --- | --- | --- |
-| 16 | 163 KB/s | 0.86 ms |
-| 64 | 2.45 MB/s | 10.9 ms |
+| Clients | Server outbound | Per client | Tick time |
+| --- | --- | --- | --- |
+| 16 | 120-139 KB/s | ~8 KB/s | 0.86 ms |
+| 64 | 1.06 MB/s | ~17 KB/s | 10.7 ms |
 
 ```
-[server] players=64 tick=722 outKBps=2452.5 avgTick=10.94ms
+[server] players=64 tick=723 outKBps=1059.1 avgTick=10.66ms full=64 delta=1856
 clients welcome=64/64 joined=64
 ```
 
-The 64-client run used a single 16-core machine for the server **and** all 64 headless
-clients, which inflates the tick time through CPU contention; a dedicated server should
-be lower. Even so it uses one third of the 33 ms tick budget. All 64 aircraft were within
-15 km, so this is the worst case for bandwidth at this player count (≈40 KB/s/client).
+Ack-based delta snapshots cut the 64-client worst case from 2.45 MB/s to 1.06 MB/s
+(2.3×); 96-97% of snapshots are deltas. The 64-client run used a single 16-core machine
+for the server **and** all 64 headless clients, which inflates the tick time through CPU
+contention; a dedicated server should be lower. All 64 aircraft were within 15 km, so
+this is the worst case at this player count.
 
 ## Protocol
 
 Little-endian, float32 payloads, type-tagged:
 
-- `Input` (client → server, unreliable): sequence + 11 control floats.
+- `Input` (client → server, unreliable): sequence, acked snapshot tick + 11 control
+  floats.
 - `Welcome` (server → client, reliable): player id + spawn state.
 - `Snapshot` (server → client, unreliable): tick + up to 255 player states
-  (id, health, pose, velocity, rates, RPM, flap, gear).
+  (id, health, pose, velocity, rates, RPM, flap, gear). Full keyframe.
+- `SnapshotDelta` (server → client, unreliable): tick, the baseline tick it applies to,
+  anchor, and per-player field masks against that baseline.
 
 Snapshots use a compact wire format:
 
@@ -87,10 +91,18 @@ Snapshots use a compact wire format:
 
 A full 64-player snapshot is ~1.3 KB; at 30 Hz that is ~40 KB/s per client.
 
+**Delta snapshots:** the client acks the newest snapshot it received in every input
+frame. The server keeps ~3 seconds (90 ticks) of per-client history and encodes the next
+snapshot against the acked one: unchanged fields (health, RPM, flap, gear, own
+velocity/rates) are omitted via an 8-bit mask, while position and orientation are resent
+only when they moved beyond the wire quantisation. The client stores the same history and
+reconstructs the full snapshot. The server sends a full keyframe at least once per second
+and whenever the acked baseline has expired, so clients always recover.
+
 **Interest management:** each client receives itself plus every aircraft within 15 km.
 Remote aircraft disappear from the client five seconds after they last appeared in a
-snapshot, which avoids flicker at the radius boundary. Snapshots are uncompressed; delta
-encoding is the next optimisation.
+snapshot, which avoids flicker at the radius boundary. Deltas are computed per client
+after distance filtering, so interest changes are handled by the field masks.
 
 ## Prediction and correction
 
@@ -109,7 +121,7 @@ snapshot interval. No rewind/replay rollback is implemented yet.
 - Up to 64 players per server, verified with the headless load test.
 - Both players fly Spitfires; the Bf 109 AI exists only in single-player.
 - No server browser, accounts, matchmaking or anti-cheat.
-- Interest management is distance-based only; no delta compression or lag-compensated
+- Interest management is distance-based only; no relevance tiers or lag-compensated
   hitboxes yet.
 - Keyboard only in the multiplayer scene (the single-player scene has joystick input).
 - The host-and-play server exits if it has no players for 8 seconds; the host's process
