@@ -123,6 +123,11 @@ public partial class Main : Node3D
     private bool _prevCameraKey;
     private float _lookYaw;
     private float _lookPitch;
+    private float _chaseYaw;
+    private float _chasePitch = 15.0f;
+    private float _chaseDistance = 26.0f;
+    private bool _prevHudKey;
+    private bool _hudVisible = true;
     private double _hudTimer;
     private int _tick;
 
@@ -262,6 +267,31 @@ public partial class Main : Node3D
         else if (cameraOption == "top")
         {
             _cameraMode = CameraMode.Top;
+        }
+
+        if (float.TryParse(ReadUserOption("--look-yaw"), out float lookYaw))
+        {
+            _lookYaw = Mathf.Clamp(lookYaw, -1.35f, 1.35f);
+        }
+
+        if (float.TryParse(ReadUserOption("--look-pitch"), out float lookPitch))
+        {
+            _lookPitch = Mathf.Clamp(lookPitch, -0.9f, 0.9f);
+        }
+
+        if (float.TryParse(ReadUserOption("--chase-yaw"), out float chaseYaw))
+        {
+            _chaseYaw = chaseYaw;
+        }
+
+        if (float.TryParse(ReadUserOption("--chase-pitch"), out float chasePitch))
+        {
+            _chasePitch = Mathf.Clamp(chasePitch, -12.0f, 85.0f);
+        }
+
+        if (float.TryParse(ReadUserOption("--chase-distance"), out float chaseDistance))
+        {
+            _chaseDistance = Mathf.Clamp(chaseDistance, 8.0f, 90.0f);
         }
 
         if (int.TryParse(ReadUserOption("--screenshot-delay"), out int delaySeconds))
@@ -493,7 +523,9 @@ public partial class Main : Node3D
                     wingman.Sim.State.Position.X, wingman.Sim.State.Position.Y) + 2.0;
         }
         _audio.UpdateFrom(_sim, _throttle);
-        _cockpitPanel.Visible = _cameraMode == CameraMode.Cockpit;
+        _hud.Visible = _hudVisible;
+        _crosshair.Visible = _hudVisible;
+        _cockpitPanel.Visible = _hudVisible && _cameraMode == CameraMode.Cockpit;
         _terrain.SetFocus(_aircraft.GlobalPosition);
         UpdateCamera(delta);
 
@@ -807,11 +839,12 @@ public partial class Main : Node3D
         }
 
         _hudText.Append("Camera    ").Append(_cameraMode)
+            .Append("   C view  RMB look  wheel zoom  Home reset  H HUD")
             .Append("   Stick ").Append(HotasInput.Summary()).Append('\n');
         _hudText.Append("Chunks    ").Append(_terrain.ResidentChunks).Append("   FPS ")
             .Append(Engine.GetFramesPerSecond()).Append('\n');
         _hudText.Append("Tick      ").Append(_tick).Append("\n\n");
-        _hudText.Append("W/S throttle  B brakes  SPACE fire  C camera  RMB look  F flaps  G gear  K/L radiator  , . trim  X extinguish  ↑/↓ pitch  ←/→ roll  A/D rudder");
+        _hudText.Append("W/S throttle  B brakes  SPACE fire  C view  RMB look  F flaps  G gear  K/L radiator  , . trim  X extinguish  ↑/↓ pitch  ←/→ roll  A/D rudder");
         _hud.Text = _hudText.ToString();
     }
 
@@ -974,10 +1007,10 @@ public partial class Main : Node3D
 
     private void ReadControls()
     {
-        if (FlightInput.Pressed(FlightAction.Reset))
+        if (FlightInput.Pressed(FlightAction.Reset)
+            || Input.IsPhysicalKeyPressed(Key.Home))
         {
-            _lookYaw = 0.0f;
-            _lookPitch = 0.0f;
+            ResetView();
         }
 
         double pitch = (FlightInput.Pressed(FlightAction.PitchUp) ? 1.0 : 0.0)
@@ -1014,10 +1047,33 @@ public partial class Main : Node3D
             || HotasInput.Pressed(HotasButton.Camera);
         if (cameraKey && !_prevCameraKey)
         {
-            _cameraMode = _cameraMode switch { CameraMode.Chase => CameraMode.Cockpit, CameraMode.Cockpit => CameraMode.Chase, _ => CameraMode.Chase };
+            _cameraMode = _cameraMode switch
+            {
+                CameraMode.Chase => CameraMode.Cockpit,
+                CameraMode.Cockpit => CameraMode.Top,
+                _ => CameraMode.Chase,
+            };
         }
 
         _prevCameraKey = cameraKey;
+
+        bool hudKey = Input.IsPhysicalKeyPressed(Key.H);
+        if (hudKey && !_prevHudKey)
+        {
+            _hudVisible = !_hudVisible;
+        }
+
+        _prevHudKey = hudKey;
+
+        double cameraYaw = HotasInput.IsAxisAvailable(HotasAxis.CameraYaw)
+            ? HotasInput.GetAxis(HotasAxis.CameraYaw) : 0.0;
+        double cameraPitch = HotasInput.IsAxisAvailable(HotasAxis.CameraPitch)
+            ? HotasInput.GetAxis(HotasAxis.CameraPitch) : 0.0;
+        cameraYaw += (HotasInput.Pressed(HotasButton.CameraLeft) ? 1.0 : 0.0)
+            - (HotasInput.Pressed(HotasButton.CameraRight) ? 1.0 : 0.0);
+        cameraPitch += (HotasInput.Pressed(HotasButton.CameraUp) ? 1.0 : 0.0)
+            - (HotasInput.Pressed(HotasButton.CameraDown) ? 1.0 : 0.0);
+        ApplyCameraLook(cameraYaw, cameraPitch);
         double throttleDelta = (FlightInput.Pressed(FlightAction.ThrottleUp) ? 1.0 : 0.0)
             - (FlightInput.Pressed(FlightAction.ThrottleDown) ? 1.0 : 0.0)
             + (HotasInput.Pressed(HotasButton.ThrottleUp) ? 1.0 : 0.0)
@@ -1699,21 +1755,76 @@ public partial class Main : Node3D
 
     public override void _UnhandledInput(InputEvent @event)
     {
-        if (_cameraMode != CameraMode.Cockpit)
+        if (@event is InputEventMouseButton button && button.Pressed)
         {
+            if (button.ButtonIndex == MouseButton.WheelUp)
+            {
+                _chaseDistance = Mathf.Clamp(_chaseDistance - 2.0f, 8.0f, 90.0f);
+                GetViewport().SetInputAsHandled();
+            }
+            else if (button.ButtonIndex == MouseButton.WheelDown)
+            {
+                _chaseDistance = Mathf.Clamp(_chaseDistance + 2.0f, 8.0f, 90.0f);
+                GetViewport().SetInputAsHandled();
+            }
+
             return;
         }
 
         if (@event is InputEventMouseMotion motion
             && Input.IsMouseButtonPressed(MouseButton.Right))
         {
-            _lookYaw = Mathf.Clamp(_lookYaw - motion.Relative.X * 0.0025f, -1.2f, 1.2f);
-            _lookPitch = Mathf.Clamp(_lookPitch - motion.Relative.Y * 0.0025f, -0.8f, 0.8f);
+            if (_cameraMode == CameraMode.Cockpit)
+            {
+                _lookYaw = Mathf.Clamp(
+                    _lookYaw - motion.Relative.X * 0.0025f, -1.35f, 1.35f);
+                _lookPitch = Mathf.Clamp(
+                    _lookPitch - motion.Relative.Y * 0.0025f, -0.9f, 0.9f);
+            }
+            else if (_cameraMode == CameraMode.Chase)
+            {
+                _chaseYaw = Mathf.Wrap(
+                    _chaseYaw - motion.Relative.X * 0.004f, -Mathf.Pi, Mathf.Pi);
+                _chasePitch = Mathf.Clamp(
+                    _chasePitch + motion.Relative.Y * 0.15f, -12.0f, 85.0f);
+            }
+
+            GetViewport().SetInputAsHandled();
+        }
+    }
+
+    private void ResetView()
+    {
+        _lookYaw = 0.0f;
+        _lookPitch = 0.0f;
+        _chaseYaw = 0.0f;
+        _chasePitch = 15.0f;
+        _chaseDistance = 26.0f;
+    }
+
+    private void ApplyCameraLook(double yaw, double pitch)
+    {
+        if (_cameraMode == CameraMode.Cockpit)
+        {
+            _lookYaw = Mathf.Clamp(
+                _lookYaw + (float)(yaw * 1.5 * PhysicsDt), -1.35f, 1.35f);
+            _lookPitch = Mathf.Clamp(
+                _lookPitch + (float)(pitch * 1.1 * PhysicsDt), -0.9f, 0.9f);
+        }
+        else if (_cameraMode == CameraMode.Chase)
+        {
+            _chaseYaw = Mathf.Wrap(
+                _chaseYaw + (float)(yaw * 1.5 * PhysicsDt), -Mathf.Pi, Mathf.Pi);
+            _chasePitch = Mathf.Clamp(
+                _chasePitch + (float)(pitch * 40.0 * PhysicsDt), -12.0f, 85.0f);
         }
     }
 
     private void UpdateCamera(double delta)
     {
+        _camera.Near = _cameraMode == CameraMode.Cockpit ? 0.05f : 1.0f;
+        _aircraft.SetCockpitView(_cameraMode == CameraMode.Cockpit);
+
         if (_cameraMode == CameraMode.Top)
         {
             Vector3 target = SimBridge.ToGodot(_sim.State.Position);
@@ -1726,7 +1837,7 @@ public partial class Main : Node3D
         {
             var cockpitBasis = SimBridge.ToGodot(_sim.State.Orientation);
             Vector3 aircraft = SimBridge.ToGodot(_sim.State.Position);
-            Vector3 eye = aircraft + cockpitBasis.Y * 0.55f + cockpitBasis.Z * -0.35f;
+            Vector3 eye = aircraft + cockpitBasis.Y * 0.66f - cockpitBasis.Z * 0.05f;
             Basis look = cockpitBasis.Rotated(Vector3.Up, _lookYaw);
             look = look.Rotated(look.X, _lookPitch);
             _camera.GlobalTransform = new Transform3D(look, eye);
@@ -1738,7 +1849,11 @@ public partial class Main : Node3D
         Vector3 forward = -basis.Z;
         Vector3 up = basis.Y;
 
-        Vector3 desired = position - forward * 26.0f + up * 7.0f;
+        float pitchRad = Mathf.DegToRad(_chasePitch);
+        Vector3 backDir = basis.Z.Rotated(Vector3.Up, _chaseYaw).Normalized();
+        Vector3 desired = position
+            + backDir * (_chaseDistance * Mathf.Cos(pitchRad))
+            + up * (_chaseDistance * Mathf.Sin(pitchRad));
         double ground = _heightmap.HeightAt(desired.X, -desired.Z);
         desired.Y = Mathf.Max(desired.Y, (float)ground + 3.0f);
 
@@ -1747,6 +1862,6 @@ public partial class Main : Node3D
         double smoothedGround = _heightmap.HeightAt(smoothed.X, -smoothed.Z);
         smoothed.Y = Mathf.Max(smoothed.Y, (float)smoothedGround + 2.0f);
         _camera.GlobalPosition = smoothed;
-        _camera.LookAt(position + forward * 10.0f, up);
+        _camera.LookAt(position + forward * 8.0f, up);
     }
 }

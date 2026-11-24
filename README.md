@@ -28,7 +28,12 @@ key bindings, or direct connect.*
 
 ![Iron Skies M0 cockpit](docs/media/m0-cockpit.png)
 
-*Cockpit view with the live instrument panel: airspeed, artificial horizon, altimeter, engine, fuel and ammunition.*
+*First-person cockpit with the 3D cabin and instrument panel (C cycles chase → cockpit → top).*
+
+![Iron Skies chase camera orbit](docs/media/m0-camera-orbit.png)
+
+*The chase camera can be orbited with the right mouse button, zoomed with the wheel and
+re-centred with Home; the same axes/buttons can be bound on a HOTAS.*
 
 ![Iron Skies M0 combat](docs/media/m0-duel.png)
 
@@ -136,8 +141,12 @@ docs/                       Specification, architecture, ADRs
 | G | Gear (airborne only) |
 | K / L | Radiator closed / open |
 | , / . | Elevator trim |
-| C | Cycle chase / cockpit camera |
-| Right mouse (cockpit) | Look around |
+| C | Cycle chase → cockpit → top view |
+| Right mouse (chase) | Orbit the camera around the aircraft |
+| Right mouse (cockpit) | Look around the cockpit (±77° yaw, ±52° pitch) |
+| Mouse wheel | Chase-camera distance |
+| Home | Reset view direction and distance |
+| H | Toggle HUD |
 | Space / left mouse | Fire guns |
 | R | Reset sortie |
 
@@ -163,6 +172,9 @@ bind axes and buttons from **different devices** simultaneously:
 - axes: pitch, roll, yaw, throttle, radiator, pitch trim, mixture, brake;
 - buttons: fire, brakes, flaps, gear, camera, throttle/radiator/trim increments, fire
   extinguisher, reset.
+
+Camera yaw/pitch axes and camera look buttons can be bound here too, so the view can be
+adjusted without leaving the stick.
 
 Each axis has an **Invert** toggle and a **Calibrate** button. Calibrate moves the axis
 through its physical range so throttle levers, sliders and asymmetric sticks map cleanly;

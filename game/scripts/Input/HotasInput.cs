@@ -15,6 +15,8 @@ public enum HotasAxis
     TrimElevator,
     Mixture,
     Brake,
+    CameraYaw,
+    CameraPitch,
 }
 
 public enum HotasButton
@@ -24,6 +26,10 @@ public enum HotasButton
     Flaps,
     Gear,
     Camera,
+    CameraLeft,
+    CameraRight,
+    CameraUp,
+    CameraDown,
     ThrottleUp,
     ThrottleDown,
     RadiatorUp,
@@ -95,6 +101,8 @@ public static class HotasInput
         HotasAxis.TrimElevator => "Pitch trim",
         HotasAxis.Mixture => "Mixture",
         HotasAxis.Brake => "Brake axis",
+        HotasAxis.CameraYaw => "Camera yaw",
+        HotasAxis.CameraPitch => "Camera pitch",
         _ => action.ToString(),
     };
 
@@ -104,7 +112,11 @@ public static class HotasInput
         HotasButton.Brake => "Wheel brakes",
         HotasButton.Flaps => "Flaps",
         HotasButton.Gear => "Landing gear",
-        HotasButton.Camera => "Camera",
+        HotasButton.Camera => "Switch view",
+        HotasButton.CameraLeft => "Camera look left",
+        HotasButton.CameraRight => "Camera look right",
+        HotasButton.CameraUp => "Camera look up",
+        HotasButton.CameraDown => "Camera look down",
         HotasButton.ThrottleUp => "Throttle up",
         HotasButton.ThrottleDown => "Throttle down",
         HotasButton.RadiatorUp => "Radiator open",

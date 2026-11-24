@@ -45,6 +45,7 @@ public sealed partial class MultiplayerMain : Node3D
     private CombatVisual _combat = null!;
     private Camera3D _camera = null!;
     private Label _hud = null!;
+    private Label _crosshair = null!;
     private Label _message = null!;
     private readonly StringBuilder _hudText = new(512);
 
@@ -81,7 +82,22 @@ public sealed partial class MultiplayerMain : Node3D
     private bool _prevFlap;
     private bool _prevGear;
     private bool _prevCamera;
-    private bool _cockpit;
+
+    private enum CameraMode
+    {
+        Chase,
+        Cockpit,
+        Top,
+    }
+
+    private CameraMode _cameraMode = CameraMode.Chase;
+    private float _lookYaw;
+    private float _lookPitch;
+    private float _chaseYaw;
+    private float _chasePitch = 15.0f;
+    private float _chaseDistance = 30.0f;
+    private bool _prevHudKey;
+    private bool _hudVisible = true;
 
     private int _port = 7777;
     private string _serverAddress = "127.0.0.1";
@@ -656,7 +672,7 @@ public sealed partial class MultiplayerMain : Node3D
         _hud.AddThemeConstantOverride("shadow_offset_y", 1);
         layer.AddChild(_hud);
 
-        var crosshair = new Label
+        _crosshair = new Label
         {
             Text = "+",
             Position = new Vector2(784.0f, 432.0f),
@@ -664,9 +680,9 @@ public sealed partial class MultiplayerMain : Node3D
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        crosshair.AddThemeFontSizeOverride("font_size", 22);
-        crosshair.AddThemeColorOverride("font_color", new Color(1.0f, 0.85f, 0.4f, 0.9f));
-        layer.AddChild(crosshair);
+        _crosshair.AddThemeFontSizeOverride("font_size", 22);
+        _crosshair.AddThemeColorOverride("font_color", new Color(1.0f, 0.85f, 0.4f, 0.9f));
+        layer.AddChild(_crosshair);
 
         _message = new Label
         {
@@ -785,10 +801,38 @@ public sealed partial class MultiplayerMain : Node3D
             || HotasInput.Pressed(HotasButton.Camera);
         if (cameraKey && !_prevCamera)
         {
-            _cockpit = !_cockpit;
+            _cameraMode = _cameraMode switch
+            {
+                CameraMode.Chase => CameraMode.Cockpit,
+                CameraMode.Cockpit => CameraMode.Top,
+                _ => CameraMode.Chase,
+            };
         }
 
         _prevCamera = cameraKey;
+
+        if (Input.IsPhysicalKeyPressed(Key.Home))
+        {
+            ResetView();
+        }
+
+        bool hudKey = Input.IsPhysicalKeyPressed(Key.H);
+        if (hudKey && !_prevHudKey)
+        {
+            _hudVisible = !_hudVisible;
+        }
+
+        _prevHudKey = hudKey;
+
+        double cameraYaw = HotasInput.IsAxisAvailable(HotasAxis.CameraYaw)
+            ? HotasInput.GetAxis(HotasAxis.CameraYaw) : 0.0;
+        double cameraPitch = HotasInput.IsAxisAvailable(HotasAxis.CameraPitch)
+            ? HotasInput.GetAxis(HotasAxis.CameraPitch) : 0.0;
+        cameraYaw += (HotasInput.Pressed(HotasButton.CameraLeft) ? 1.0 : 0.0)
+            - (HotasInput.Pressed(HotasButton.CameraRight) ? 1.0 : 0.0);
+        cameraPitch += (HotasInput.Pressed(HotasButton.CameraUp) ? 1.0 : 0.0)
+            - (HotasInput.Pressed(HotasButton.CameraDown) ? 1.0 : 0.0);
+        ApplyCameraLook(cameraYaw, cameraPitch);
 
         return new Controls(
             Elevator: _elevator,
@@ -807,6 +851,73 @@ public sealed partial class MultiplayerMain : Node3D
                 || HotasInput.Pressed(HotasButton.Extinguish));
     }
 
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        if (@event is InputEventMouseButton button && button.Pressed)
+        {
+            if (button.ButtonIndex == MouseButton.WheelUp)
+            {
+                _chaseDistance = Mathf.Clamp(_chaseDistance - 2.0f, 8.0f, 90.0f);
+                GetViewport().SetInputAsHandled();
+            }
+            else if (button.ButtonIndex == MouseButton.WheelDown)
+            {
+                _chaseDistance = Mathf.Clamp(_chaseDistance + 2.0f, 8.0f, 90.0f);
+                GetViewport().SetInputAsHandled();
+            }
+
+            return;
+        }
+
+        if (@event is InputEventMouseMotion motion
+            && Input.IsMouseButtonPressed(MouseButton.Right))
+        {
+            if (_cameraMode == CameraMode.Cockpit)
+            {
+                _lookYaw = Mathf.Clamp(
+                    _lookYaw - motion.Relative.X * 0.0025f, -1.35f, 1.35f);
+                _lookPitch = Mathf.Clamp(
+                    _lookPitch - motion.Relative.Y * 0.0025f, -0.9f, 0.9f);
+            }
+            else if (_cameraMode == CameraMode.Chase)
+            {
+                _chaseYaw = Mathf.Wrap(
+                    _chaseYaw - motion.Relative.X * 0.004f, -Mathf.Pi, Mathf.Pi);
+                _chasePitch = Mathf.Clamp(
+                    _chasePitch + motion.Relative.Y * 0.15f, -12.0f, 85.0f);
+            }
+
+            GetViewport().SetInputAsHandled();
+        }
+    }
+
+    private void ResetView()
+    {
+        _lookYaw = 0.0f;
+        _lookPitch = 0.0f;
+        _chaseYaw = 0.0f;
+        _chasePitch = 15.0f;
+        _chaseDistance = 30.0f;
+    }
+
+    private void ApplyCameraLook(double yaw, double pitch)
+    {
+        if (_cameraMode == CameraMode.Cockpit)
+        {
+            _lookYaw = Mathf.Clamp(
+                _lookYaw + (float)(yaw * 1.5 * PhysicsDt), -1.35f, 1.35f);
+            _lookPitch = Mathf.Clamp(
+                _lookPitch + (float)(pitch * 1.1 * PhysicsDt), -0.9f, 0.9f);
+        }
+        else if (_cameraMode == CameraMode.Chase)
+        {
+            _chaseYaw = Mathf.Wrap(
+                _chaseYaw + (float)(yaw * 1.5 * PhysicsDt), -Mathf.Pi, Mathf.Pi);
+            _chasePitch = Mathf.Clamp(
+                _chasePitch + (float)(pitch * 40.0 * PhysicsDt), -12.0f, 85.0f);
+        }
+    }
+
     private void UpdateCamera(double delta)
     {
         if (_localSim is null)
@@ -814,19 +925,37 @@ public sealed partial class MultiplayerMain : Node3D
             return;
         }
 
+        _hud.Visible = _hudVisible;
+        _crosshair.Visible = _hudVisible;
+        _camera.Near = _cameraMode == CameraMode.Cockpit ? 0.05f : 1.0f;
+        _playerVisual.SetCockpitView(_cameraMode == CameraMode.Cockpit);
+
         Vector3 position = SimBridge.ToGodot(_localSim.State.Position);
         var basis = SimBridge.ToGodot(_localSim.State.Orientation);
         Vector3 forward = -basis.Z;
         Vector3 up = basis.Y;
 
-        if (_cockpit)
+        if (_cameraMode == CameraMode.Top)
         {
-            Vector3 eye = position + up * 0.55f + basis.Z * -0.35f;
-            _camera.GlobalTransform = new Transform3D(basis, eye);
+            _camera.GlobalPosition = position + new Vector3(0.0f, 700.0f, 0.0f);
+            _camera.LookAt(position, new Vector3(0.0f, 0.0f, -1.0f));
             return;
         }
 
-        Vector3 desired = position - forward * 30.0f + up * 8.0f;
+        if (_cameraMode == CameraMode.Cockpit)
+        {
+            Vector3 eye = position + up * 0.66f - basis.Z * 0.05f;
+            Basis look = basis.Rotated(Vector3.Up, _lookYaw);
+            look = look.Rotated(look.X, _lookPitch);
+            _camera.GlobalTransform = new Transform3D(look, eye);
+            return;
+        }
+
+        float pitchRad = Mathf.DegToRad(_chasePitch);
+        Vector3 backDir = basis.Z.Rotated(Vector3.Up, _chaseYaw).Normalized();
+        Vector3 desired = position
+            + backDir * (_chaseDistance * Mathf.Cos(pitchRad))
+            + up * (_chaseDistance * Mathf.Sin(pitchRad));
         double ground = _map.HeightAt(desired.X, -desired.Z);
         desired.Y = Mathf.Max(desired.Y, (float)ground + 3.0f);
         float smoothing = 1.0f - Mathf.Exp(-6.0f * (float)delta);
@@ -834,7 +963,7 @@ public sealed partial class MultiplayerMain : Node3D
         double smoothedGround = _map.HeightAt(smoothed.X, -smoothed.Z);
         smoothed.Y = Mathf.Max(smoothed.Y, (float)smoothedGround + 2.0f);
         _camera.GlobalPosition = smoothed;
-        _camera.LookAt(position + forward * 10.0f, up);
+        _camera.LookAt(position + forward * 8.0f, up);
     }
 
     private void UpdateHud()
@@ -846,7 +975,7 @@ public sealed partial class MultiplayerMain : Node3D
         {
             _hudText.Append("Connecting to ").Append(_serverAddress).Append(':').Append(_port).Append("\n\n");
             _hudText.Append(
-                "W/S throttle   arrows pitch/roll   A/D rudder   Space fire   C camera   X extinguish");
+                "W/S throttle   arrows pitch/roll   A/D rudder   Space fire   C view   X extinguish");
             _hud.Text = _hudText.ToString();
             return;
         }
@@ -912,7 +1041,7 @@ public sealed partial class MultiplayerMain : Node3D
                 .Append(": ").Append(remote.Current.Health.ToString("F0")).Append("   ");
         }
 
-        _hudText.Append("\n\nW/S throttle  Space fire  C camera  F flaps  G gear  B brakes");
+        _hudText.Append("\n\nW/S throttle  Space fire  C view  F flaps  G gear  B brakes");
         _hud.Text = _hudText.ToString();
 
         bool dead = _localSim.Health <= 0.0;
