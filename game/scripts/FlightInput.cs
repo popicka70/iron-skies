@@ -102,7 +102,7 @@ public static class FlightInput
         {
             int code = (int)config.GetValue(
                 "keys", action.ToString(), (int)Defaults[action]);
-            if (Enum.IsDefined(typeof(Key), code))
+            if (Enum.IsDefined(typeof(Key), (long)code))
             {
                 Keys[action] = (Key)code;
             }
