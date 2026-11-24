@@ -16,17 +16,24 @@ public sealed class AirfieldSurface : IGroundSurface
         _terrain = terrain;
     }
 
+    private const double ShoulderMeters = 22.0;
+
     public double HeightAt(double eastMeters, double northMeters)
     {
         double height = _terrain.HeightAt(eastMeters, northMeters);
         double halfWidth = Airfield.WidthMeters * 0.5;
-        if (System.Math.Abs(eastMeters - Airfield.East) <= halfWidth
-            && northMeters >= Airfield.SouthThreshold
-            && northMeters <= Airfield.SouthThreshold + Airfield.LengthMeters)
-        {
-            return height + Airfield.GroundOffset;
-        }
+        double south = Airfield.SouthThreshold;
+        double north = south + Airfield.LengthMeters;
 
-        return height;
+        double lateral = System.Math.Abs(eastMeters - Airfield.East);
+        double longitudinal = northMeters < south
+            ? south - northMeters
+            : northMeters > north ? northMeters - north : 0.0;
+        double lateralBlend = 1.0 - System.Math.Clamp(
+            (lateral - halfWidth) / ShoulderMeters, 0.0, 1.0);
+        double longitudinalBlend = 1.0 - System.Math.Clamp(
+            longitudinal / ShoulderMeters, 0.0, 1.0);
+        double blend = System.Math.Min(lateralBlend, longitudinalBlend);
+        return height + Airfield.GroundOffset * blend;
     }
 }

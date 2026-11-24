@@ -59,7 +59,8 @@ public sealed partial class Launcher : Control
                 || HasFlag("--hunt") || HasFlag("--bombers") || HasFlag("--duel")
                 || HasFlag("--autofire") || HasFlag("--mission-test")
                 || HasFlag("--hunt-test") || HasFlag("--bomber-test")
-                || HasFlag("--damage-test") || ReadOption("--aircraft") is not null
+                || HasFlag("--damage-test") || HasFlag("--takeoff-test")
+                || ReadOption("--aircraft") is not null
                 || ReadOption("--record") is not null
                 || ReadOption("--replay") is not null))
         {

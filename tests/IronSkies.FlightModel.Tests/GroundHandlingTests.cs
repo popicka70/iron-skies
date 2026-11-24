@@ -78,17 +78,24 @@ public class GroundHandlingTests
         var sim = new AircraftSimulator(
             d, AircraftState.CreateOnGround(d, 0.0), FlatGround.Instance);
 
+        double liftoffNorth = 0.0;
         for (int i = 0; i < 40 * 240; i++)
         {
             double time = i * Dt;
             double elevator = time > 11.0 ? 0.55 : 0.0;
             sim.Step(new Controls(Elevator: elevator, Throttle: 1.0), Dt);
+            if (!sim.Telemetry.OnGround && liftoffNorth == 0.0)
+            {
+                liftoffNorth = sim.State.Position.Y;
+            }
         }
 
         Assert.True(sim.State.IsFinite);
         Assert.False(sim.Telemetry.OnGround);
         Assert.True(sim.State.Position.Z > 5.0);
         Assert.True(sim.State.VelocityEnu.Length > 35.0);
+        Assert.InRange(liftoffNorth, 0.0, 1500.0);
+        Assert.True(liftoffNorth < 700.0, $"liftoff at {liftoffNorth:F0} m");
     }
 
     [Fact]

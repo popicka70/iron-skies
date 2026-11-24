@@ -47,9 +47,10 @@ state and is unit-tested. The game wires target health and touchdown detection i
 so mission rules stay independent of rendering and networking. Objectives are currently
 built in code; a JSON mission format and a selector are the next step.
 
-The home airfield is at east 700 / north 6750 (the free-flight spawn is the south
-threshold). It is a draped 1000 × 36 m strip with a raised 1 m platform, markings, a
-hangar, a control tower and a windsock.
+The home airfield is at east 700 / north 5900 (the free-flight spawn is the south
+threshold). It is a draped 1200 × 44 m strip on the smooth section south of the terrain
+ridge, with a raised 1 m platform, tapered shoulders, markings, a hangar, a control tower
+and a windsock.
 
 `--mission-test`, `--hunt-test` and `--bomber-test` run the sorties headless, destroy the objectives
 and land the aircraft programmatically. CI uses both to verify the completion paths
