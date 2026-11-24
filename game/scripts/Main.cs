@@ -280,6 +280,7 @@ public partial class Main : Node3D
         AddChild(_combat);
         BuildCamera();
         BuildHud();
+        _hud.Scale = new Vector2(GameSettings.HudScale, GameSettings.HudScale);
         ResetFlight();
         WarmUp(_definition);
 
@@ -291,7 +292,7 @@ public partial class Main : Node3D
     {
         if (_replaying)
         {
-            if (Input.IsPhysicalKeyPressed(Key.R))
+            if (FlightInput.Pressed(FlightAction.Reset))
             {
                 ResetFlight();
             }
@@ -313,7 +314,7 @@ public partial class Main : Node3D
             GearDown: _gearTarget,
             TrimElevator: _trimElevator,
             Fire: _fire,
-            Extinguish: Input.IsPhysicalKeyPressed(Key.X));
+            Extinguish: FlightInput.Pressed(FlightAction.Extinguish));
 
         _accumulator += delta;
         int steps = 0;
@@ -936,18 +937,18 @@ public partial class Main : Node3D
 
     private void ReadControls()
     {
-        if (Input.IsPhysicalKeyPressed(Key.R))
+        if (FlightInput.Pressed(FlightAction.Reset))
         {
             _lookYaw = 0.0f;
             _lookPitch = 0.0f;
         }
 
-        double pitch = (Input.IsPhysicalKeyPressed(Key.Up) ? 1.0 : 0.0)
-            - (Input.IsPhysicalKeyPressed(Key.Down) ? 1.0 : 0.0);
-        double roll = (Input.IsPhysicalKeyPressed(Key.Right) ? 1.0 : 0.0)
-            - (Input.IsPhysicalKeyPressed(Key.Left) ? 1.0 : 0.0);
-        double yaw = (Input.IsPhysicalKeyPressed(Key.D) ? 1.0 : 0.0)
-            - (Input.IsPhysicalKeyPressed(Key.A) ? 1.0 : 0.0);
+        double pitch = (FlightInput.Pressed(FlightAction.PitchUp) ? 1.0 : 0.0)
+            - (FlightInput.Pressed(FlightAction.PitchDown) ? 1.0 : 0.0);
+        double roll = (FlightInput.Pressed(FlightAction.RollRight) ? 1.0 : 0.0)
+            - (FlightInput.Pressed(FlightAction.RollLeft) ? 1.0 : 0.0);
+        double yaw = (FlightInput.Pressed(FlightAction.RudderRight) ? 1.0 : 0.0)
+            - (FlightInput.Pressed(FlightAction.RudderLeft) ? 1.0 : 0.0);
 
         if (_joystick >= 0)
         {
@@ -970,24 +971,29 @@ public partial class Main : Node3D
             }
         }
 
-        bool cameraKey = Input.IsPhysicalKeyPressed(Key.C);
+        if (GameSettings.InvertPitch)
+        {
+            pitch = -pitch;
+        }
+
+        bool cameraKey = FlightInput.Pressed(FlightAction.Camera);
         if (cameraKey && !_prevCameraKey)
         {
             _cameraMode = _cameraMode switch { CameraMode.Chase => CameraMode.Cockpit, CameraMode.Cockpit => CameraMode.Chase, _ => CameraMode.Chase };
         }
 
         _prevCameraKey = cameraKey;
-        double throttleDelta = (Input.IsPhysicalKeyPressed(Key.W) ? 1.0 : 0.0)
-            - (Input.IsPhysicalKeyPressed(Key.S) ? 1.0 : 0.0);
-        _brake = Input.IsPhysicalKeyPressed(Key.B) ? 1.0 : 0.0;
-        _fire = _autoFire || Input.IsPhysicalKeyPressed(Key.Space)
+        double throttleDelta = (FlightInput.Pressed(FlightAction.ThrottleUp) ? 1.0 : 0.0)
+            - (FlightInput.Pressed(FlightAction.ThrottleDown) ? 1.0 : 0.0);
+        _brake = FlightInput.Pressed(FlightAction.Brake) ? 1.0 : 0.0;
+        _fire = _autoFire || FlightInput.Pressed(FlightAction.Fire)
             || Input.IsMouseButtonPressed(MouseButton.Left);
 
-        double radiatorDelta = (Input.IsPhysicalKeyPressed(Key.L) ? 1.0 : 0.0)
-            - (Input.IsPhysicalKeyPressed(Key.K) ? 1.0 : 0.0);
+        double radiatorDelta = (FlightInput.Pressed(FlightAction.RadiatorUp) ? 1.0 : 0.0)
+            - (FlightInput.Pressed(FlightAction.RadiatorDown) ? 1.0 : 0.0);
         _radiator = Mathf.Clamp(_radiator + radiatorDelta * 0.4 * PhysicsDt, 0.0, 1.0);
 
-        bool flapKey = Input.IsPhysicalKeyPressed(Key.F);
+        bool flapKey = FlightInput.Pressed(FlightAction.Flaps);
         if (flapKey && !_prevFlapKey)
         {
             _flapTarget = _flapTarget > 0.5 ? 0.0 : 1.0;
@@ -995,7 +1001,7 @@ public partial class Main : Node3D
 
         _prevFlapKey = flapKey;
 
-        bool gearKey = Input.IsPhysicalKeyPressed(Key.G);
+        bool gearKey = FlightInput.Pressed(FlightAction.Gear);
         if (gearKey && !_prevGearKey && !_sim.Telemetry.OnGround)
         {
             _gearTarget = _gearTarget > 0.5 ? 0.0 : 1.0;
@@ -1003,8 +1009,8 @@ public partial class Main : Node3D
 
         _prevGearKey = gearKey;
 
-        double trimDelta = (Input.IsPhysicalKeyPressed(Key.Period) ? 1.0 : 0.0)
-            - (Input.IsPhysicalKeyPressed(Key.Comma) ? 1.0 : 0.0);
+        double trimDelta = (FlightInput.Pressed(FlightAction.TrimUp) ? 1.0 : 0.0)
+            - (FlightInput.Pressed(FlightAction.TrimDown) ? 1.0 : 0.0);
         _trimElevator = Mathf.Clamp(_trimElevator + trimDelta * 0.6 * PhysicsDt, -1.0, 1.0);
 
         // Simple first-order response stands in for stick forces until M1 input mapping.
@@ -1014,7 +1020,7 @@ public partial class Main : Node3D
         _rudder += (yaw - _rudder) * k;
         _throttle = Mathf.Clamp(_throttle + throttleDelta * 0.35 * PhysicsDt, 0.0, 1.0);
 
-        if (Input.IsPhysicalKeyPressed(Key.R))
+        if (FlightInput.Pressed(FlightAction.Reset))
         {
             ResetFlight();
         }

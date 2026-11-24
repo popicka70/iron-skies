@@ -13,6 +13,8 @@ public static class GameSettings
     public static float MasterVolume { get; set; } = 0.8f;
     public static bool Fullscreen { get; set; }
     public static string PlayerAircraft { get; set; } = "spitfire-mk9";
+    public static float HudScale { get; set; } = 1.0f;
+    public static bool InvertPitch { get; set; }
 
     public static void Load()
     {
@@ -26,6 +28,10 @@ public static class GameSettings
             (float)config.GetValue("audio", "master", 0.8f), 0.0f, 1.0f);
         Fullscreen = (bool)config.GetValue("display", "fullscreen", false);
         PlayerAircraft = (string)config.GetValue("game", "aircraft", "spitfire-mk9");
+        HudScale = Mathf.Clamp(
+            (float)config.GetValue("game", "hud_scale", 1.0f), 0.8f, 1.6f);
+        InvertPitch = (bool)config.GetValue("game", "invert_pitch", false);
+        FlightInput.Load(config);
     }
 
     public static void Save()
@@ -34,6 +40,9 @@ public static class GameSettings
         config.SetValue("audio", "master", MasterVolume);
         config.SetValue("display", "fullscreen", Fullscreen);
         config.SetValue("game", "aircraft", PlayerAircraft);
+        config.SetValue("game", "hud_scale", HudScale);
+        config.SetValue("game", "invert_pitch", InvertPitch);
+        FlightInput.Save(config);
         config.Save(Path);
     }
 

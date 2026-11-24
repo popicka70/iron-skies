@@ -151,6 +151,7 @@ public sealed partial class MultiplayerMain : Node3D
         if (!_headlessClient)
         {
             BuildWorld();
+            _hud.Scale = new Vector2(GameSettings.HudScale, GameSettings.HudScale);
             DetectJoystick();
         }
 
@@ -692,12 +693,12 @@ public sealed partial class MultiplayerMain : Node3D
 
     private Controls ReadControls()
     {
-        double pitch = (Input.IsPhysicalKeyPressed(Key.Up) ? 1.0 : 0.0)
-            - (Input.IsPhysicalKeyPressed(Key.Down) ? 1.0 : 0.0);
-        double roll = (Input.IsPhysicalKeyPressed(Key.Right) ? 1.0 : 0.0)
-            - (Input.IsPhysicalKeyPressed(Key.Left) ? 1.0 : 0.0);
-        double yaw = (Input.IsPhysicalKeyPressed(Key.D) ? 1.0 : 0.0)
-            - (Input.IsPhysicalKeyPressed(Key.A) ? 1.0 : 0.0);
+        double pitch = (FlightInput.Pressed(FlightAction.PitchUp) ? 1.0 : 0.0)
+            - (FlightInput.Pressed(FlightAction.PitchDown) ? 1.0 : 0.0);
+        double roll = (FlightInput.Pressed(FlightAction.RollRight) ? 1.0 : 0.0)
+            - (FlightInput.Pressed(FlightAction.RollLeft) ? 1.0 : 0.0);
+        double yaw = (FlightInput.Pressed(FlightAction.RudderRight) ? 1.0 : 0.0)
+            - (FlightInput.Pressed(FlightAction.RudderLeft) ? 1.0 : 0.0);
 
         if (_joystick >= 0)
         {
@@ -720,23 +721,28 @@ public sealed partial class MultiplayerMain : Node3D
             }
         }
 
+        if (GameSettings.InvertPitch)
+        {
+            pitch = -pitch;
+        }
+
         double k = 4.0 * PhysicsDt;
         _elevator += (pitch - _elevator) * k;
         _aileron += (roll - _aileron) * k;
         _rudder += (yaw - _rudder) * k;
 
-        double throttleDelta = (Input.IsPhysicalKeyPressed(Key.W) ? 1.0 : 0.0)
-            - (Input.IsPhysicalKeyPressed(Key.S) ? 1.0 : 0.0);
+        double throttleDelta = (FlightInput.Pressed(FlightAction.ThrottleUp) ? 1.0 : 0.0)
+            - (FlightInput.Pressed(FlightAction.ThrottleDown) ? 1.0 : 0.0);
         _throttle = Mathf.Clamp(_throttle + throttleDelta * 0.4 * PhysicsDt, 0.0, 1.0);
-        _brake = Input.IsPhysicalKeyPressed(Key.B) ? 1.0 : 0.0;
-        _fire = Input.IsPhysicalKeyPressed(Key.Space)
+        _brake = FlightInput.Pressed(FlightAction.Brake) ? 1.0 : 0.0;
+        _fire = FlightInput.Pressed(FlightAction.Fire)
             || Input.IsMouseButtonPressed(MouseButton.Left);
 
-        double radiatorDelta = (Input.IsPhysicalKeyPressed(Key.L) ? 1.0 : 0.0)
-            - (Input.IsPhysicalKeyPressed(Key.K) ? 1.0 : 0.0);
+        double radiatorDelta = (FlightInput.Pressed(FlightAction.RadiatorUp) ? 1.0 : 0.0)
+            - (FlightInput.Pressed(FlightAction.RadiatorDown) ? 1.0 : 0.0);
         _radiator = Mathf.Clamp(_radiator + radiatorDelta * 0.4 * PhysicsDt, 0.0, 1.0);
 
-        bool flapKey = Input.IsPhysicalKeyPressed(Key.F);
+        bool flapKey = FlightInput.Pressed(FlightAction.Flaps);
         if (flapKey && !_prevFlap)
         {
             _flapTarget = _flapTarget > 0.5 ? 0.0 : 1.0;
@@ -744,7 +750,7 @@ public sealed partial class MultiplayerMain : Node3D
 
         _prevFlap = flapKey;
 
-        bool gearKey = Input.IsPhysicalKeyPressed(Key.G);
+        bool gearKey = FlightInput.Pressed(FlightAction.Gear);
         if (gearKey && !_prevGear && _localSim is { Telemetry.OnGround: false })
         {
             _gearTarget = _gearTarget > 0.5 ? 0.0 : 1.0;
@@ -752,11 +758,11 @@ public sealed partial class MultiplayerMain : Node3D
 
         _prevGear = gearKey;
 
-        double trimDelta = (Input.IsPhysicalKeyPressed(Key.Period) ? 1.0 : 0.0)
-            - (Input.IsPhysicalKeyPressed(Key.Comma) ? 1.0 : 0.0);
+        double trimDelta = (FlightInput.Pressed(FlightAction.TrimUp) ? 1.0 : 0.0)
+            - (FlightInput.Pressed(FlightAction.TrimDown) ? 1.0 : 0.0);
         _trimElevator = Mathf.Clamp(_trimElevator + trimDelta * 0.6 * PhysicsDt, -1.0, 1.0);
 
-        bool cameraKey = Input.IsPhysicalKeyPressed(Key.C);
+        bool cameraKey = FlightInput.Pressed(FlightAction.Camera);
         if (cameraKey && !_prevCamera)
         {
             _cockpit = !_cockpit;
@@ -776,7 +782,7 @@ public sealed partial class MultiplayerMain : Node3D
             TrimElevator: _trimElevator,
             Mixture: 0.85,
             Fire: _fire,
-            Extinguish: Input.IsPhysicalKeyPressed(Key.X));
+            Extinguish: FlightInput.Pressed(FlightAction.Extinguish));
     }
 
     private double Axis(JoyAxis axis, double deadzone = 0.08)

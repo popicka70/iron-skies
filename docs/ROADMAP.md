@@ -136,7 +136,8 @@ continuous streaming.
 - [x] Objective/mission framework with Supply Dump Strike and Free Hunt
 - [ ] Mission editor + 10 scripted missions; lightweight campaign
 - [x] Settings: master volume, fullscreen and persistence
-- [ ] UI/UX pass, key rebinding, accessibility
+- [x] Key rebinding, HUD scale and invert-pitch accessibility
+- [ ] UI/UX pass and broader accessibility
 - Localisation framework (English first)
 - Installer/archives, auto-update check (optional), crash reporting (opt-in)
 - Store pages (itch.io; Steam only if the project chooses to pay the fee)

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Godot;
 using IronSkies.FlightModel.Net;
@@ -21,6 +22,13 @@ public sealed partial class Launcher : Control
     private HSlider _volumeSlider = null!;
     private CheckButton _fullscreenCheck = null!;
     private OptionButton _aircraftOption = null!;
+    private HSlider _hudScaleSlider = null!;
+    private CheckButton _invertPitchCheck = null!;
+    private Control _keysOverlay = null!;
+    private Label _keysStatus = null!;
+    private readonly Dictionary<FlightAction, Button> _keyButtons = new();
+    private FlightAction? _rebindAction;
+    private Button? _rebindButton;
     private ServerProcessManager? _serverProcess;
 
     private PacketPeerUdp? _browserSocket;
@@ -76,6 +84,10 @@ public sealed partial class Launcher : Control
         else if (HasFlag("--open-missions"))
         {
             ShowMissions();
+        }
+        else if (HasFlag("--open-keys"))
+        {
+            ShowKeys();
         }
 
         string? launcherShot = ReadOption("--launcher-shot");
@@ -252,6 +264,159 @@ public sealed partial class Launcher : Control
 
         BuildSettingsOverlay();
         BuildMissionsOverlay();
+        BuildKeysOverlay();
+    }
+
+    private void BuildKeysOverlay()
+    {
+        _keysOverlay = BuildOverlay();
+        var keysPanel = (PanelContainer)_keysOverlay.GetChild(1);
+        keysPanel.OffsetTop = -310.0f;
+        keysPanel.OffsetBottom = 310.0f;
+        var content = (VBoxContainer)keysPanel.GetChild(0);
+        var title = new Label
+        {
+            Text = "KEY BINDINGS",
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        title.AddThemeFontSizeOverride("font_size", 22);
+        content.AddChild(title);
+
+        var scroll = new ScrollContainer
+        {
+            CustomMinimumSize = new Vector2(0.0f, 380.0f),
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+        };
+        content.AddChild(scroll);
+        var grid = new GridContainer { Columns = 2 };
+        grid.AddThemeConstantOverride("h_separation", 20);
+        grid.AddThemeConstantOverride("v_separation", 6);
+        scroll.AddChild(grid);
+
+        foreach (FlightAction action in Enum.GetValues<FlightAction>())
+        {
+            grid.AddChild(new Label
+            {
+                Text = FlightInput.Label(action),
+                SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+            });
+            var button = new Button
+            {
+                Text = FlightInput.KeyName(action),
+                CustomMinimumSize = new Vector2(150.0f, 28.0f),
+            };
+            FlightAction captured = action;
+            button.Pressed += () => BeginRebind(captured, button);
+            _keyButtons[action] = button;
+            grid.AddChild(button);
+        }
+
+        _keysStatus = new Label
+        {
+            Text = "",
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        _keysStatus.AddThemeColorOverride("font_color", new Color(0.85f, 0.75f, 0.55f));
+        content.AddChild(_keysStatus);
+
+        var reset = new Button
+        {
+            Text = "Reset defaults",
+            CustomMinimumSize = new Vector2(0.0f, 30.0f),
+        };
+        reset.Pressed += () =>
+        {
+            FlightInput.ResetDefaults();
+            GameSettings.Save();
+            foreach ((FlightAction action, Button button) in _keyButtons)
+            {
+                button.Text = FlightInput.KeyName(action);
+            }
+
+            _keysStatus!.Text = "Defaults restored";
+        };
+        content.AddChild(reset);
+
+        var close = new Button { Text = "Close", CustomMinimumSize = new Vector2(0.0f, 34.0f) };
+        close.Pressed += HideKeys;
+        content.AddChild(close);
+    }
+
+    private void BeginRebind(FlightAction action, Button button)
+    {
+        _rebindAction = action;
+        _rebindButton = button;
+        button.Text = "Press a key...";
+        _keysStatus!.Text = $"Press a key for {FlightInput.Label(action)} (Esc cancels)";
+    }
+
+    private void ShowKeys()
+    {
+        HideSettings();
+        HideMissions();
+        foreach ((FlightAction action, Button button) in _keyButtons)
+        {
+            button.Text = FlightInput.KeyName(action);
+        }
+
+        _keysStatus!.Text = "";
+        _rebindAction = null;
+        _rebindButton = null;
+        _keysOverlay.Visible = true;
+    }
+
+    private void HideKeys()
+    {
+        _rebindAction = null;
+        _rebindButton = null;
+        _keysOverlay.Visible = false;
+    }
+
+    public override void _Input(InputEvent @event)
+    {
+        if (_rebindAction is null || @event is not InputEventKey key || !key.Pressed
+            || key.Echo)
+        {
+            return;
+        }
+
+        Key code = key.PhysicalKeycode != Key.None ? key.PhysicalKeycode : key.Keycode;
+        if (code == Key.Escape)
+        {
+            CancelRebind();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        FlightAction? conflict = FlightInput.Find(_rebindAction.Value, code);
+        if (conflict is not null)
+        {
+            _keysStatus!.Text =
+                $"{FlightInput.KeyName(conflict.Value)} is already used by " +
+                $"{FlightInput.Label(conflict.Value)}";
+            CancelRebind();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        FlightInput.Set(_rebindAction.Value, code);
+        GameSettings.Save();
+        _keyButtons[_rebindAction.Value].Text = FlightInput.KeyName(_rebindAction.Value);
+        _keysStatus!.Text = "Saved";
+        _rebindAction = null;
+        _rebindButton = null;
+        GetViewport().SetInputAsHandled();
+    }
+
+    private void CancelRebind()
+    {
+        if (_rebindAction is not null && _rebindButton is not null)
+        {
+            _rebindButton.Text = FlightInput.KeyName(_rebindAction.Value);
+        }
+
+        _rebindAction = null;
+        _rebindButton = null;
     }
 
     private void BuildMissionsOverlay()
@@ -319,6 +484,7 @@ public sealed partial class Launcher : Control
     private void ShowMissions()
     {
         HideSettings();
+        HideKeys();
         _missionsOverlay.Visible = true;
     }
 
@@ -344,9 +510,9 @@ public sealed partial class Launcher : Control
             AnchorRight = 0.5f,
             AnchorBottom = 0.5f,
             OffsetLeft = -250.0f,
-            OffsetTop = -210.0f,
+            OffsetTop = -250.0f,
             OffsetRight = 250.0f,
-            OffsetBottom = 210.0f,
+            OffsetBottom = 250.0f,
         };
         var style = new StyleBoxFlat
         {
@@ -464,6 +630,42 @@ public sealed partial class Launcher : Control
         };
         content.AddChild(_aircraftOption);
 
+        content.AddChild(new Label { Text = "HUD scale" });
+        _hudScaleSlider = new HSlider
+        {
+            MinValue = 0.8,
+            MaxValue = 1.6,
+            Step = 0.05,
+            Value = GameSettings.HudScale,
+            CustomMinimumSize = new Vector2(0.0f, 24.0f),
+        };
+        _hudScaleSlider.ValueChanged += value =>
+        {
+            GameSettings.HudScale = (float)value;
+            GameSettings.Save();
+        };
+        content.AddChild(_hudScaleSlider);
+
+        _invertPitchCheck = new CheckButton
+        {
+            Text = "Invert pitch",
+            ButtonPressed = GameSettings.InvertPitch,
+        };
+        _invertPitchCheck.Toggled += pressed =>
+        {
+            GameSettings.InvertPitch = pressed;
+            GameSettings.Save();
+        };
+        content.AddChild(_invertPitchCheck);
+
+        var keysButton = new Button
+        {
+            Text = "Key bindings",
+            CustomMinimumSize = new Vector2(0.0f, 34.0f),
+        };
+        keysButton.Pressed += ShowKeys;
+        content.AddChild(keysButton);
+
         content.AddChild(new Control { CustomMinimumSize = new Vector2(0.0f, 6.0f) });
 
         var close = new Button { Text = "Close", CustomMinimumSize = new Vector2(0.0f, 38.0f) };
@@ -474,10 +676,13 @@ public sealed partial class Launcher : Control
     private void ShowSettings()
     {
         HideMissions();
+        HideKeys();
         _settingsOverlay.Visible = true;
         _volumeSlider.Value = GameSettings.MasterVolume;
         _fullscreenCheck.ButtonPressed = GameSettings.Fullscreen;
         _aircraftOption.Selected = GameSettings.PlayerAircraft == "bf109-g6" ? 1 : 0;
+        _hudScaleSlider.Value = GameSettings.HudScale;
+        _invertPitchCheck.ButtonPressed = GameSettings.InvertPitch;
     }
 
     private void HideSettings()

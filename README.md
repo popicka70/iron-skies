@@ -18,7 +18,8 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 
 ![Iron Skies launcher](docs/media/m0-launcher.png)
 
-*Launcher: single-player, missions, duel, host-and-play, LAN server browser, settings, or direct connect.*
+*Launcher: single-player, missions, duel, host-and-play, LAN server browser, settings,
+key bindings, or direct connect.*
 
 ![Iron Skies M0: 40 × 40 km Normandy terrain](docs/media/m0-normandy-40km.png)
 
@@ -54,7 +55,12 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 
 ![Iron Skies settings](docs/media/m0-settings.png)
 
-*Settings persist master volume and fullscreen in `user://settings.cfg`.*
+*Settings persist volume, fullscreen, player aircraft, HUD scale and invert pitch in
+`user://settings.cfg`.*
+
+![Iron Skies key bindings](docs/media/m0-keys.png)
+
+*Every flight control can be rebound; keys are stored in the same settings file.*
 
 ![Clouds over the Normandy coast](docs/media/m0-clouds.png)
 
