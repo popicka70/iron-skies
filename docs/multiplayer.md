@@ -189,6 +189,7 @@ hitboxes occupy.
   test yet.
 - Keyboard and multi-device HOTAS input in both scenes; bindings are configured in Settings.
 - C cycles chase/cockpit/top; right mouse looks or orbits, the wheel zooms and Home resets.
+- Server and clients must have the same theatre installed and selected; terrain is not streamed over the wire.
 - The host-and-play server exits if it has no players for 8 seconds; the host's process
   manager also attempts an immediate shutdown.
 - The launcher is the exported main scene; `--server`, `--connect` and the single-player

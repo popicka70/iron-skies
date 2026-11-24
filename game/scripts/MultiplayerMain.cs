@@ -18,7 +18,6 @@ namespace IronSkies.Game;
 public sealed partial class MultiplayerMain : Node3D
 {
     private const double PhysicsDt = 1.0 / 240.0;
-    private const string TerrainDirectory = "res://assets/terrain/normandy-1944";
 
     private sealed class RemotePlayer
     {
@@ -39,6 +38,7 @@ public sealed partial class MultiplayerMain : Node3D
     private byte _localType;
 
     private TerrainWorld _terrain = null!;
+    private string _terrainDirectory = "res://assets/terrain/normandy-1944";
     private SpitfireVisual _playerVisual = null!;
     private DamageSmoke _playerSmoke = null!;
     private EngineAudio _audio = null!;
@@ -144,7 +144,10 @@ public sealed partial class MultiplayerMain : Node3D
             _screenshotTicks = screenshotDelay * 240;
         }
 
-        _map = Heightmap.Load(TerrainDirectory);
+        _terrainDirectory = TheatreCatalog.Directory(TheatreCatalog.Resolve(
+            ReadOption("--theatre") ?? LaunchConfig.CurrentTheatre));
+        GD.Print($"Theatre: {_terrainDirectory}");
+        _map = Heightmap.Load(_terrainDirectory);
         _ground = new AirfieldSurface(_map);
         _definitions = new[] { LoadAircraft("spitfire-mk9"), LoadAircraft("bf109-g6") };
         string requestedAircraft = ReadOption("--aircraft") ?? GameSettings.PlayerAircraft;
@@ -617,10 +620,10 @@ public sealed partial class MultiplayerMain : Node3D
         });
 
         _terrain = new TerrainWorld();
-        _terrain.Build(_map, TerrainDirectory);
+        _terrain.Build(_map, _terrainDirectory);
         AddChild(_terrain);
         var osm = new OsmDetail();
-        osm.Build(_map, $"{TerrainDirectory}/osm.json");
+        osm.Build(_map, $"{_terrainDirectory}/osm.json");
         AddChild(osm);
         var airfield = new Airfield();
         airfield.Build(_map);
@@ -970,6 +973,7 @@ public sealed partial class MultiplayerMain : Node3D
     {
         _hudText.Clear();
         _hudText.Append("Iron Skies — Multiplayer\n");
+        _hudText.Append("Theatre   ").Append(_map.Meta.Name).Append('\n');
 
         if (_client is null || !_client.Connected)
         {

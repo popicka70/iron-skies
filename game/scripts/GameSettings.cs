@@ -1,4 +1,5 @@
 using Godot;
+using IronSkies.Game.World;
 
 namespace IronSkies.Game;
 
@@ -13,6 +14,7 @@ public static class GameSettings
     public static float MasterVolume { get; set; } = 0.8f;
     public static bool Fullscreen { get; set; }
     public static string PlayerAircraft { get; set; } = "spitfire-mk9";
+    public static string Theatre { get; set; } = "normandy-1944";
     public static float HudScale { get; set; } = 1.0f;
     public static bool InvertPitch { get; set; }
     public static float HotasDeadzone { get; set; } = 0.08f;
@@ -29,6 +31,12 @@ public static class GameSettings
             (float)config.GetValue("audio", "master", 0.8f), 0.0f, 1.0f);
         Fullscreen = (bool)config.GetValue("display", "fullscreen", false);
         PlayerAircraft = (string)config.GetValue("game", "aircraft", "spitfire-mk9");
+        string savedTheatre = (string)config.GetValue("game", "theatre", "");
+        Theatre = string.IsNullOrEmpty(savedTheatre)
+            ? (TheatreCatalog.IsInstalled(TheatreCatalog.LargeId)
+                ? TheatreCatalog.LargeId
+                : TheatreCatalog.DefaultId)
+            : savedTheatre;
         HudScale = Mathf.Clamp(
             (float)config.GetValue("game", "hud_scale", 1.0f), 0.8f, 1.6f);
         InvertPitch = (bool)config.GetValue("game", "invert_pitch", false);
@@ -44,6 +52,7 @@ public static class GameSettings
         config.SetValue("audio", "master", MasterVolume);
         config.SetValue("display", "fullscreen", Fullscreen);
         config.SetValue("game", "aircraft", PlayerAircraft);
+        config.SetValue("game", "theatre", Theatre);
         config.SetValue("game", "hud_scale", HudScale);
         config.SetValue("game", "invert_pitch", InvertPitch);
         config.SetValue("game", "hotas_deadzone", HotasDeadzone);

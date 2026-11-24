@@ -5,23 +5,22 @@ using Godot;
 namespace IronSkies.Game.World;
 
 /// <summary>
-/// Chunked, distance-based LOD terrain over the 40 × 40 km theatre.
+/// Chunked, distance-based LOD terrain over a square theatre of any size.
 ///
-/// Near chunks are 1 km tiles re-meshed as the camera moves; a single 200 m base mesh
+/// Near chunks are 1 km tiles re-meshed as the camera moves; a single coarse base mesh
 /// covers the far field so there are no holes at the horizon. Chunk meshes are lifted
 /// a few centimetres above the base to avoid z-fighting; the gap is invisible in flight.
 ///
-/// The ortho and landcover textures are global for a 40 km map. Larger theatres will
-/// need a virtual-texture page table; that is a later optimisation.
+/// Extents come from the loaded heightmap metadata, so the same code serves the 40 km
+/// Normandy sample and the 400 km regional bundle. The ortho and landcover textures are
+/// currently global for the whole theatre; a virtual-texture page table comes next.
 /// </summary>
 public sealed partial class TerrainWorld : Node3D
 {
-    private const int MapSizeMeters = 40_000;
-    private const int MapHalfMeters = MapSizeMeters / 2;
     private const int ChunkSizeMeters = 1_000;
-    private const int ChunksPerAxis = MapSizeMeters / ChunkSizeMeters;
     private const int NearRadiusMeters = 10_000;
-    private const int BaseStepMeters = 200;
+    private const int MinBaseStepMeters = 200;
+    private const int MaxBaseQuads = 200;
     private const float ChunkLiftMeters = 0.35f;
     private const int BuildsPerUpdate = 8;
 
@@ -40,16 +39,30 @@ public sealed partial class TerrainWorld : Node3D
     private Vector3 _focus;
     private double _updateTimer;
     private bool _ready;
+    private int _mapSizeMeters = 40_000;
+    private double _mapHalfMeters = 20_000.0;
+    private int _chunksPerAxis = 40;
+    private int _baseStepMeters = 200;
 
     public void Build(Heightmap map, string textureDirectory)
     {
         _map = map;
+        _mapSizeMeters = (int)Math.Round(2.0 * map.HalfExtent);
+        _mapHalfMeters = map.HalfExtent;
+        _chunksPerAxis = Math.Max(1, (int)Math.Ceiling(
+            _mapSizeMeters / (double)ChunkSizeMeters));
+        // Keep the far-field mesh at roughly 200 × 200 quads regardless of map size.
+        _baseStepMeters = Math.Max(
+            MinBaseStepMeters, (_mapSizeMeters + MaxBaseQuads - 1) / MaxBaseQuads);
         _material = CreateMaterial(map, textureDirectory);
+        GD.Print($"Terrain: {_mapSizeMeters / 1000} km, {_chunksPerAxis}×{_chunksPerAxis} "
+                 + $"chunks, base step {_baseStepMeters} m");
 
         var baseNode = new MeshInstance3D
         {
             Name = "TerrainBase",
-            Mesh = BuildGridMesh(-MapHalfMeters, -MapHalfMeters, MapSizeMeters, BaseStepMeters),
+            Mesh = BuildGridMesh(
+                -_mapHalfMeters, -_mapHalfMeters, _mapSizeMeters, _baseStepMeters),
             MaterialOverride = _material,
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
             Position = new Vector3(0.0f, -0.6f, 0.0f),
@@ -144,8 +157,8 @@ public sealed partial class TerrainWorld : Node3D
     private void ApplyChunk(Vector2I key, int lod)
     {
         ArrayMesh mesh = BuildGridMesh(
-            -MapHalfMeters + key.X * ChunkSizeMeters,
-            -MapHalfMeters + key.Y * ChunkSizeMeters,
+            -_mapHalfMeters + key.X * ChunkSizeMeters,
+            -_mapHalfMeters + key.Y * ChunkSizeMeters,
             ChunkSizeMeters,
             25 << lod);
 
@@ -181,20 +194,20 @@ public sealed partial class TerrainWorld : Node3D
 
         for (int cy = center.Y - radiusChunks; cy <= center.Y + radiusChunks; cy++)
         {
-            if (cy < 0 || cy >= ChunksPerAxis)
+            if (cy < 0 || cy >= _chunksPerAxis)
             {
                 continue;
             }
 
             for (int cx = center.X - radiusChunks; cx <= center.X + radiusChunks; cx++)
             {
-                if (cx < 0 || cx >= ChunksPerAxis)
+                if (cx < 0 || cx >= _chunksPerAxis)
                 {
                     continue;
                 }
 
-                double east = -MapHalfMeters + (cx + 0.5) * ChunkSizeMeters;
-                double north = -MapHalfMeters + (cy + 0.5) * ChunkSizeMeters;
+                double east = -_mapHalfMeters + (cx + 0.5) * ChunkSizeMeters;
+                double north = -_mapHalfMeters + (cy + 0.5) * ChunkSizeMeters;
                 double dx = east - _focus.X;
                 double dz = north - (-_focus.Z);
                 double distance = Math.Sqrt(dx * dx + dz * dz);
@@ -212,12 +225,12 @@ public sealed partial class TerrainWorld : Node3D
         }
     }
 
-    private static Vector2I ChunkCenter(Vector3 focus)
+    private Vector2I ChunkCenter(Vector3 focus)
     {
         int cx = (int)Math.Clamp(
-            Math.Floor((focus.X + MapHalfMeters) / ChunkSizeMeters), 0, ChunksPerAxis - 1);
+            Math.Floor((focus.X + _mapHalfMeters) / ChunkSizeMeters), 0, _chunksPerAxis - 1);
         int cy = (int)Math.Clamp(
-            Math.Floor((-focus.Z + MapHalfMeters) / ChunkSizeMeters), 0, ChunksPerAxis - 1);
+            Math.Floor((-focus.Z + _mapHalfMeters) / ChunkSizeMeters), 0, _chunksPerAxis - 1);
         return new Vector2I(cx, cy);
     }
 
@@ -305,6 +318,29 @@ public sealed partial class TerrainWorld : Node3D
 
         float half = (float)map.HalfExtent;
         material.SetShaderParameter("map_rect", new Vector4(-half, -half, 2.0f * half, 2.0f * half));
+
+        // Layer the committed 40 km Normandy imagery over a larger regional bundle.
+        // Both bundles share the same origin, so the inset is centred on the player spawn.
+        if (map.Meta.Id != "normandy-1944")
+        {
+            const string detailPath =
+                "res://assets/terrain/normandy-1944/ortho.jpg.bin";
+            if (FileAccess.FileExists(detailPath))
+            {
+                Texture2D? detail = LoadTexture(detailPath);
+                if (detail is not null)
+                {
+                    const float detailHalf = 20_000.0f;
+                    material.SetShaderParameter("detail_tex", detail);
+                    material.SetShaderParameter(
+                        "detail_rect",
+                        new Vector4(-detailHalf, -detailHalf,
+                            detailHalf * 2.0f, detailHalf * 2.0f));
+                    material.SetShaderParameter("detail_enabled", 1.0f);
+                }
+            }
+        }
+
         return material;
     }
 
@@ -344,10 +380,11 @@ public sealed partial class TerrainWorld : Node3D
         };
 
         // Larger than the theatre so the map edge is always hidden by sea.
+        float seaSize = Mathf.Max(600_000.0f, _mapSizeMeters * 4.0f);
         AddChild(new MeshInstance3D
         {
             Name = "Sea",
-            Mesh = new PlaneMesh { Size = new Vector2(600_000.0f, 600_000.0f) },
+            Mesh = new PlaneMesh { Size = new Vector2(seaSize, seaSize) },
             MaterialOverride = material,
             Position = new Vector3(0.0f, 0.3f, 0.0f),
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,

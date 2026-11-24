@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Godot;
 using IronSkies.FlightModel.Net;
+using IronSkies.Game.World;
 
 namespace IronSkies.Game;
 
@@ -22,6 +23,8 @@ public sealed partial class Launcher : Control
     private HSlider _volumeSlider = null!;
     private CheckButton _fullscreenCheck = null!;
     private OptionButton _aircraftOption = null!;
+    private OptionButton _theatreOption = null!;
+    private Label _theatreStatus = null!;
     private HSlider _hudScaleSlider = null!;
     private CheckButton _invertPitchCheck = null!;
     private Control _keysOverlay = null!;
@@ -77,6 +80,7 @@ public sealed partial class Launcher : Control
                 || HasFlag("--hunt-test") || HasFlag("--bomber-test")
                 || HasFlag("--damage-test") || HasFlag("--takeoff-test")
                 || ReadOption("--aircraft") is not null
+                || ReadOption("--theatre") is not null
                 || ReadOption("--record") is not null
                 || ReadOption("--replay") is not null))
         {
@@ -953,9 +957,9 @@ public sealed partial class Launcher : Control
             AnchorRight = 0.5f,
             AnchorBottom = 0.5f,
             OffsetLeft = -240.0f,
-            OffsetTop = -190.0f,
-            OffsetRight = 240.0f,
-            OffsetBottom = 190.0f,
+            OffsetTop = -240.0f,
+            OffsetRight = 250.0f,
+            OffsetBottom = 240.0f,
         };
         var style = new StyleBoxFlat
         {
@@ -1030,6 +1034,37 @@ public sealed partial class Launcher : Control
         };
         content.AddChild(_aircraftOption);
 
+        content.AddChild(new Label { Text = "Theatre" });
+        _theatreOption = new OptionButton();
+        int selectedTheatre = 0;
+        for (int i = 0; i < TheatreCatalog.All.Length; i++)
+        {
+            TheatreCatalog.Entry entry = TheatreCatalog.All[i];
+            bool installed = TheatreCatalog.IsInstalled(entry.Id);
+            _theatreOption.AddItem(
+                installed ? entry.Name : $"{entry.Name} (not installed)");
+            _theatreOption.SetItemMetadata(i, entry.Id);
+            if (entry.Id == GameSettings.Theatre)
+            {
+                selectedTheatre = i;
+            }
+        }
+
+        _theatreOption.Selected = selectedTheatre;
+        _theatreOption.ItemSelected += index =>
+        {
+            GameSettings.Theatre =
+                _theatreOption.GetItemMetadata((int)index).AsString();
+            GameSettings.Save();
+            RefreshTheatreStatus();
+        };
+        content.AddChild(_theatreOption);
+
+        _theatreStatus = new Label();
+        _theatreStatus.AddThemeFontSizeOverride("font_size", 12);
+        content.AddChild(_theatreStatus);
+        RefreshTheatreStatus();
+
         content.AddChild(new Label { Text = "HUD scale" });
         _hudScaleSlider = new HSlider
         {
@@ -1092,6 +1127,34 @@ public sealed partial class Launcher : Control
         _aircraftOption.Selected = GameSettings.PlayerAircraft == "bf109-g6" ? 1 : 0;
         _hudScaleSlider.Value = GameSettings.HudScale;
         _invertPitchCheck.ButtonPressed = GameSettings.InvertPitch;
+        for (int i = 0; i < _theatreOption.ItemCount; i++)
+        {
+            if (_theatreOption.GetItemMetadata(i).AsString() == GameSettings.Theatre)
+            {
+                _theatreOption.Selected = i;
+                break;
+            }
+        }
+
+        RefreshTheatreStatus();
+    }
+
+    private void RefreshTheatreStatus()
+    {
+        if (_theatreStatus is null)
+        {
+            return;
+        }
+
+        bool installed = TheatreCatalog.IsInstalled(GameSettings.Theatre);
+        _theatreStatus.Text = installed
+            ? "Regional terrain bundle found."
+            : "Not installed — build it with tools/mapgen (see README).";
+        _theatreStatus.AddThemeColorOverride(
+            "font_color",
+            installed
+                ? new Color(0.62f, 0.85f, 0.58f)
+                : new Color(0.92f, 0.76f, 0.45f));
     }
 
     private void HideSettings()

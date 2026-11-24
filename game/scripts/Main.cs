@@ -717,6 +717,7 @@ public partial class Main : Node3D
         }
 
         _hudText.Append('\n');
+        _hudText.Append("Theatre   ").Append(_heightmap.Meta.Name).Append('\n');
         if (_mission is not null)
         {
             _hudText.Append(_mission.Name).Append("   ")
@@ -1640,7 +1641,10 @@ public partial class Main : Node3D
 
     private void BuildTerrain()
     {
-        const string directory = "res://assets/terrain/normandy-1944";
+        string theatreId = TheatreCatalog.Resolve(
+            ReadUserOption("--theatre") ?? LaunchConfig.CurrentTheatre);
+        string directory = TheatreCatalog.Directory(theatreId);
+        GD.Print($"Theatre: {theatreId}");
         var timer = Stopwatch.StartNew();
         _heightmap = Heightmap.Load(directory);
         _ground = new AirfieldSurface(_heightmap);

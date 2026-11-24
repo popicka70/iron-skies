@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import signal
 import sys
 import tomllib
 import urllib.parse
@@ -217,7 +218,7 @@ def http_json(url: str, body: dict | None = None, timeout: int = 120) -> dict:
         return json.load(response)
 
 
-def stac_search(bounds: dict) -> list[dict]:
+def stac_search(bounds: dict, max_items: int = 2000) -> list[dict]:
     body = {
         "collections": ["sentinel-2-l2a"],
         "bbox": [bounds["west"], bounds["south"], bounds["east"], bounds["north"]],
@@ -226,7 +227,18 @@ def stac_search(bounds: dict) -> list[dict]:
         "limit": 100,
         "sortby": [{"field": "properties.eo:cloud_cover", "direction": "asc"}],
     }
-    features = http_json(f"{S2_STAC}/search", body).get("features", [])
+    features: list[dict] = []
+    while len(features) < max_items:
+        response = http_json(f"{S2_STAC}/search", body)
+        features.extend(response.get("features", []))
+        next_link = next(
+            (link for link in response.get("links", []) if link.get("rel") == "next"),
+            None,
+        )
+        if next_link is None or not next_link.get("body"):
+            break
+        body = next_link["body"]
+        body["limit"] = 100
     print(f"STAC: {len(features)} low-cloud Sentinel-2 items", file=sys.stderr)
     return features
 
@@ -236,54 +248,79 @@ def item_bbox(item: dict) -> tuple[float, float, float, float]:
     return (b[0], b[1], b[2], b[3])
 
 
-def covers_point(items: list[dict], lon: float, lat: float) -> bool:
-    return any(
-        west <= lon <= east and south <= lat <= north
-        for west, south, east, north in (item_bbox(i) for i in items)
+def choose_scenes(items: list[dict], bounds: dict) -> tuple[list[str], list[dict]]:
+    """Pick a low-cloud set of scenes that collectively covers the whole theatre.
+
+    One Sentinel-2 tile is only ~110 km across, so a 400 km theatre inevitably
+    needs a mosaic of several dates. Greedy set-cover over 0.5° grid cells keeps
+    the scene count and the number of different acquisition dates low.
+    """
+    step = 0.5
+    lon_edges = []
+    lon = float(bounds["west"])
+    while lon < bounds["east"]:
+        lon_edges.append((lon, min(lon + step, bounds["east"])))
+        lon += step
+    lat_edges = []
+    lat = float(bounds["south"])
+    while lat < bounds["north"]:
+        lat_edges.append((lat, min(lat + step, bounds["north"])))
+        lat += step
+    all_cells = {(i, j) for i in range(len(lon_edges)) for j in range(len(lat_edges))}
+
+    def cells_for(item: dict) -> set[tuple[int, int]]:
+        west, south, east, north = item_bbox(item)
+        cells = set()
+        for i, (a, b) in enumerate(lon_edges):
+            if b <= west or a >= east:
+                continue
+            for j, (c, d) in enumerate(lat_edges):
+                if d <= south or c >= north:
+                    continue
+                cells.add((i, j))
+        return cells
+
+    def score(item: dict) -> float:
+        props = item.get("properties", {})
+        cloud = float(props.get("eo:cloud_cover", 100.0))
+        month = int(props.get("datetime", "2025-01-01")[5:7])
+        season = 0.0 if month in (6, 7) else 0.08 if month in (5, 8) else 0.35
+        return cloud + season
+
+    ordered = sorted(
+        items,
+        key=lambda item: (
+            score(item),
+            item.get("properties", {}).get("datetime", ""),
+        ),
     )
-
-
-def choose_scenes(items: list[dict], bounds: dict) -> tuple[str, list[dict]]:
-    points = [
-        (bounds["west"], bounds["south"]),
-        (bounds["east"], bounds["south"]),
-        (bounds["west"], bounds["north"]),
-        (bounds["east"], bounds["north"]),
-        ((bounds["west"] + bounds["east"]) / 2, (bounds["south"] + bounds["north"]) / 2),
-    ]
-
-    groups: dict[str, list[dict]] = {}
-    for item in items:
-        if item.get("properties", {}).get("proj:code") not in (None, "EPSG:32630"):
+    covered: set[tuple[int, int]] = set()
+    chosen: list[dict] = []
+    for item in ordered:
+        new_cells = cells_for(item) - covered
+        if not new_cells:
             continue
-        date = item["properties"]["datetime"][:10]
-        groups.setdefault(date, []).append(item)
+        chosen.append(item)
+        covered.update(new_cells)
+        if covered >= all_cells:
+            break
 
-    best: tuple[float, str, list[dict]] | None = None
-    for date, group in groups.items():
-        if not all(covers_point(group, lon, lat) for lon, lat in points):
-            continue
-        cloud = sum(i["properties"].get("eo:cloud_cover", 100.0) for i in group)
-        month = int(date[5:7])
-        # Prefer June/July: green crops and long days look better than harvested August.
-        penalty = 0.0 if month in (6, 7) else 0.05 if month in (5, 8) else 0.3
-        score = cloud + penalty
-        if best is None or score < best[0]:
-            best = (score, date, group)
+    if not chosen:
+        raise SystemExit("no usable Sentinel-2 scenes found")
 
-    if best is None:
-        # Coverage incomplete: take the clearest single date and warn.
-        date = min(
-            groups,
-            key=lambda d: sum(i["properties"].get("eo:cloud_cover", 100.0) for i in groups[d]),
-            default=None,
+    dates = sorted({item["properties"]["datetime"][:10] for item in chosen})
+    print(
+        f"Sentinel-2 mosaic: {len(chosen)} scenes over {len(dates)} dates, "
+        f"coverage {len(covered)}/{len(all_cells)} cells",
+        file=sys.stderr,
+    )
+    if covered < all_cells:
+        print(
+            f"warning: Sentinel-2 coverage is incomplete "
+            f"({len(covered)}/{len(all_cells)} cells)",
+            file=sys.stderr,
         )
-        if date is None:
-            raise SystemExit("no usable Sentinel-2 scenes found")
-        print(f"warning: no single date covers the whole theatre; using {date}", file=sys.stderr)
-        return date, groups[date]
-
-    return best[1], best[2]
+    return dates, chosen
 
 
 def read_band(
@@ -295,18 +332,29 @@ def read_band(
     top: float,
     resolution: float,
     size: int,
+    dst_crs,
     resampling,
 ) -> tuple[np.ndarray, int, int, int, int] | None:
     import rasterio
-    from rasterio.windows import from_bounds
+    from rasterio.transform import from_origin
+    from rasterio.vrt import WarpedVRT
+    from rasterio.warp import transform_bounds
+    from rasterio.windows import Window
 
     href = item["assets"][key]["href"]
-    with rasterio.open("/vsicurl/" + href) as src:
-        if src.crs is None or src.crs.to_epsg() != 32630:
-            raise SystemExit(f"unexpected CRS for {item['id']}/{key}: {src.crs}")
-        sb = src.bounds
-        ix0, ix1 = max(left, sb.left), min(right, sb.right)
-        iy0, iy1 = max(bottom, sb.bottom), min(top, sb.top)
+    with rasterio.Env(
+        GDAL_HTTP_TIMEOUT="60",
+        GDAL_HTTP_CONNECTTIMEOUT="15",
+        GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR",
+    ), rasterio.open("/vsicurl/" + href) as src:
+        if src.crs is None:
+            raise SystemExit(f"missing CRS for {item['id']}/{key}")
+        scene_bounds = transform_bounds(
+            src.crs, dst_crs, *src.bounds, densify_pts=21)
+        ix0 = max(left, scene_bounds[0])
+        iy0 = max(bottom, scene_bounds[1])
+        ix1 = min(right, scene_bounds[2])
+        iy1 = min(top, scene_bounds[3])
         if ix0 >= ix1 or iy0 >= iy1:
             return None
 
@@ -319,14 +367,23 @@ def read_band(
         if col1 <= col0 or row1 <= row0:
             return None
 
-        window = from_bounds(ix0, iy0, ix1, iy1, src.transform)
-        data = src.read(
-            1,
-            window=window,
-            out_shape=(row1 - row0, col1 - col0),
+        dst_transform = from_origin(left, top, resolution, resolution)
+        with WarpedVRT(
+            src,
+            crs=dst_crs,
+            transform=dst_transform,
+            width=size,
+            height=size,
             resampling=resampling,
-        )
+            nodata=0,
+        ) as vrt:
+            data = vrt.read(
+                1, window=Window(col0, row0, col1 - col0, row1 - row0))
         return data, row0, row1, col0, col1
+
+
+def _scene_timeout(signum, frame):  # noqa: ARG001 - signal handler signature
+    raise TimeoutError("Sentinel-2 scene read timed out")
 
 
 def band_scale(item: dict, key: str) -> tuple[float, float]:
@@ -337,7 +394,7 @@ def band_scale(item: dict, key: str) -> tuple[float, float]:
     return float(bands[0].get("scale", 1.0)), 0.0
 
 
-def load_scenes(theatre: dict, bounds: dict) -> tuple[str, list[dict]]:
+def load_scenes(theatre: dict, bounds: dict) -> tuple[list[str], list[dict]]:
     pinned = theatre.get("sentinel2_scenes") or []
     if pinned:
         entry = pinned[0]
@@ -346,7 +403,7 @@ def load_scenes(theatre: dict, bounds: dict) -> tuple[str, list[dict]]:
             for item_id in entry["items"]
         ]
         print(f"Sentinel-2: pinned {entry['date']} ({len(items)} tiles)", file=sys.stderr)
-        return entry["date"], items
+        return [entry["date"]], items
 
     return choose_scenes(stac_search(bounds), bounds)
 
@@ -354,14 +411,16 @@ def load_scenes(theatre: dict, bounds: dict) -> tuple[str, list[dict]]:
 def build_ortho(theatre: dict, out_dir: Path, meta: dict, size: int) -> dict:
     try:
         from PIL import Image, ImageFilter
+        from rasterio.crs import CRS
         from rasterio.enums import Resampling
     except ImportError as exc:  # pragma: no cover
         raise SystemExit("mapgen needs rasterio, numpy and Pillow") from exc
 
     bounds = theatre["geodesy"]["bounds"]
-    date, scenes = load_scenes(theatre, bounds)
+    dates, scenes = load_scenes(theatre, bounds)
     scene_ids = sorted(i["id"] for i in scenes)
-    print(f"Sentinel-2: {date} — {', '.join(scene_ids)}", file=sys.stderr)
+    print(f"Sentinel-2: {', '.join(dates)} — {', '.join(scene_ids)}", file=sys.stderr)
+    dst_crs = CRS.from_string(theatre["geodesy"]["crs"])
 
     half = float(meta["halfExtentMeters"])
     center_e = float(meta["origin"]["easting"])
@@ -376,17 +435,48 @@ def build_ortho(theatre: dict, out_dir: Path, meta: dict, size: int) -> dict:
     mosaic = {key: np.zeros((size, size), dtype=dtype[key]) for key in keys}
     covered = np.zeros((size, size), dtype=bool)
 
+    signal.signal(signal.SIGALRM, _scene_timeout)
     for n, item in enumerate(scenes, start=1):
         print(f"  reading scene {n}/{len(scenes)}: {item['id']}", file=sys.stderr)
+        results = {}
         for key in keys:
             resampling = Resampling.nearest if key == "scl" else Resampling.bilinear
-            result = read_band(item, key, left, bottom, right, top, resolution, size, resampling)
-            if result is None:
+            try:
+                signal.alarm(150)
+                result = read_band(
+                    item, key, left, bottom, right, top, resolution, size,
+                    dst_crs, resampling)
+            except Exception as error:  # noqa: BLE001 - one bad remote scene must not abort
+                print(f"  warning: {item['id']}/{key}: {error}", file=sys.stderr)
+                result = None
+            finally:
+                signal.alarm(0)
+            if result is not None:
+                results[key] = result
+
+        if not all(key in results for key in keys):
+            print(f"  warning: {item['id']}: incomplete bands, skipping scene",
+                  file=sys.stderr)
+            continue
+
+        _, row0, row1, col0, col1 = results["red"]
+        # Keep the first clear scene and let later scenes fill holes. Clouds and
+        # no-data pixels stay uncovered so a later acquisition can replace them.
+        fresh = ~covered[row0:row1, col0:col1]
+        if "scl" in results:
+            scl_data, s0, s1, c0, c1 = results["scl"]
+            if (s0, s1, c0, c1) == (row0, row1, col0, col1):
+                unusable = np.isin(scl_data, [0, 1, 3, 8, 9, 10])
+                fresh &= ~unusable
+        if not fresh.any():
+            continue
+        for key, result in results.items():
+            data, r0, r1, c0, c1 = result
+            if (r0, r1, c0, c1) != (row0, row1, col0, col1):
                 continue
-            data, row0, row1, col0, col1 = result
-            mosaic[key][row0:row1, col0:col1] = data
-            if key == "red":
-                covered[row0:row1, col0:col1] = True
+            target = mosaic[key][r0:r1, c0:c1]
+            target[fresh] = data[fresh]
+        covered[row0:row1, col0:col1] |= fresh
 
     if not covered.any():
         raise SystemExit("Sentinel-2 read produced no pixels; check scene selection")
@@ -398,6 +488,10 @@ def build_ortho(theatre: dict, out_dir: Path, meta: dict, size: int) -> dict:
     rgb = np.clip(
         np.stack([reflectance["red"], reflectance["green"], reflectance["blue"]]), 0.0, 1.0
     )
+    # Flat land colour for any cell no scene could fill; avoids black holes at the
+    # regional edge or where a remote scene was skipped.
+    if (~covered).any():
+        rgb[:, ~covered] = np.array([0.18, 0.22, 0.14], dtype=np.float32)[:, None]
     scl = mosaic["scl"]
 
     # --- cloud / gap fill using a blurred copy -------------------------------
@@ -429,12 +523,16 @@ def build_ortho(theatre: dict, out_dir: Path, meta: dict, size: int) -> dict:
     red_f = downsample("red")
     green_f = downsample("green")
     scl_small = np.asarray(Image.fromarray(scl).resize((lc_size, lc_size), Image.NEAREST))
+    covered_small = np.asarray(
+        Image.fromarray((covered * 255).astype(np.uint8)).resize(
+            (lc_size, lc_size), Image.NEAREST)
+    ) > 127
 
     ndvi = (nir_f - red_f) / (nir_f + red_f + 1e-6)
     ndwi = (green_f - nir_f) / (green_f + nir_f + 1e-6)
     water = (scl_small == 6) | (ndwi > 0.05)
     vegetation = ~water & (((scl_small == 4) & (ndvi > 0.15)) | (ndvi > 0.30))
-    built = ~water & ~vegetation
+    built = ~water & ~vegetation & covered_small
     forest = vegetation & (ndvi > 0.55)
 
     def clean(mask: np.ndarray) -> np.ndarray:
@@ -460,7 +558,8 @@ def build_ortho(theatre: dict, out_dir: Path, meta: dict, size: int) -> dict:
             "landcoverFile": "landcover.png.bin",
             "landcoverSize": lc_size,
             "sentinel2": {
-                "date": date,
+                "dates": dates,
+                "date": dates[0] if len(dates) == 1 else "mosaic",
                 "items": scene_ids,
                 "cloudCoverPercent": round(
                     sum(i["properties"].get("eo:cloud_cover", 0.0) for i in scenes), 3
@@ -477,7 +576,7 @@ def build_ortho(theatre: dict, out_dir: Path, meta: dict, size: int) -> dict:
     (out_dir / "LICENSE-DATA.txt").write_text(
         "Map data attribution for this bundle:\n\n"
         + attribution
-        + f"\n\nSentinel-2 scenes: {', '.join(scene_ids)} ({date})\n",
+        + f"\n\nSentinel-2 scenes: {', '.join(scene_ids)} ({', '.join(dates)})\n",
         encoding="utf-8",
     )
 
@@ -539,7 +638,7 @@ def build_osm(theatre: dict, out_dir: Path, meta: dict, radius_m: float, refresh
     origin_e = float(meta["origin"]["easting"])
     origin_n = float(meta["origin"]["northing"])
     src = CRS.from_epsg(4326)
-    dst = CRS.from_epsg(32630)
+    dst = CRS.from_string(theatre["geodesy"]["crs"])
 
     roads = []
     hedges = []

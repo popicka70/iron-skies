@@ -60,10 +60,15 @@ fetch → clip/reproject → heightmap LOD pyramid → derivatives (normals, slo
 ## 5. Runtime terrain
 
 - **Chunked LOD** around the camera: 1 km tiles at 25/50/100/200 m spacing within
-  10 km, plus one 200 m base mesh for the far field. Chunks are lifted 0.35 m above the
-  base to avoid z-fighting; geomorphing and skirts come in M2.
-- **Global textures:** 4096² orthophoto and 2048² landcover masks sampled in world
-  space. Larger theatres will need a virtual-texture page table.
+  10 km, plus a coarse base mesh for the far field (roughly 200 × 200 quads regardless of
+  map size). Chunks are lifted 0.35 m above the base to avoid z-fighting; geomorphing and
+  skirts come in M2.
+- **Data-driven extents:** the runtime derives map size, chunk count and base step from
+  `meta.json`, so the same code serves the 40 km sample and a 400 km regional bundle.
+- **Textures:** a world-space orthophoto/landcover pair covers the whole theatre (4096²
+  for the 40 km sample, 8192² for the 400 km region). The larger theatre also layers the
+  committed 40 km Normandy ortho over its centre as a sharp 10 m inset with a feathered
+  edge. Continental maps will need a virtual-texture page table.
 - **OSM detail:** roads and hedgerows are draped as ribbon/fence meshes for the 7 km
   patch around the spawn. Woods and buildings are the next OSM layer.
 - **Geomorphing** (vertex position blending) over the last 15% of each LOD range removes
@@ -174,6 +179,8 @@ No application-level rewrite is expected; only the repository implementation cha
 
 - Height accuracy: sample N points, compare to source DEM within 2 m RMSE.
 - M0 baseline: 40 × 40 km, 1601² samples at 25 m, heights −44…248 m, built in < 1 s.
+- Regional baseline: 400 × 400 km, 8001² samples at 50 m, 19-date Sentinel-2 mosaic at
+  8192²; the runtime keeps the same 10 km detailed ring.
 - Visual: side-by-side screenshots vs. reference photos at 6 landmark locations.
 - Streaming: fly a 40 km transect, assert no hitch > 16 ms and memory within budget.
 - Persistence: kill -9 the server mid-mission, restart, assert state matches the journal.

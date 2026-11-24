@@ -7,6 +7,11 @@ uniform sampler2D ortho_tex : source_color, filter_linear_mipmap, repeat_disable
 uniform sampler2D landcover_tex : filter_linear_mipmap, repeat_disable;
 // x, z origin then width, height (Godot world space).
 uniform vec4 map_rect = vec4(-20000.0, -20000.0, 40000.0, 40000.0);
+// Optional high-resolution inset (the 40 km Normandy sample) layered over a
+// larger regional theatre. detail_rect is x, z origin then width, height.
+uniform sampler2D detail_tex : source_color, filter_linear_mipmap, repeat_disable;
+uniform vec4 detail_rect = vec4(-20000.0, -20000.0, 40000.0, 40000.0);
+uniform float detail_enabled = 0.0;
 uniform float water_wave_strength = 0.14;
 
 varying vec3 world_pos;
@@ -37,6 +42,19 @@ void vertex() {
 void fragment() {
     vec2 uv = clamp((world_pos.xz - map_rect.xy) / map_rect.zw, vec2(0.0), vec2(1.0));
     vec3 albedo = texture(ortho_tex, uv).rgb;
+
+    // Blend the sharp local inset over the coarse regional ortho, with a feathered
+    // edge so the transition is invisible in flight.
+    vec2 duv = (world_pos.xz - detail_rect.xy) / detail_rect.zw;
+    float detail_inside = step(0.0, duv.x) * step(duv.x, 1.0)
+        * step(0.0, duv.y) * step(duv.y, 1.0);
+    float detail_fade = smoothstep(0.0, 0.06, duv.x)
+        * smoothstep(0.0, 0.06, duv.y)
+        * (1.0 - smoothstep(0.94, 1.0, duv.x))
+        * (1.0 - smoothstep(0.94, 1.0, duv.y));
+    vec3 detail = texture(detail_tex, clamp(duv, vec2(0.0), vec2(1.0))).rgb;
+    albedo = mix(albedo, detail, detail_enabled * detail_inside * detail_fade);
+
     vec4 landcover = texture(landcover_tex, uv);
 
     // Break up the satellite texture at close range without destroying it.

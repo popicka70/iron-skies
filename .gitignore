@@ -42,3 +42,6 @@ Thumbs.db
 
 # Local config
 *.local.toml
+
+# Large generated regional theatre (built locally, not committed)
+game/assets/terrain/france-northwest-1944/
