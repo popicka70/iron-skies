@@ -151,10 +151,20 @@ See [docs/multiplayer.md](docs/multiplayer.md).
 
 ## Packaging
 
-Linux and Windows export presets are committed in `game/export_presets.cfg`.
-See [docs/building.md](docs/building.md) for the export-template setup and
-`./tools/export_builds.sh`. A manual GitHub workflow
-(`.github/workflows/export.yml`) builds both packages and uploads them as artifacts.
+Linux, Windows and dedicated-server presets are committed in
+`game/export_presets.cfg`. See [docs/building.md](docs/building.md) for the
+export-template setup and `./tools/export_builds.sh`.
+
+Dedicated server:
+
+```bash
+./tools/export_builds.sh
+docker build -t iron-skies-server .
+docker run -d --name iron-skies -p 7777:7777/udp iron-skies-server
+```
+
+See [docs/dedicated-server.md](docs/dedicated-server.md). A manual GitHub workflow
+(`.github/workflows/export.yml`) builds the packages and uploads them as artifacts.
 
 ## Contributing
 
