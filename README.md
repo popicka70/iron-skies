@@ -9,7 +9,7 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 > **Status: pre-alpha / M0.** Nothing here is stable yet. The first playable vertical
 > slice is targeted for milestone M2 (see [docs/ROADMAP.md](docs/ROADMAP.md)).
 >
-> M0 already starts the Spitfire on its gear, takes off, flies over a streamed
+> M0 already starts the Spitfire on a marked runway, takes off, flies over a streamed
 > 40 × 40 km Normandy terrain with Sentinel-2 orthophoto/landcover, OSM roads and
 > hedgerows, a low-poly aircraft, cockpit view, engine simulation, procedural audio and
 > four working guns, up to six Bf 109 bandits with a pursuit AI, progressive battle damage
@@ -38,6 +38,10 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 ![Damaged Spitfire trailing smoke](docs/media/m0-damage.png)
 
 *Battle damage is progressive: engine power, control authority and fuel leaks degrade, and damaged aircraft trail smoke.*
+
+![Iron Skies airfield](docs/media/m0-airfield.png)
+
+*Free flight starts on a marked strip with a hangar, tower and windsock.*
 
 ![Clouds over the Normandy coast](docs/media/m0-clouds.png)
 

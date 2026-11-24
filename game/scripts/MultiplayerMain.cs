@@ -31,6 +31,7 @@ public sealed partial class MultiplayerMain : Node3D
     }
 
     private Heightmap _map = null!;
+    private IGroundSurface _ground = null!;
     private AircraftDefinition _definition = null!;
 
     private TerrainWorld _terrain = null!;
@@ -121,6 +122,7 @@ public sealed partial class MultiplayerMain : Node3D
         }
 
         _map = Heightmap.Load(TerrainDirectory);
+        _ground = new AirfieldSurface(_map);
         _definition = LoadAircraft("spitfire-mk9");
 
         if (_serverMode)
@@ -128,7 +130,7 @@ public sealed partial class MultiplayerMain : Node3D
             _server = new NetworkServer();
             AddChild(_server);
             _server.Start(
-                _port, _map, _definition, hosted, serverName, discoveryPort, password);
+                _port, _ground, _definition, hosted, serverName, discoveryPort, password);
             return;
         }
 
@@ -282,7 +284,7 @@ public sealed partial class MultiplayerMain : Node3D
             FuelKg = _definition.FuelMassKg,
         };
 
-        _localSim = new AircraftSimulator(_definition, localState, _map, 0xC0FFEE1234UL);
+        _localSim = new AircraftSimulator(_definition, localState, _ground, 0xC0FFEE1234UL);
         _localSim.Health = state.Health;
         if (!_headlessClient)
         {
@@ -571,6 +573,9 @@ public sealed partial class MultiplayerMain : Node3D
         var osm = new OsmDetail();
         osm.Build(_map, $"{TerrainDirectory}/osm.json");
         AddChild(osm);
+        var airfield = new Airfield();
+        airfield.Build(_map);
+        AddChild(airfield);
         var clouds = new Cloudscape();
         clouds.Build();
         AddChild(clouds);
