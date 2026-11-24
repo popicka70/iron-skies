@@ -119,7 +119,8 @@ continuous streaming.
 
 ## M5 — Content and 1.0 (ongoing)
 
-- Third flyable aircraft, AI fighters/bombers with credible behaviour
+- Third flyable aircraft, bomber formations and AI wingmen
+- [x] Multiple AI bandits (0-6) with per-aircraft damage and smoke
 - [x] Objective/mission framework and the Supply Dump Strike sortie
 - [ ] Mission editor + 10 scripted missions; lightweight campaign
 - UI/UX pass, settings, rebinding, accessibility

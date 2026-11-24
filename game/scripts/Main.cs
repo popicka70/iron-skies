@@ -21,16 +21,23 @@ public partial class Main : Node3D
 {
     private const double PhysicsDt = 1.0 / 240.0;
 
+    private sealed class Enemy
+    {
+        public required AircraftSimulator Sim { get; init; }
+        public required DamageTarget Target { get; init; }
+        public required SpitfireVisual Visual { get; init; }
+        public required DamageSmoke Smoke { get; init; }
+        public PursuitPilot Pilot { get; } = new();
+        public bool Down;
+    }
+
     private AircraftSimulator _sim = null!;
-    private AircraftSimulator _aiSim = null!;
     private AircraftDefinition _definition = null!;
     private AircraftDefinition _aiDefinition = null!;
     private Heightmap _heightmap = null!;
     private TerrainWorld _terrain = null!;
     private SpitfireVisual _aircraft = null!;
-    private SpitfireVisual _aiVisual = null!;
     private DamageSmoke _playerSmoke = null!;
-    private DamageSmoke _aiSmoke = null!;
     private EngineAudio _audio = null!;
     private CombatVisual _combat = null!;
     private CockpitPanel _cockpitPanel = null!;
@@ -40,14 +47,13 @@ public partial class Main : Node3D
     private Label _hud = null!;
 
     private readonly StringBuilder _hudText = new(512);
-    private readonly PursuitPilot _aiPilot = new();
+    private readonly List<Enemy> _enemies = new();
 
     private DamageTarget _playerTarget = null!;
-    private DamageTarget _aiTarget = null!;
     private MissionState? _mission;
     private readonly List<DamageTarget> _missionTargets = new();
     private bool _playerDown;
-    private bool _banditDown;
+    private int _banditCount = 1;
     private double _downTimer;
 
     private double _throttle = 0.75;
@@ -97,10 +103,13 @@ public partial class Main : Node3D
         _airStart = HasUserFlag("--air-start");
         _missionTest = HasUserFlag("--mission-test");
         _damageTest = HasUserFlag("--damage-test");
+        _banditCount = int.TryParse(ReadUserOption("--bandits"), out int bandits)
+            ? System.Math.Clamp(bandits, 0, 6)
+            : _strikeStart ? 2 : 1;
         _strikeStart = HasUserFlag("--strike") || LaunchConfig.Mission == "strike"
             || _missionTest;
         _autoFire = HasUserFlag("--autofire");
-        _duel = HasUserFlag("--duel");
+        _duel = HasUserFlag("--duel") || LaunchConfig.Mission == "duel";
         string? cameraOption = ReadUserOption("--camera");
         if (cameraOption == "cockpit")
         {
@@ -122,12 +131,6 @@ public partial class Main : Node3D
         _definition = LoadAircraft("spitfire-mk9");
         _aiDefinition = LoadAircraft("bf109-g6");
         BuildAircraft();
-        _aiVisual = new SpitfireVisual();
-        _aiVisual.Build(new Color(0.42f, 0.44f, 0.42f));
-        AddChild(_aiVisual);
-        _aiSmoke = new DamageSmoke();
-        _aiVisual.AddChild(_aiSmoke);
-        _aiSmoke.Build();
         _combat = new CombatVisual();
         _combat.Build();
         AddChild(_combat);
@@ -162,18 +165,22 @@ public partial class Main : Node3D
         while (_accumulator >= PhysicsDt && steps < 8)
         {
             _playerTarget.Position = _sim.State.Position;
-            _aiTarget.Position = _aiSim.State.Position;
+            foreach (Enemy enemy in _enemies)
+            {
+                enemy.Target.Position = enemy.Sim.State.Position;
+            }
 
-            Controls aiControls = _aiSim.Destroyed
-                ? new Controls(GearDown: 0.0, Mixture: 0.9)
-                : _aiPilot.Compute(_aiSim.State, _sim.State, PhysicsDt);
-            _aiSim.Step(aiControls, PhysicsDt);
+            foreach (Enemy enemy in _enemies)
+            {
+                Controls aiControls = enemy.Sim.Destroyed
+                    ? new Controls(GearDown: 0.0, Mixture: 0.9)
+                    : enemy.Pilot.Compute(enemy.Sim.State, _sim.State, PhysicsDt);
+                enemy.Sim.Step(aiControls, PhysicsDt);
+                enemy.Sim.Health = enemy.Target.Health;
+                enemy.Target.Position = enemy.Sim.State.Position;
+            }
 
-            _playerTarget.Position = _sim.State.Position;
             _sim.Step(playerControls, PhysicsDt);
-
-            _aiTarget.Position = _aiSim.State.Position;
-            _aiSim.Health = _aiTarget.Health;
             _sim.Health = _playerTarget.Health;
 
             _accumulator -= PhysicsDt;
@@ -184,12 +191,20 @@ public partial class Main : Node3D
         _aircraft.GlobalTransform = SimBridge.ToGodot(_sim.State.Orientation, _sim.State.Position);
         _aircraft.UpdateFrom(_sim, delta);
         _playerSmoke.Update(_sim.Damage.Smoke);
-        _aiSmoke.Update(_aiSim.Damage.Smoke);
-        _aiVisual.GlobalTransform = SimBridge.ToGodot(_aiSim.State.Orientation, _aiSim.State.Position);
-        _aiVisual.UpdateFrom(_aiSim, delta);
-        _aiVisual.Visible = !_aiSim.Destroyed
-            || _aiSim.State.Position.Z > _heightmap.HeightAt(
-                _aiSim.State.Position.X, _aiSim.State.Position.Y) + 2.0;
+        foreach (Enemy enemy in _enemies)
+        {
+            enemy.Smoke.Update(enemy.Sim.Damage.Smoke);
+            enemy.Visual.GlobalTransform = SimBridge.ToGodot(
+                enemy.Sim.State.Orientation, enemy.Sim.State.Position);
+            enemy.Visual.UpdateFrom(enemy.Sim, delta);
+            enemy.Visual.Visible = !enemy.Sim.Destroyed
+                || enemy.Sim.State.Position.Z > _heightmap.HeightAt(
+                    enemy.Sim.State.Position.X, enemy.Sim.State.Position.Y) + 2.0;
+            if (enemy.Sim.Destroyed)
+            {
+                enemy.Down = true;
+            }
+        }
         _audio.UpdateFrom(_sim, _throttle);
         _cockpitPanel.Visible = _cameraMode == CameraMode.Cockpit;
         _terrain.SetFocus(_aircraft.GlobalPosition);
@@ -199,11 +214,6 @@ public partial class Main : Node3D
         {
             _playerDown = true;
             _downTimer = 0.0;
-        }
-
-        if (_aiSim.Destroyed)
-        {
-            _banditDown = true;
         }
 
         if (_mission is not null)
@@ -246,8 +256,9 @@ public partial class Main : Node3D
         Vector2 viewport = GetViewport().GetVisibleRect().Size;
         _crosshair.Position = new Vector2(viewport.X * 0.5f - 16.0f, viewport.Y * 0.5f - 18.0f);
         _message.Position = new Vector2(viewport.X * 0.5f - 210.0f, viewport.Y * 0.5f + 48.0f);
+        bool allBanditsDown = EnemiesDown() == _enemies.Count && _enemies.Count > 0;
         bool missionOver = _mission is { Active: false };
-        _message.Visible = _playerDown || _banditDown || missionOver;
+        _message.Visible = _playerDown || allBanditsDown || missionOver;
         if (_mission is { Failed: true })
         {
             _message.Text = "MISSION FAILED — R TO RETRY";
@@ -263,9 +274,9 @@ public partial class Main : Node3D
             _message.Text = "SHOT DOWN — RESETTING";
             _message.AddThemeColorOverride("font_color", new Color(1.0f, 0.4f, 0.3f));
         }
-        else if (_banditDown)
+        else if (allBanditsDown)
         {
-            _message.Text = "BANDIT DOWN";
+            _message.Text = "ALL BANDITS DOWN";
             _message.AddThemeColorOverride("font_color", new Color(0.55f, 1.0f, 0.55f));
         }
 
@@ -422,8 +433,16 @@ public partial class Main : Node3D
         _hudText.Append("Guns      ").Append(_sim.Weapons.TotalAmmo).Append(" rds   Range ")
             .Append(rangeAlive).Append('/').Append(rangeTotal)
             .Append("   Health ").Append((_sim.Health / _definition.StructuralHealth * 100.0).ToString("F0"))
-            .Append("%   Bandit ")
-            .Append((_aiSim.Health / _aiDefinition.StructuralHealth * 100.0).ToString("F0")).Append("%\n");
+            .Append("%   Bandits ").Append(_enemies.Count - EnemiesDown())
+            .Append('/').Append(_enemies.Count);
+        foreach (Enemy enemy in _enemies)
+        {
+            _hudText.Append(' ')
+                .Append((enemy.Target.Health / _aiDefinition.StructuralHealth * 100.0)
+                    .ToString("F0"));
+        }
+
+        _hudText.Append("%\n");
         DamageModel damage = _sim.Damage;
         if (damage.EnginePowerScale < 0.99 || damage.ControlScale < 0.99
             || damage.FuelLeakKgPerSecond > 0.0)
@@ -658,7 +677,7 @@ public partial class Main : Node3D
         _missionTargets.Clear();
         _mission = _strikeStart ? CreateStrikeMission() : null;
         AddTargets(_sim);
-        CreateBandit(east, north, _sim.State.Position.Z);
+        CreateEnemies(east, north, _sim.State.Position.Z);
         _throttle = airborne ? 0.75 : 0.0;
         _brake = 0.0;
         _radiator = 0.5;
@@ -671,21 +690,23 @@ public partial class Main : Node3D
         _tick = 0;
         _accumulator = 0.0;
         _terrain.Prewarm(SimBridge.ToGodot(_sim.State.Position));
-        _combat.Bind(_sim, _aiSim);
+        var fighters = new AircraftSimulator[_enemies.Count];
+        for (int i = 0; i < _enemies.Count; i++)
+        {
+            fighters[i] = _enemies[i].Sim;
+        }
+
+        _combat.Bind(_sim, fighters);
     }
 
-    private void CreateBandit(double playerEast, double playerNorth, double playerAltitude)
+    private void CreateEnemies(double playerEast, double playerNorth, double playerAltitude)
     {
-        double east = playerEast;
-        double north = playerNorth + (_duel ? 400.0 : 1500.0);
-        double ground = _heightmap.HeightAt(east, north);
-        double altitude = _duel
-            ? playerAltitude
-            : System.Math.Max(playerAltitude + 300.0, ground + 400.0);
-        AircraftState state = AircraftState.CreateAirborne(
-            _aiDefinition, altitude, 130.0, System.Math.PI, east, north);
+        foreach (Enemy existing in _enemies)
+        {
+            existing.Visual.QueueFree();
+        }
 
-        _aiSim = new AircraftSimulator(_aiDefinition, state, _heightmap, 0x51A7C0DE12345678UL);
+        _enemies.Clear();
         _playerTarget = new DamageTarget
         {
             Position = _sim.State.Position,
@@ -694,28 +715,77 @@ public partial class Main : Node3D
             Health = _definition.StructuralHealth,
             Static = false,
         };
-        _aiTarget = new DamageTarget
-        {
-            Position = _aiSim.State.Position,
-            Radius = 6.0,
-            MaxHealth = _aiDefinition.StructuralHealth,
-            Health = _aiDefinition.StructuralHealth,
-            Static = false,
-        };
-        _sim.AddTarget(_aiTarget);
-        _aiSim.AddTarget(_playerTarget);
 
         if (_damageTest)
         {
             _playerTarget.Health = _definition.StructuralHealth * 0.35;
-            _aiTarget.Health = _aiDefinition.StructuralHealth * 0.35;
         }
 
-        _aiVisual.Visible = true;
-        _aiVisual.GlobalTransform = SimBridge.ToGodot(_aiSim.State.Orientation, _aiSim.State.Position);
+        double baseNorth = playerNorth + (_duel ? 400.0 : 1500.0);
+        for (int i = 0; i < _banditCount; i++)
+        {
+            double lateral = (i - (_banditCount - 1) * 0.5) * 500.0;
+            double east = playerEast + lateral;
+            double north = baseNorth + i * 260.0;
+            double ground = _heightmap.HeightAt(east, north);
+            double altitude = _duel
+                ? playerAltitude + (i - (_banditCount - 1) * 0.5) * 80.0
+                : System.Math.Max(playerAltitude + 300.0, ground + 400.0) + i * 80.0;
+
+            AircraftState state = AircraftState.CreateAirborne(
+                _aiDefinition, altitude, 130.0, System.Math.PI, east, north);
+            var sim = new AircraftSimulator(
+                _aiDefinition, state, _heightmap,
+                0x51A7C0DE12345678UL + (ulong)i * 0x9E3779B9UL);
+            var target = new DamageTarget
+            {
+                Position = state.Position,
+                Radius = 6.0,
+                MaxHealth = _aiDefinition.StructuralHealth,
+                Health = _aiDefinition.StructuralHealth,
+                Static = false,
+            };
+
+            var visual = new SpitfireVisual();
+            visual.Build(new Color(0.42f, 0.44f, 0.42f));
+            AddChild(visual);
+            var smoke = new DamageSmoke();
+            visual.AddChild(smoke);
+            smoke.Build();
+            visual.GlobalTransform = SimBridge.ToGodot(state.Orientation, state.Position);
+
+            _sim.AddTarget(target);
+            sim.AddTarget(_playerTarget);
+            if (_damageTest)
+            {
+                target.Health = _aiDefinition.StructuralHealth * 0.35;
+            }
+
+            _enemies.Add(new Enemy
+            {
+                Sim = sim,
+                Target = target,
+                Visual = visual,
+                Smoke = smoke,
+            });
+        }
+
         _playerDown = false;
-        _banditDown = false;
         _downTimer = 0.0;
+    }
+
+    private int EnemiesDown()
+    {
+        int down = 0;
+        foreach (Enemy enemy in _enemies)
+        {
+            if (enemy.Down)
+            {
+                down++;
+            }
+        }
+
+        return down;
     }
 
     private void AddTargets(AircraftSimulator sim)

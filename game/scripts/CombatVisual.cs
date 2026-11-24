@@ -42,14 +42,15 @@ public sealed partial class CombatVisual : Node3D
         });
     }
 
-    public void Bind(AircraftSimulator sim, AircraftSimulator? other = null)
+    public void Bind(AircraftSimulator sim, AircraftSimulator[]? others = null)
     {
         _sims.Clear();
         _sims.Add(sim);
-        if (other is not null)
+        if (others is not null)
         {
-            _sims.Add(other);
+            _sims.AddRange(others);
         }
+
 
         foreach (TargetVisual visual in _targets)
         {
