@@ -215,13 +215,19 @@ public partial class Main : Node3D
         while (_accumulator >= PhysicsDt && steps < 8)
         {
             _playerTarget.Position = _sim.State.Position;
+            _playerTarget.Orientation = _sim.State.Orientation;
             foreach (Enemy enemy in _enemies)
             {
                 enemy.Target.Position = enemy.Sim.State.Position;
+                enemy.Target.Orientation = enemy.Sim.State.Orientation;
             }
 
             foreach (Enemy enemy in _enemies)
             {
+                enemy.Sim.Damage.SetComponents(
+                    enemy.Target.EngineDamage,
+                    enemy.Target.ControlDamage,
+                    enemy.Target.FuelDamage);
                 Controls aiControls = enemy.Sim.Destroyed
                     ? new Controls(GearDown: 0.0, Mixture: 0.9)
                     : enemy.Pilot.Compute(enemy.Sim.State, _sim.State, PhysicsDt);
@@ -230,6 +236,10 @@ public partial class Main : Node3D
                 enemy.Target.Position = enemy.Sim.State.Position;
             }
 
+            _sim.Damage.SetComponents(
+                _playerTarget.EngineDamage,
+                _playerTarget.ControlDamage,
+                _playerTarget.FuelDamage);
             _sim.Step(playerControls, PhysicsDt);
             _sim.Health = _playerTarget.Health;
 

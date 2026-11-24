@@ -41,6 +41,7 @@ simulation runs at 240 Hz with a stable 60 FPS render; CI is green on both OSes.
 - [x] Spring-damper gear, brakes, tail-wheel steering and taildragger takeoff
 - [x] Trim, flaps and retractable gear (position/rate modelled; animation next)
 - [x] Damage primitives: structure, control surfaces, engine, fuel leak
+- [x] Hit-zone component damage (engine, wings, fuel)
 - [x] Damage smoke and fire effects
 - [ ] Impact effects, decals and contrails
 - Wind, turbulence, gusts
@@ -86,8 +87,8 @@ popping in normal flight; an external art review calls it "convincing".
 - [x] Headless two-client smoke test in CI
 - [x] Per-player aircraft selection (Spitfire / Bf 109) over the network
 - [x] Distance-based interest management (15 km), compact quantised snapshots
-- [x] 64-client load test: 1.15 MB/s, 5.7 ms/tick (delta + mixed aircraft)
-- [x] Ack-based delta snapshots: ~18 KB/s/client at 64 players
+- [x] 64-client load test: 1.48 MB/s, 6.5 ms/tick (delta + mixed aircraft)
+- [x] Ack-based delta snapshots: ~23 KB/s/client at 64 players
 - [x] Lag-compensated hitboxes: 240 Hz pose history + view-delay rewind
 - [x] LAN server discovery and browser, direct connect, `--name`
 - [x] Password challenge/response and `[PW]` browser marker

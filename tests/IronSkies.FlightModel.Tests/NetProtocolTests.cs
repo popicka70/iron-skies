@@ -34,6 +34,9 @@ public class NetProtocolTests
             PlayerId = 3,
             AircraftType = 1,
             Health = 850.0,
+            EngineDamage = 120,
+            ControlDamage = 60,
+            FuelDamage = 30,
             Position = new Vec3(100.0, 200.0, 1500.0),
             Orientation = Quat.FromHeading(0.7),
             Velocity = new Vec3(1.0, 120.0, -2.0),
@@ -48,6 +51,9 @@ public class NetProtocolTests
 
         Assert.Equal(3, id);
         Assert.Equal(1, decoded.AircraftType);
+        Assert.Equal(120, decoded.EngineDamage);
+        Assert.Equal(60, decoded.ControlDamage);
+        Assert.Equal(30, decoded.FuelDamage);
         Assert.Equal(850.0, decoded.Health, 1e-3);
         Assert.Equal(100.0, decoded.Position.X, 0.01);
         Assert.Equal(1500.0, decoded.Position.Z, 0.01);
@@ -177,7 +183,9 @@ public class NetProtocolTests
                 },
                 new NetPlayerState
                 {
-                    PlayerId = 3, AircraftType = 1, Health = 1000, Position = new Vec3(0, 600, 1000),
+                    PlayerId = 3, AircraftType = 1, Health = 1000,
+                    EngineDamage = 200, ControlDamage = 40, FuelDamage = 10,
+                    Position = new Vec3(0, 600, 1000),
                     Orientation = Quat.FromHeading(0), Rpm = 2300, Gear = 1,
                 },
             },
@@ -195,6 +203,9 @@ public class NetProtocolTests
         Assert.Equal(3, decoded.Players[2].PlayerId);
         Assert.Equal(1, decoded.Players[0].AircraftType);
         Assert.Equal(1, decoded.Players[2].AircraftType);
+        Assert.Equal(200, decoded.Players[2].EngineDamage);
+        Assert.Equal(40, decoded.Players[2].ControlDamage);
+        Assert.Equal(10, decoded.Players[2].FuelDamage);
         Assert.Equal(121.0, decoded.Players[0].Velocity.Y, 0.1);
         Assert.True(data.Length < 150, $"delta too large: {data.Length} bytes");
     }

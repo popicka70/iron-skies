@@ -415,6 +415,29 @@ public sealed partial class NetworkServer : Node
                 : 0;
         }
 
+        foreach (ServerPlayer victim in _players.Values)
+        {
+            double engine = 0.0;
+            double control = 0.0;
+            double fuel = 0.0;
+            foreach (ServerPlayer attacker in _players.Values)
+            {
+                if (attacker.Id == victim.Id)
+                {
+                    continue;
+                }
+
+                if (attacker.Targets.TryGetValue(victim.Id, out DamageTarget? hit))
+                {
+                    engine += hit.EngineDamage;
+                    control += hit.ControlDamage;
+                    fuel += hit.FuelDamage;
+                }
+            }
+
+            victim.Sim.Damage.SetComponents(engine, control, fuel);
+        }
+
         for (int step = 0; step < SimStepsPerTick; step++)
         {
             long index = _simStep;
@@ -438,6 +461,7 @@ public sealed partial class NetworkServer : Node
                         && victim.Poses.TryGet(index - player.LagSteps, out Vec3 historical)
                             ? historical
                             : victim.Sim.State.Position;
+                    target.Orientation = victim.Sim.State.Orientation;
                 }
 
                 player.Sim.Step(player.Controls, 1.0 / 240.0);
@@ -494,9 +518,10 @@ public sealed partial class NetworkServer : Node
         AircraftState spawn = SpawnState(player.Id, player.Definition);
         var newSim = new AircraftSimulator(
             player.Definition, spawn, _map, (ulong)(0xA5A5A5A5u ^ (uint)player.Id * 7919u));
+        // Keep this player's damage against other aircraft; only the respawned
+        // aircraft's own hitbox is reset below.
         foreach (DamageTarget target in player.Targets.Values)
         {
-            target.Health = target.MaxHealth;
             newSim.AddTarget(target);
         }
 
@@ -508,7 +533,7 @@ public sealed partial class NetworkServer : Node
         {
             if (other.Targets.TryGetValue(player.Id, out DamageTarget? target))
             {
-                target.Health = target.MaxHealth;
+                target.Reset();
                 target.Position = spawn.Position;
             }
         }

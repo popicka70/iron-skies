@@ -7,9 +7,9 @@ Two or more clients can fly together on a dedicated authoritative server:
 - ENet transport over UDP.
 - Client sends input frames at 30 Hz; server simulates at 240 Hz and broadcasts
   snapshots at 30 Hz.
-- Server owns damage, health and respawns (5 s). Health deterministically drives
-  engine power, control authority and fuel leaks on both sides, so prediction stays
-  consistent without extra network state.
+- Server owns damage, health and respawns (5 s). Hit zones drive engine, control and
+  fuel damage; structural health still degrades every system. Component state is synced
+  in snapshots. See [damage.md](damage.md).
 - Client predicts its own aircraft and blends snapshots; remote aircraft are
   interpolated between snapshots.
 - Verified with a headless two-client smoke test in CI.
@@ -65,19 +65,20 @@ Measured on the development machine:
 
 | Clients | Server outbound | Per client | Tick time |
 | --- | --- | --- | --- |
-| 16 (mixed) | 95-101 KB/s | ~6 KB/s | 0.8 ms |
-| 64 (mixed) | 1.15 MB/s | ~18 KB/s | 5.7 ms |
+| 16 (mixed) | 120-137 KB/s | ~8 KB/s | 0.9 ms |
+| 64 (mixed) | 1.48 MB/s | ~23 KB/s | 6.5 ms |
 
 ```
-[server] players=64 tick=721 outKBps=1147.2 avgTick=5.73ms full=64 delta=1856 lag=1.4t
+[server] players=64 tick=721 outKBps=1475.5 avgTick=6.47ms full=64 delta=1856 lag=1.4t
 clients welcome=64/64 joined=64
 ```
 
-The load test alternates Spitfires and Bf 109s. The extra aircraft-type byte raises the
-64-client figure by ~8% relative to the all-Spitfire run.
+The load test alternates Spitfires and Bf 109s. Aircraft type and three component-damage
+bytes add ~0.3 MB/s at 64 players; per-client bandwidth stays under the 32 KB/s target.
 
-Ack-based delta snapshots cut the 64-client worst case from 2.45 MB/s to ~1.1 MB/s
-(2.2×); 96-97% of snapshots are deltas. The dictionary-based player lookup used by hit
+Ack-based delta snapshots cut the 64-client worst case from 2.45 MB/s to ~1.5 MB/s
+(1.6×) while carrying aircraft type and component damage; 96-97% of snapshots are
+deltas. The dictionary-based player lookup used by hit
 resolution also cut the 64-client tick from 10.7 ms to 5.5 ms. The run used a single
 16-core machine for the server **and** all 64 headless clients, which inflates the tick
 time through CPU contention; a dedicated server should be lower. All 64 aircraft were
@@ -118,10 +119,12 @@ Little-endian, float32 payloads, type-tagged:
 - `AuthRequest` / `AuthResponse` / `AuthFailed` (reliable): password challenge and result.
 - `Welcome` (server → client, reliable): player id + spawn state.
 - `Snapshot` (server → client, unreliable): tick + up to 255 player states
-  (id, aircraft type, health, pose, velocity, rates, RPM, flap, gear). Full keyframe.
+  (id, aircraft type, health, engine/control/fuel damage, pose, velocity, rates, RPM,
+  flap, gear). Full keyframe.
 - `SnapshotDelta` (server → client, unreliable): tick, the baseline tick it applies to,
   anchor, and per-player field masks against that baseline. The aircraft type is sent
-  only for players absent from the baseline; existing players inherit it.
+  only for players absent from the baseline; existing players inherit it. Component
+  damage bytes are sent every snapshot (they are small and can change on any hit).
 
 Snapshots use a compact wire format:
 
