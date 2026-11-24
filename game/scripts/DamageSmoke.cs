@@ -20,8 +20,8 @@ public sealed partial class DamageSmoke : Node3D
             new Color(0.08f, 0.08f, 0.08f), amount: 64, lifetime: 3.0f,
             velocity: 2.0f, rise: 2.4f, scaleMin: 1.2f, scaleMax: 3.8f, opacity: 0.70f);
         _fire = Create(
-            new Color(1.0f, 0.42f, 0.06f), amount: 24, lifetime: 0.5f,
-            velocity: 3.2f, rise: 2.5f, scaleMin: 0.4f, scaleMax: 1.3f, opacity: 0.95f);
+            new Color(1.0f, 0.42f, 0.06f), amount: 12, lifetime: 0.32f,
+            velocity: 1.8f, rise: 1.2f, scaleMin: 0.18f, scaleMax: 0.55f, opacity: 0.85f);
         AddChild(_smoke);
         AddChild(_fire);
     }

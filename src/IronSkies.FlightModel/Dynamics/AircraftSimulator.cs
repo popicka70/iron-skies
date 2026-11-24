@@ -90,6 +90,7 @@ public sealed class AircraftSimulator
 
         AircraftDefinition d = Definition;
         Damage.Update(Health, d.StructuralHealth);
+        Damage.Tick(dt, c.Extinguish);
         _engine.PowerScale = Damage.EnginePowerScale;
         _engine.Seized = Damage.EngineSeized;
 

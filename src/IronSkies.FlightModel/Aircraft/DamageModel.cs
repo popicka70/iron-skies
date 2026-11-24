@@ -12,6 +12,7 @@ public sealed class DamageModel
     private double _engine;
     private double _control;
     private double _fuel;
+    private double _fire;
 
     public double StructuralFraction { get; private set; } = 1.0;
 
@@ -32,8 +33,12 @@ public sealed class DamageModel
     /// <summary>0 (clean) … 1 (heavy smoke), for effects.</summary>
     public double Smoke { get; private set; }
 
-    /// <summary>0 (no fire) … 1 (raging). Derived from fuel and engine damage.</summary>
-    public double Fire { get; private set; }
+    /// <summary>0 (no fire) … 1 (raging). Grows from fuel/engine damage and can be
+    /// suppressed with the extinguisher.</summary>
+    public double Fire => _fire;
+
+    /// <summary>Structural damage per second while burning.</summary>
+    public double StructuralBurnPerSecond => _fire * 12.0;
 
     /// <summary>Stuck-surface roll bias, radians-ish of aileron command.</summary>
     public double RollBias { get; private set; }
@@ -71,7 +76,6 @@ public sealed class DamageModel
             System.Math.Max(_fuel, structural > 0.30 ? (structural - 0.30) * 1.2 : 0.0),
             0.0, 1.0);
 
-        Fire = ComputeFire(EngineDamage, FuelDamage);
         EnginePowerScale = DeterministicMath.Clamp(
             1.0 - EngineDamage * 0.8 - Fire * 0.2, 0.20, 1.0);
         ControlScale = DeterministicMath.Clamp(1.0 - ControlDamage * 0.7, 0.30, 1.0);
@@ -81,6 +85,37 @@ public sealed class DamageModel
         Smoke = DeterministicMath.Clamp(
             System.Math.Max(System.Math.Max(EngineDamage * 1.1, structural * 0.8), Fire),
             0.0, 1.0);
+    }
+
+    /// <summary>Advances the fire state. Fire grows toward the component-damage target
+    /// and is suppressed while the extinguisher is held; without suppression it slowly
+    /// burns out once the ignition source is gone.</summary>
+    public void Tick(double dt, bool extinguish)
+    {
+        if (dt <= 0.0)
+        {
+            return;
+        }
+
+        double target = ComputeFire(EngineDamage, FuelDamage);
+        if (_fire < target)
+        {
+            _fire = DeterministicMath.Clamp(_fire + dt * 0.55, 0.0, target);
+        }
+
+        if (extinguish)
+        {
+            _fire = DeterministicMath.Clamp(_fire - dt * 1.0, 0.0, 1.0);
+        }
+        else if (target <= 0.05)
+        {
+            _fire = DeterministicMath.Clamp(_fire - dt * 0.25, 0.0, 1.0);
+        }
+    }
+
+    public void SetFire(double fire)
+    {
+        _fire = DeterministicMath.Clamp(fire, 0.0, 1.0);
     }
 
     /// <summary>Fire level from component damage; shared with remote aircraft rendering.</summary>

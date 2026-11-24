@@ -208,7 +208,8 @@ public partial class Main : Node3D
             Flaps: _flapTarget,
             GearDown: _gearTarget,
             TrimElevator: _trimElevator,
-            Fire: _fire);
+            Fire: _fire,
+            Extinguish: Input.IsPhysicalKeyPressed(Key.X));
 
         _accumulator += delta;
         int steps = 0;
@@ -232,6 +233,10 @@ public partial class Main : Node3D
                     ? new Controls(GearDown: 0.0, Mixture: 0.9)
                     : enemy.Pilot.Compute(enemy.Sim.State, _sim.State, PhysicsDt);
                 enemy.Sim.Step(aiControls, PhysicsDt);
+                enemy.Target.Health = DeterministicMath.Clamp(
+                    enemy.Target.Health
+                    - enemy.Sim.Damage.StructuralBurnPerSecond * PhysicsDt,
+                    0.0, enemy.Target.MaxHealth);
                 enemy.Sim.Health = enemy.Target.Health;
                 enemy.Target.Position = enemy.Sim.State.Position;
             }
@@ -241,6 +246,9 @@ public partial class Main : Node3D
                 _playerTarget.ControlDamage,
                 _playerTarget.FuelDamage);
             _sim.Step(playerControls, PhysicsDt);
+            _playerTarget.Health = DeterministicMath.Clamp(
+                _playerTarget.Health - _sim.Damage.StructuralBurnPerSecond * PhysicsDt,
+                0.0, _playerTarget.MaxHealth);
             _sim.Health = _playerTarget.Health;
 
             _accumulator -= PhysicsDt;
@@ -546,7 +554,7 @@ public partial class Main : Node3D
         _hudText.Append("Chunks    ").Append(_terrain.ResidentChunks).Append("   FPS ")
             .Append(Engine.GetFramesPerSecond()).Append('\n');
         _hudText.Append("Tick      ").Append(_tick).Append("\n\n");
-        _hudText.Append("W/S throttle  B brakes  SPACE fire  C camera  RMB look  F flaps  G gear  K/L radiator  , . trim  ↑/↓ pitch  ←/→ roll  A/D rudder");
+        _hudText.Append("W/S throttle  B brakes  SPACE fire  C camera  RMB look  F flaps  G gear  K/L radiator  , . trim  X extinguish  ↑/↓ pitch  ←/→ roll  A/D rudder");
         _hud.Text = _hudText.ToString();
     }
 
@@ -839,7 +847,7 @@ public partial class Main : Node3D
 
         if (_damageTest)
         {
-            _playerTarget.Health = _definition.StructuralHealth * 0.35;
+            _playerTarget.Health = _definition.StructuralHealth * 0.25;
         }
 
         bool closeSpawn = _duel || _huntStart;
@@ -882,7 +890,7 @@ public partial class Main : Node3D
             sim.AddTarget(_playerTarget);
             if (_damageTest)
             {
-                target.Health = _aiDefinition.StructuralHealth * 0.35;
+                target.Health = _aiDefinition.StructuralHealth * 0.25;
             }
 
             _enemies.Add(new Enemy

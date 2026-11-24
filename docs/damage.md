@@ -23,8 +23,10 @@ victim's `DamageModel`; single-player does the same from its damage targets.
   persistent roll bias above 35%. Surfaces progressively jam: trim at 40%, rudder at 55%,
   aileron at 70% and elevator at 85%. Jammed surfaces ignore pilot input (the elevator
   sticks at a slight nose-up deflection); the HUD names the failed surface.
-- **Fuel damage:** opens a leak of up to 4 kg/s. Above 45% the tanks can **catch fire**,
-  which burns up to 6 kg/s and feeds the smoke/fire effects.
+- **Fuel damage:** opens a leak of up to 4 kg/s. Above 45% the tanks can **catch fire**.
+  Fire grows toward its component-damage target, burns up to 6 kg/s and deals 12 HP/s of
+  structural damage. Hold **X** to run the extinguisher; without suppression a fire
+  slowly burns out once its ignition source is gone.
 - **Structural damage:** still degrades all systems, so an aircraft at very low health is
   badly hurt even without specific zone hits.
 - **Smoke/fire:** driven by the combined engine, structural and fire state.

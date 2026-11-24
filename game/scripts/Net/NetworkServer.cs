@@ -46,6 +46,7 @@ public sealed partial class NetworkServer : Node
         public int LagSteps;
         public bool HasAck;
         public int InputsThisSecond;
+        public double BurnDamage;
         public double DeadSeconds;
     }
 
@@ -486,8 +487,9 @@ public sealed partial class NetworkServer : Node
                 }
             }
 
+            victim.BurnDamage += victim.Sim.Damage.StructuralBurnPerSecond * dt;
             victim.Sim.Health = DeterministicMath.Clamp(
-                victim.Definition.StructuralHealth - damage, 0.0,
+                victim.Definition.StructuralHealth - damage - victim.BurnDamage, 0.0,
                 victim.Definition.StructuralHealth);
 
             if (!victim.Sim.State.IsFinite)
@@ -527,6 +529,7 @@ public sealed partial class NetworkServer : Node
 
         player.Sim = newSim;
         player.Poses.Clear();
+        player.BurnDamage = 0.0;
         player.DeadSeconds = 0.0;
         player.Controls = new Controls(GearDown: 0.0, Throttle: 0.6, Mixture: 0.9);
         foreach (ServerPlayer other in _players.Values)
