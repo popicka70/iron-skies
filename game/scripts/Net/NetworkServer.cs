@@ -17,7 +17,7 @@ public sealed partial class NetworkServer : Node
 {
     private const double NetworkTick = 1.0 / 30.0;
     private const int SimStepsPerTick = 8; // 240 Hz / 30 Hz
-    private const int MaxPlayers = 16;
+    private const int MaxPlayers = 64;
     private const double RelevanceMeters = 15_000.0;
 
     private sealed class ServerPlayer
@@ -36,7 +36,6 @@ public sealed partial class NetworkServer : Node
     private SceneMultiplayer _multiplayer = null!;
     private double _accumulator;
     private uint _tick;
-    private int _nextPlayerId = 1;
     private double _statsTimer;
     private double _bytesThisSecond;
     private double _tickMsAccum;
@@ -107,8 +106,32 @@ public sealed partial class NetworkServer : Node
             return;
         }
 
-        byte playerId = (byte)_nextPlayerId;
-        _nextPlayerId++;
+        byte playerId = 0;
+        for (byte candidate = 1; candidate <= MaxPlayers; candidate++)
+        {
+            bool used = false;
+            foreach (ServerPlayer existing in _players.Values)
+            {
+                if (existing.Id == candidate)
+                {
+                    used = true;
+                    break;
+                }
+            }
+
+            if (!used)
+            {
+                playerId = candidate;
+                break;
+            }
+        }
+
+        if (playerId == 0)
+        {
+            GD.Print($"Rejecting peer {peerId}: no player slot");
+            _multiplayer.DisconnectPeer((int)peerId);
+            return;
+        }
 
         AircraftState spawn = SpawnState(playerId);
         var sim = new AircraftSimulator(
@@ -334,7 +357,13 @@ public sealed partial class NetworkServer : Node
                 }
             }
 
-            var snapshot = new NetSnapshot { Tick = _tick, Players = states.ToArray() };
+            var snapshot = new NetSnapshot
+            {
+                Tick = _tick,
+                SelfId = recipient.Id,
+                Anchor = recipient.Sim.State.Position,
+                Players = states.ToArray(),
+            };
             byte[] data = NetProtocol.EncodeSnapshot(snapshot);
             _multiplayer.SendBytes(
                 data, (int)peerId, MultiplayerPeer.TransferModeEnum.Unreliable, 1);

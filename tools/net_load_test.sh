@@ -41,9 +41,14 @@ if ! grep -q "server listening" "$server_log"; then
   exit 1
 fi
 
+test_seconds=15
+if [ "$clients" -ge 32 ]; then
+  test_seconds=25
+fi
+
 for i in $(seq 1 "$clients"); do
   godot --headless --path game scenes/Multiplayer.tscn -- \
-    --connect 127.0.0.1 --port "$port" --net-test 15 --headless-client \
+    --connect 127.0.0.1 --port "$port" --net-test "$test_seconds" --headless-client \
     >"$workdir/client-$i.log" 2>&1 &
   client_pids+=($!)
 done
@@ -68,6 +73,12 @@ done
 joined=$(grep -c "joined" "$server_log" || true)
 if [ "$welcome_count" -ne "$clients" ] || [ "$joined" -lt "$clients" ]; then
   echo "clients=$clients welcome=$welcome_count joined=$joined" >&2
+  fail=1
+fi
+
+if ! grep -q "players=$clients " "$server_log"; then
+  echo "server never reached $clients simultaneous players" >&2
+  grep "\[server\]" "$server_log" | tail -3 >&2 || true
   fail=1
 fi
 

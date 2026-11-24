@@ -58,6 +58,8 @@ public class NetProtocolTests
         var snapshot = new NetSnapshot
         {
             Tick = 12345,
+            SelfId = 1,
+            Anchor = new Vec3(0, 0, 1500),
             Players = new[]
             {
                 new NetPlayerState
@@ -90,7 +92,9 @@ public class NetProtocolTests
         Assert.Equal(2, decoded.Players.Length);
         Assert.Equal(2, decoded.Players[1].PlayerId);
         Assert.Equal(420.0, decoded.Players[1].Health, 1e-3);
-        Assert.Equal(1400.0, decoded.Players[1].Position.Y, 0.01);
+        Assert.Equal(1400.0, decoded.Players[1].Position.Y, 1.0);
+        Assert.Equal(120.0, decoded.Players[0].Velocity.Y, 0.1);
+        Assert.True(data.Length < 100, $"snapshot too large: {data.Length} bytes");
     }
 
     [Fact]

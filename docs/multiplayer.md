@@ -47,16 +47,22 @@ Smoke tests:
 The two-client test checks spawns, mutual visibility and snapshots. The load test uses
 `--headless-client` (no terrain/visuals) and prints server timing and bandwidth.
 
-Measured on the development machine, 16 clients:
+Measured on the development machine:
+
+| Clients | Server outbound | Tick time |
+| --- | --- | --- |
+| 16 | 163 KB/s | 0.86 ms |
+| 64 | 2.45 MB/s | 10.9 ms |
 
 ```
-[server] players=16 tick=421 outKBps=520.3 avgTick=0.88ms
-clients welcome=16/16 joined=16
+[server] players=64 tick=722 outKBps=2452.5 avgTick=10.94ms
+clients welcome=64/64 joined=64
 ```
 
-That is ~32 KB/s per client and under 1 ms of server work per 33 ms tick. The 16
-aircraft are all within the 15 km relevance radius, so this is the worst case for
-bandwidth at this player count.
+The 64-client run used a single 16-core machine for the server **and** all 64 headless
+clients, which inflates the tick time through CPU contention; a dedicated server should
+be lower. Even so it uses one third of the 33 ms tick budget. All 64 aircraft were within
+15 km, so this is the worst case for bandwidth at this player count (≈40 KB/s/client).
 
 ## Protocol
 
@@ -67,7 +73,14 @@ Little-endian, float32 payloads, type-tagged:
 - `Snapshot` (server → client, unreliable): tick + up to 255 player states
   (id, health, pose, velocity, rates, RPM, flap, gear).
 
-Input and snapshot packets are small (~50 B and ~70 B/player).
+Snapshots use a compact wire format:
+
+- header 19 B (tick, self id, anchor as three floats);
+- **20 B per aircraft**: id, health, three int16 position offsets (0.5 m, relative to the
+  recipient's position), smallest-three quaternion (1 B index + 3×int16), RPM, flap, gear;
+- +9 B for the recipient's own aircraft (velocity and angular rate).
+
+A full 64-player snapshot is ~1.3 KB; at 30 Hz that is ~40 KB/s per client.
 
 **Interest management:** each client receives itself plus every aircraft within 15 km.
 Remote aircraft disappear from the client five seconds after they last appeared in a
@@ -88,7 +101,7 @@ snapshot interval. No rewind/replay rollback is implemented yet.
 
 ## Boundaries
 
-- Up to 16 players per server (the load test target); the design target remains 64.
+- Up to 64 players per server, verified with the headless load test.
 - Both players fly Spitfires; the Bf 109 AI exists only in single-player.
 - No server browser, accounts, matchmaking or anti-cheat.
 - Interest management is distance-based only; no delta compression or lag-compensated
