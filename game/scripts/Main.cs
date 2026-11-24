@@ -8,6 +8,7 @@ using IronSkies.FlightModel.Aircraft;
 using IronSkies.FlightModel.Combat;
 using IronSkies.FlightModel.Math;
 using IronSkies.FlightModel.Mission;
+using IronSkies.FlightModel.Replay;
 using IronSkies.Game.World;
 
 namespace IronSkies.Game;
@@ -131,6 +132,15 @@ public partial class Main : Node3D
     private bool _screenshotStarted;
     private int _screenshotTicks = 480;
 
+    private string? _recordPath;
+    private string? _replayPath;
+    private ReplayData? _replayData;
+    private readonly List<Controls> _recordFrames = new();
+    private AircraftState? _recordInitial;
+    private double _recordInitialHealth;
+    private bool _replaying;
+    private int _replayIndex;
+
     public override void _Ready()
     {
         // Fewer full blocking collections while flying; the hot path allocates nothing.
@@ -139,6 +149,30 @@ public partial class Main : Node3D
         GameSettings.ApplyAudio();
         GameSettings.ApplyDisplay();
         _screenshotPath = ReadUserOption("--screenshot");
+        _recordPath = ReadUserOption("--record");
+        _replayPath = ReadUserOption("--replay");
+        if (_replayPath is not null)
+        {
+            try
+            {
+                byte[] bytes = FileAccess.GetFileAsBytes(_replayPath);
+                if (ReplayCodec.TryDecode(bytes, out ReplayData? replay))
+                {
+                    _replayData = replay;
+                    _replaying = true;
+                    _recordPath = null;
+                }
+                else
+                {
+                    GD.PushError($"Could not decode replay {_replayPath}");
+                }
+            }
+            catch (Exception error)
+            {
+                GD.PushError($"Could not read replay {_replayPath}: {error.Message}");
+            }
+        }
+
         _airStart = HasUserFlag("--air-start");
         _missionTest = HasUserFlag("--mission-test") || HasUserFlag("--hunt-test");
         _damageTest = HasUserFlag("--damage-test");
@@ -178,7 +212,20 @@ public partial class Main : Node3D
         {
             _bomberDefinition = LoadAircraft("ju88-a4");
         }
-        _banditCount = int.TryParse(ReadUserOption("--bandits"), out int bandits)
+
+        if (_replaying)
+        {
+            _missionKind = MissionKind.None;
+            _strikeStart = false;
+            _huntStart = false;
+            _bomberStart = false;
+            _missionTest = false;
+            _banditCount = 0;
+            _wingmanCount = 0;
+        }
+
+        _banditCount = _replaying ? 0 : int.TryParse(
+            ReadUserOption("--bandits"), out int bandits)
             ? System.Math.Clamp(bandits, 0, 6)
             : _strikeStart || _huntStart ? 2 : 1;
         if (_huntStart && _banditCount < 1)
@@ -186,13 +233,14 @@ public partial class Main : Node3D
             _banditCount = 1;
         }
 
-        _wingmanCount = int.TryParse(ReadUserOption("--wingmen"), out int wingmen)
-            ? System.Math.Clamp(wingmen, 0, 3)
-            : _duel ? 0 : 2;
-        _strikeStart = HasUserFlag("--strike") || LaunchConfig.Mission == "strike"
-            || _missionTest;
         _autoFire = HasUserFlag("--autofire");
         _duel = HasUserFlag("--duel") || LaunchConfig.Mission == "duel";
+        if (!_replaying)
+        {
+            _wingmanCount = int.TryParse(ReadUserOption("--wingmen"), out int wingmen)
+                ? System.Math.Clamp(wingmen, 0, 3)
+                : _duel ? 0 : 2;
+        }
         string? cameraOption = ReadUserOption("--camera");
         if (cameraOption == "cockpit")
         {
@@ -211,7 +259,8 @@ public partial class Main : Node3D
 
         BuildEnvironment();
         BuildTerrain();
-        string playerAircraft = ReadUserOption("--aircraft") ?? GameSettings.PlayerAircraft;
+        string playerAircraft = _replayData?.AircraftId
+            ?? ReadUserOption("--aircraft") ?? GameSettings.PlayerAircraft;
         if (playerAircraft == "bf109")
         {
             playerAircraft = "bf109-g6";
@@ -240,7 +289,17 @@ public partial class Main : Node3D
 
     public override void _PhysicsProcess(double delta)
     {
-        ReadControls();
+        if (_replaying)
+        {
+            if (Input.IsPhysicalKeyPressed(Key.R))
+            {
+                ResetFlight();
+            }
+        }
+        else
+        {
+            ReadControls();
+        }
 
         var playerControls = new Controls(
             Elevator: _elevator,
@@ -260,6 +319,27 @@ public partial class Main : Node3D
         int steps = 0;
         while (_accumulator >= PhysicsDt && steps < 8)
         {
+            if (_replaying && _replayData is not null)
+            {
+                Controls frame = _replayIndex < _replayData.Frames.Length
+                    ? _replayData.Frames[_replayIndex]
+                    : Controls.Neutral;
+                _replayIndex++;
+                _throttle = frame.Throttle;
+                _brake = frame.Brake;
+                _fire = frame.Fire;
+                _sim.Step(frame, PhysicsDt);
+                _accumulator -= PhysicsDt;
+                _tick++;
+                steps++;
+                continue;
+            }
+
+            if (_recordPath is not null && _recordInitial is not null)
+            {
+                _recordFrames.Add(playerControls);
+            }
+
             _playerTarget.Position = _sim.State.Position;
             _playerTarget.Orientation = _sim.State.Orientation;
             foreach (Enemy enemy in _enemies)
@@ -559,7 +639,19 @@ public partial class Main : Node3D
         double ground = _ground.HeightAt(_sim.State.Position.X, _sim.State.Position.Y);
         double agl = _sim.State.AltitudeMeters - ground;
         _hudText.Clear();
-        _hudText.Append("Iron Skies — ").Append(_definition.DisplayName).Append('\n');
+        _hudText.Append("Iron Skies — ").Append(_definition.DisplayName);
+        if (_replaying && _replayData is not null)
+        {
+            _hudText.Append("   REPLAY ")
+                .Append(Math.Min(_replayIndex, _replayData.Frames.Length))
+                .Append('/').Append(_replayData.Frames.Length);
+            if (_replayIndex >= _replayData.Frames.Length)
+            {
+                _hudText.Append(" ENDED");
+            }
+        }
+
+        _hudText.Append('\n');
         if (_mission is not null)
         {
             _hudText.Append(_mission.Name).Append("   ")
@@ -928,8 +1020,75 @@ public partial class Main : Node3D
         }
     }
 
+    private void BeginRecording()
+    {
+        _recordInitial = _sim.State.Clone();
+        _recordInitialHealth = _sim.Health;
+        _recordFrames.Clear();
+    }
+
+    private void WriteRecording()
+    {
+        if (_recordPath is null || _recordInitial is null || _recordFrames.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            var replay = new ReplayData
+            {
+                AircraftId = _definition.Id,
+                InitialState = _recordInitial,
+                InitialHealth = _recordInitialHealth,
+                Dt = PhysicsDt,
+                Frames = _recordFrames.ToArray(),
+            };
+            string path = ProjectSettings.GlobalizePath(_recordPath);
+            string? directory = System.IO.Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                System.IO.Directory.CreateDirectory(directory);
+            }
+
+            System.IO.File.WriteAllBytes(path, ReplayCodec.Encode(replay));
+            GD.Print($"[replay] wrote {_recordFrames.Count} frames to {path}");
+        }
+        catch (Exception error)
+        {
+            GD.PushError($"Could not write replay: {error.Message}");
+        }
+    }
+
+    public override void _ExitTree()
+    {
+        WriteRecording();
+    }
+
     private void ResetFlight()
     {
+        if (_replaying && _replayData is not null)
+        {
+            _sim = new AircraftSimulator(
+                _definition, _replayData.InitialState.Clone(), _ground);
+            _sim.Health = _replayData.InitialHealth;
+            _cockpitPanel.Bind(_sim);
+            _mission = null;
+            _missionTargets.Clear();
+            _replayIndex = 0;
+            _throttle = 0.0;
+            _brake = 0.0;
+            _fire = false;
+            _tick = 0;
+            _accumulator = 0.0;
+            _playerDown = false;
+            _terrain.Prewarm(SimBridge.ToGodot(_sim.State.Position));
+            _combat.Bind(_sim);
+            GD.Print($"[replay] {_replayData.AircraftId}, " +
+                     $"{_replayData.Frames.Length} frames");
+            return;
+        }
+
         double east = _strikeStart ? 900.0 : Airfield.East;
         double north = _strikeStart ? 7000.0 : Airfield.SouthThreshold + 100.0;
         double ground = _ground.HeightAt(east, north);
@@ -989,6 +1148,10 @@ public partial class Main : Node3D
         }
 
         _combat.Bind(_sim, fighters);
+        if (_recordPath is not null)
+        {
+            BeginRecording();
+        }
     }
 
     private void CreateBombers(double playerEast, double playerNorth, double playerAltitude)

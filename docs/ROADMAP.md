@@ -49,7 +49,8 @@ simulation runs at 240 Hz with a stable 60 FPS render; CI is green on both OSes.
 - [ ] Impact effects, decals and contrails
 - Wind, turbulence, gusts
 - Validation harness: compare climb/speed/turn/stall vs published data
-- Replay system and in-engine telemetry graphs
+- [x] Replay recording/playback of solo flights
+- [ ] In-engine telemetry graphs
 - Audio: procedural engine/prop sound driven by RPM and load; wind and gunfire
 
 **Acceptance:** both aircraft meet §7.4 tolerances; a pilot can complete a 30-minute
@@ -128,6 +129,7 @@ continuous streaming.
 ## M5 — Content and 1.0 (ongoing)
 
 - [x] AI wingmen (0-3) in single-player
+- [x] Replay recording/playback of solo flights
 - [ ] Third flyable aircraft
 - [x] Bomber intercept formation (placeholder Ju 88) and AI wingmen
 - [x] Multiple AI bandits (0-6) with per-aircraft damage and smoke

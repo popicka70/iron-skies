@@ -151,7 +151,13 @@ godot --path game scenes/Main.tscn
 
 # Capture a deterministic screenshot and exit
 godot --path game -- --screenshot /tmp/iron-skies.png
+
+# Record/replay a solo sortie
+godot --path game scenes/Main.tscn -- --air-start --record user://sortie.isrp
+godot --path game scenes/Main.tscn -- --replay user://sortie.isrp
 ```
+
+Replays are deterministic and documented in [docs/replay.md](docs/replay.md).
 
 ## Multiplayer
 
