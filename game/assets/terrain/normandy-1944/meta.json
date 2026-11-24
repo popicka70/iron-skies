@@ -26,11 +26,11 @@
     "Copernicus DEM GLO-30"
   ],
   "generatedBy": "tools/mapgen/mapgen.py",
-  "orthoFile": "ortho.jpg",
+  "orthoFile": "ortho.jpg.bin",
   "orthoSize": 4096,
   "orthoResolutionMeters": 9.7656,
   "orthoRowOrder": "north-to-south",
-  "landcoverFile": "landcover.png",
+  "landcoverFile": "landcover.png.bin",
   "landcoverSize": 2048,
   "sentinel2": {
     "date": "2025-06-19",

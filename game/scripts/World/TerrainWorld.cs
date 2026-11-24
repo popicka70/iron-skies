@@ -310,10 +310,22 @@ public sealed partial class TerrainWorld : Node3D
 
     private static Texture2D? LoadTexture(string path)
     {
-        Image? image = Image.LoadFromFile(path);
-        if (image is null)
+        // Plain .bin buffers are used instead of imported images so the source survives
+        // export (imported .jpg/.png originals are not shipped in the PCK).
+        byte[] bytes = FileAccess.GetFileAsBytes(path);
+        if (bytes.Length == 0)
         {
             GD.PushError($"Terrain texture missing or unreadable: {path}");
+            return null;
+        }
+
+        var image = new Image();
+        Error error = path.EndsWith(".jpg.bin")
+            ? image.LoadJpgFromBuffer(bytes)
+            : image.LoadPngFromBuffer(bytes);
+        if (error != Error.Ok)
+        {
+            GD.PushError($"Terrain texture decode failed ({error}): {path}");
             return null;
         }
 

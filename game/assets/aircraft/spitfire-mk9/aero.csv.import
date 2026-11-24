@@ -1,0 +1,16 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://8xjy0lbyprus"
+
+[deps]
+
+source_file="res://assets/aircraft/spitfire-mk9/aero.csv"
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true
