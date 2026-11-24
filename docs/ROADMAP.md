@@ -2,7 +2,8 @@
 
 Effort figures assume a small part-time team (2–4 contributors). They are planning
 estimates, not commitments. Every milestone ends with a demo build and a written
-retrospective in `docs/retro/`.
+retrospective in `docs/retro/`. The playable M0 slice is written up in
+[retro/m0.md](retro/m0.md).
 
 ---
 
