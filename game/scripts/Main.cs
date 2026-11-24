@@ -29,6 +29,8 @@ public partial class Main : Node3D
     private TerrainWorld _terrain = null!;
     private SpitfireVisual _aircraft = null!;
     private SpitfireVisual _aiVisual = null!;
+    private DamageSmoke _playerSmoke = null!;
+    private DamageSmoke _aiSmoke = null!;
     private EngineAudio _audio = null!;
     private CombatVisual _combat = null!;
     private CockpitPanel _cockpitPanel = null!;
@@ -62,6 +64,7 @@ public partial class Main : Node3D
     private bool _autoFire;
     private bool _duel;
     private bool _missionTest;
+    private bool _damageTest;
     private int _missionTestTick;
     private double _accumulator;
 
@@ -93,6 +96,7 @@ public partial class Main : Node3D
         _screenshotPath = ReadUserOption("--screenshot");
         _airStart = HasUserFlag("--air-start");
         _missionTest = HasUserFlag("--mission-test");
+        _damageTest = HasUserFlag("--damage-test");
         _strikeStart = HasUserFlag("--strike") || LaunchConfig.Mission == "strike"
             || _missionTest;
         _autoFire = HasUserFlag("--autofire");
@@ -121,6 +125,9 @@ public partial class Main : Node3D
         _aiVisual = new SpitfireVisual();
         _aiVisual.Build(new Color(0.42f, 0.44f, 0.42f));
         AddChild(_aiVisual);
+        _aiSmoke = new DamageSmoke();
+        _aiVisual.AddChild(_aiSmoke);
+        _aiSmoke.Build();
         _combat = new CombatVisual();
         _combat.Build();
         AddChild(_combat);
@@ -176,6 +183,8 @@ public partial class Main : Node3D
 
         _aircraft.GlobalTransform = SimBridge.ToGodot(_sim.State.Orientation, _sim.State.Position);
         _aircraft.UpdateFrom(_sim, delta);
+        _playerSmoke.Update(_sim.Damage.Smoke);
+        _aiSmoke.Update(_aiSim.Damage.Smoke);
         _aiVisual.GlobalTransform = SimBridge.ToGodot(_aiSim.State.Orientation, _aiSim.State.Position);
         _aiVisual.UpdateFrom(_aiSim, delta);
         _aiVisual.Visible = !_aiSim.Destroyed
@@ -696,6 +705,12 @@ public partial class Main : Node3D
         _sim.AddTarget(_aiTarget);
         _aiSim.AddTarget(_playerTarget);
 
+        if (_damageTest)
+        {
+            _playerTarget.Health = _definition.StructuralHealth * 0.35;
+            _aiTarget.Health = _aiDefinition.StructuralHealth * 0.35;
+        }
+
         _aiVisual.Visible = true;
         _aiVisual.GlobalTransform = SimBridge.ToGodot(_aiSim.State.Orientation, _aiSim.State.Position);
         _playerDown = false;
@@ -811,6 +826,9 @@ public partial class Main : Node3D
         _aircraft = new SpitfireVisual();
         _aircraft.Build();
         AddChild(_aircraft);
+        _playerSmoke = new DamageSmoke();
+        _aircraft.AddChild(_playerSmoke);
+        _playerSmoke.Build();
 
         _audio = new EngineAudio();
         AddChild(_audio);

@@ -21,7 +21,7 @@ retrospective in `docs/retro/`.
 - [x] Sentinel-2 orthophoto (10 m) + landcover masks draped on the terrain
 - [x] OSM roads and hedgerows draped as 3D ribbons around the demo spawn
 - [x] Golden-replay determinism unit test (cross-platform CI replay pending)
-- [x] Joystick/HOTAS input (single-player)
+- [x] Joystick/HOTAS input (single-player and multiplayer)
 - [ ] Basic HUD (speed, altitude, RPM) — done, expand with engine gauges
 
 **Acceptance:** the test aircraft takes off, climbs, stalls, and lands without NaNs;
@@ -39,7 +39,8 @@ simulation runs at 240 Hz with a stable 60 FPS render; CI is green on both OSes.
 - [x] Spring-damper gear, brakes, tail-wheel steering and taildragger takeoff
 - [x] Trim, flaps and retractable gear (position/rate modelled; animation next)
 - [x] Damage primitives: structure, control surfaces, engine, fuel leak
-- [ ] Fire, smoke and visual damage effects
+- [x] Damage smoke and fire effects
+- [ ] Impact effects, decals and contrails
 - Wind, turbulence, gusts
 - Validation harness: compare climb/speed/turn/stall vs published data
 - Replay system and in-engine telemetry graphs

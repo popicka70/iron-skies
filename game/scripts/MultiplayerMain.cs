@@ -23,6 +23,7 @@ public sealed partial class MultiplayerMain : Node3D
     private sealed class RemotePlayer
     {
         public required SpitfireVisual Visual { get; init; }
+        public required DamageSmoke Smoke { get; init; }
         public NetPlayerState Previous = new();
         public NetPlayerState Current = new();
         public bool HasState;
@@ -34,6 +35,7 @@ public sealed partial class MultiplayerMain : Node3D
 
     private TerrainWorld _terrain = null!;
     private SpitfireVisual _playerVisual = null!;
+    private DamageSmoke _playerSmoke = null!;
     private EngineAudio _audio = null!;
     private CombatVisual _combat = null!;
     private Camera3D _camera = null!;
@@ -51,6 +53,10 @@ public sealed partial class MultiplayerMain : Node3D
     private uint _lastSnapshotTick;
     private readonly Dictionary<byte, RemotePlayer> _remotes = new();
     private readonly Dictionary<byte, DamageTarget> _remoteTargets = new();
+
+    private int _joystick = -1;
+    private string _joystickName = "";
+    private double _joyPollTimer;
 
     private double _accumulator;
     private double _hudTimer;
@@ -129,6 +135,7 @@ public sealed partial class MultiplayerMain : Node3D
         if (!_headlessClient)
         {
             BuildWorld();
+            DetectJoystick();
         }
 
         _client = new NetworkClient();
@@ -191,6 +198,7 @@ public sealed partial class MultiplayerMain : Node3D
         _playerVisual.GlobalTransform = SimBridge.ToGodot(
             _localSim.State.Orientation, _localSim.State.Position);
         _playerVisual.UpdateFrom(_localSim, delta);
+        _playerSmoke.Update(_localSim.Damage.Smoke);
         _audio.UpdateFrom(_localSim, _throttle);
         _terrain.SetFocus(_playerVisual.GlobalPosition);
         UpdateCamera(delta);
@@ -211,6 +219,13 @@ public sealed partial class MultiplayerMain : Node3D
 
         UpdateRemotes(delta);
         RemoveStaleRemotes();
+
+        _joyPollTimer += delta;
+        if (_joyPollTimer > 2.0)
+        {
+            _joyPollTimer = 0.0;
+            DetectJoystick();
+        }
 
         if (_localSim is not null)
         {
@@ -420,7 +435,10 @@ public sealed partial class MultiplayerMain : Node3D
             var visual = new SpitfireVisual();
             visual.Build(new Color(0.42f, 0.44f, 0.42f));
             AddChild(visual);
-            remote = new RemotePlayer { Visual = visual };
+            var smoke = new DamageSmoke();
+            visual.AddChild(smoke);
+            smoke.Build();
+            remote = new RemotePlayer { Visual = visual, Smoke = smoke };
             _remotes[state.PlayerId] = remote;
             GD.Print($"[mp] remote player {state.PlayerId} appeared");
         }
@@ -501,6 +519,12 @@ public sealed partial class MultiplayerMain : Node3D
 
             remote.Visual.SetExternalTransform(position, orientation);
             remote.Visual.UpdateExternal(rpm, flap, gear, delta);
+
+            double healthFraction = _definition.StructuralHealth > 0.0
+                ? remote.Current.Health / _definition.StructuralHealth
+                : 1.0;
+            remote.Smoke.Update(Math.Clamp(
+                (1.0 - healthFraction - 0.35) / 0.65, 0.0, 1.0));
         }
     }
 
@@ -553,6 +577,9 @@ public sealed partial class MultiplayerMain : Node3D
         _playerVisual.Build();
         _playerVisual.Visible = false;
         AddChild(_playerVisual);
+        _playerSmoke = new DamageSmoke();
+        _playerVisual.AddChild(_playerSmoke);
+        _playerSmoke.Build();
 
         _audio = new EngineAudio();
         AddChild(_audio);
@@ -620,6 +647,27 @@ public sealed partial class MultiplayerMain : Node3D
         double yaw = (Input.IsPhysicalKeyPressed(Key.D) ? 1.0 : 0.0)
             - (Input.IsPhysicalKeyPressed(Key.A) ? 1.0 : 0.0);
 
+        if (_joystick >= 0)
+        {
+            double joyPitch = Axis(JoyAxis.LeftY);
+            double joyRoll = Axis(JoyAxis.LeftX);
+            double joyYaw = Axis(JoyAxis.RightX);
+            if (joyPitch != 0.0)
+            {
+                pitch = joyPitch;
+            }
+
+            if (joyRoll != 0.0)
+            {
+                roll = joyRoll;
+            }
+
+            if (joyYaw != 0.0)
+            {
+                yaw = joyYaw;
+            }
+        }
+
         double k = 4.0 * PhysicsDt;
         _elevator += (pitch - _elevator) * k;
         _aileron += (roll - _aileron) * k;
@@ -678,6 +726,38 @@ public sealed partial class MultiplayerMain : Node3D
             Fire: _fire);
     }
 
+    private double Axis(JoyAxis axis, double deadzone = 0.08)
+    {
+        if (_joystick < 0)
+        {
+            return 0.0;
+        }
+
+        double value = Input.GetJoyAxis(_joystick, axis);
+        double magnitude = System.Math.Abs(value);
+        if (magnitude < deadzone)
+        {
+            return 0.0;
+        }
+
+        double scaled = (magnitude - deadzone) / (1.0 - deadzone);
+        return System.Math.Sign(value) * scaled * scaled;
+    }
+
+    private void DetectJoystick()
+    {
+        Godot.Collections.Array<int> pads = Input.GetConnectedJoypads();
+        int device = pads.Count > 0 ? pads[0] : -1;
+        if (device == _joystick)
+        {
+            return;
+        }
+
+        _joystick = device;
+        _joystickName = device >= 0 ? Input.GetJoyName(device) : "";
+        GD.Print(device >= 0 ? $"Joystick: {_joystickName}" : "Joystick: none (keyboard)");
+    }
+
     private void UpdateCamera(double delta)
     {
         if (_localSim is null)
@@ -730,7 +810,9 @@ public sealed partial class MultiplayerMain : Node3D
 
         _hudText.Append("Player ").Append((int)_localId)
             .Append("   Snapshots ").Append(_snapshotCount)
-            .Append("   Players ").Append(_remotes.Count + 1).Append('\n');
+            .Append("   Players ").Append(_remotes.Count + 1)
+            .Append(_joystick >= 0 ? $"   Stick {_joystickName}" : "   Stick keyboard")
+            .Append('\n');
         _hudText.Append("Speed     ").Append((_localSim.Telemetry.SpeedMs * 1.94384).ToString("F0"))
             .Append(" kt   Altitude ").Append((_localSim.State.AltitudeMeters * 3.28084).ToString("F0"))
             .Append(" ft\n");
