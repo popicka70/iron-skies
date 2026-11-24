@@ -33,7 +33,7 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 
 ![Bf 109 over Normandy](docs/media/m0-bf109.png)
 
-*The Bf 109 G-6 is flyable in single-player; the AI flies the Spitfire when you do.*
+*The Bf 109 G-6 is flyable in single-player and multiplayer; the AI flies the Spitfire when you do.*
 
 ![Iron Skies missions](docs/media/m0-missions.png)
 
@@ -165,8 +165,9 @@ godot --path game scenes/Multiplayer.tscn -- --connect 127.0.0.1 --port 7777
 ```
 
 30 Hz snapshots, local prediction with snapshot blending, interpolated remote aircraft,
-server-owned damage and 5-second respawns. Up to **64 players**; measured at
-**2.45 MB/s and ~11 ms/tick** on a shared 16-core machine (worst-case relevance).
+server-owned damage and 5-second respawns. Spitfires and Bf 109s share a server. Up to
+**64 players**; measured at **1.15 MB/s and ~5.7 ms/tick** with delta snapshots on a
+shared 16-core machine (worst-case relevance).
 
 ```bash
 ./tools/net_smoke_test.sh        # 2 clients (CI)

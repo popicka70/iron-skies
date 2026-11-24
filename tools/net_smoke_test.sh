@@ -45,7 +45,8 @@ godot --headless --path game scenes/Multiplayer.tscn -- \
 client1_pid=$!
 
 godot --headless --path game scenes/Multiplayer.tscn -- \
-  --connect 127.0.0.1 --port "$port" --net-test 12 >"$client2_log" 2>&1 &
+  --connect 127.0.0.1 --port "$port" --net-test 12 \
+  --aircraft bf109 >"$client2_log" 2>&1 &
 client2_pid=$!
 
 wait "$client1_pid"
@@ -71,8 +72,22 @@ for log in "$client1_log" "$client2_log"; do
   fi
 done
 
+if ! grep -q "aircraft=spitfire-mk9" "$client1_log" \
+  || ! grep -q "aircraft=bf109-g6" "$client2_log"; then
+  echo "clients did not receive the requested aircraft:" >&2
+  cat "$client1_log" "$client2_log" >&2
+  fail=1
+fi
+
 if ! grep -q "Player 1 joined" "$server_log" || ! grep -q "Player 2 joined" "$server_log"; then
   echo "server did not accept both players:" >&2
+  cat "$server_log" >&2
+  fail=1
+fi
+
+if ! grep -q "Supermarine Spitfire" "$server_log" \
+  || ! grep -q "Messerschmitt Bf 109 G-6" "$server_log"; then
+  echo "server did not use both aircraft types:" >&2
   cat "$server_log" >&2
   fail=1
 fi

@@ -47,9 +47,13 @@ if [ "$clients" -ge 32 ]; then
 fi
 
 for i in $(seq 1 "$clients"); do
+  extra_args=()
+  if [ $((i % 2)) -eq 0 ]; then
+    extra_args=(--aircraft bf109)
+  fi
   godot --headless --path game scenes/Multiplayer.tscn -- \
     --connect 127.0.0.1 --port "$port" --net-test "$test_seconds" --headless-client \
-    >"$workdir/client-$i.log" 2>&1 &
+    "${extra_args[@]}" >"$workdir/client-$i.log" 2>&1 &
   client_pids+=($!)
 done
 

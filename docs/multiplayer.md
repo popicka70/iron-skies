@@ -65,16 +65,19 @@ Measured on the development machine:
 
 | Clients | Server outbound | Per client | Tick time |
 | --- | --- | --- | --- |
-| 16 | 120-139 KB/s | ~8 KB/s | 0.8 ms |
-| 64 | 1.06 MB/s | ~17 KB/s | 5.5 ms |
+| 16 (mixed) | 95-101 KB/s | ~6 KB/s | 0.8 ms |
+| 64 (mixed) | 1.15 MB/s | ~18 KB/s | 5.7 ms |
 
 ```
-[server] players=64 tick=721 outKBps=1057.8 avgTick=5.46ms full=64 delta=1856 lag=1.2t
+[server] players=64 tick=721 outKBps=1147.2 avgTick=5.73ms full=64 delta=1856 lag=1.4t
 clients welcome=64/64 joined=64
 ```
 
-Ack-based delta snapshots cut the 64-client worst case from 2.45 MB/s to 1.06 MB/s
-(2.3×); 96-97% of snapshots are deltas. The dictionary-based player lookup used by hit
+The load test alternates Spitfires and Bf 109s. The extra aircraft-type byte raises the
+64-client figure by ~8% relative to the all-Spitfire run.
+
+Ack-based delta snapshots cut the 64-client worst case from 2.45 MB/s to ~1.1 MB/s
+(2.2×); 96-97% of snapshots are deltas. The dictionary-based player lookup used by hit
 resolution also cut the 64-client tick from 10.7 ms to 5.5 ms. The run used a single
 16-core machine for the server **and** all 64 headless clients, which inflates the tick
 time through CPU contention; a dedicated server should be lower. All 64 aircraft were
@@ -107,14 +110,18 @@ encrypted, so use a VPN if the content of the session is sensitive.
 
 Little-endian, float32 payloads, type-tagged:
 
+- `JoinRequest` (client → server, reliable): requested aircraft type (0 = Spitfire,
+  1 = Bf 109). The server waits for this before spawning; password servers may receive
+  it before or after the auth response.
 - `Input` (client → server, unreliable): sequence, acked snapshot tick + 11 control
   floats.
 - `AuthRequest` / `AuthResponse` / `AuthFailed` (reliable): password challenge and result.
 - `Welcome` (server → client, reliable): player id + spawn state.
 - `Snapshot` (server → client, unreliable): tick + up to 255 player states
-  (id, health, pose, velocity, rates, RPM, flap, gear). Full keyframe.
+  (id, aircraft type, health, pose, velocity, rates, RPM, flap, gear). Full keyframe.
 - `SnapshotDelta` (server → client, unreliable): tick, the baseline tick it applies to,
-  anchor, and per-player field masks against that baseline.
+  anchor, and per-player field masks against that baseline. The aircraft type is sent
+  only for players absent from the baseline; existing players inherit it.
 
 Snapshots use a compact wire format:
 
@@ -164,7 +171,8 @@ hitboxes occupy.
 ## Boundaries
 
 - Up to 64 players per server, verified with the headless load test.
-- Both players fly Spitfires; the Bf 109 AI exists only in single-player.
+- Players choose Spitfire or Bf 109; the server gives each player its own definition,
+  targets and structural health. Remote aircraft are rendered with their type.
 - No accounts, matchmaking, admin commands or whitelist. Inputs are checked for
   finite values, monotonic sequence numbers and a 180/s rate limit; divergent server
   states respawn instead of poisoning snapshots.

@@ -432,7 +432,7 @@ public sealed partial class Launcher : Control
         };
         content.AddChild(_fullscreenCheck);
 
-        content.AddChild(new Label { Text = "Player aircraft (single-player)" });
+        content.AddChild(new Label { Text = "Player aircraft" });
         _aircraftOption = new OptionButton();
         _aircraftOption.AddItem("Supermarine Spitfire LF Mk IX");
         _aircraftOption.SetItemMetadata(0, "spitfire-mk9");

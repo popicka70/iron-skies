@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Godot;
 using IronSkies.FlightModel.Aircraft;
@@ -22,13 +23,18 @@ public sealed partial class NetworkServer : Node
 
     private sealed class PendingPeer
     {
-        public required byte[] Salt { get; init; }
+        public byte[]? Salt { get; init; }
+        public byte AircraftType;
+        public bool HasType;
+        public bool Authenticated;
         public double Seconds;
     }
 
     private sealed class ServerPlayer
     {
         public required byte Id { get; init; }
+        public required byte AircraftType { get; init; }
+        public required AircraftDefinition Definition { get; init; }
         public required AircraftSimulator Sim { get; set; }
         public readonly Dictionary<byte, DamageTarget> Targets = new();
         public Controls Controls = new(GearDown: 0.0, Throttle: 0.6, Mixture: 0.9);
@@ -49,7 +55,7 @@ public sealed partial class NetworkServer : Node
     private readonly Dictionary<long, double> _disconnectAt = new();
     private byte[]? _passwordHash;
     private IGroundSurface _map = null!;
-    private AircraftDefinition _definition = null!;
+    private AircraftDefinition[] _definitions = null!;
     private SceneMultiplayer _multiplayer = null!;
     private double _accumulator;
     private uint _tick;
@@ -65,12 +71,13 @@ public sealed partial class NetworkServer : Node
     private readonly System.Diagnostics.Stopwatch _tickTimer = new();
 
     public void Start(
-        int port, IGroundSurface map, AircraftDefinition definition, bool hosted = false,
+        int port, IGroundSurface map, AircraftDefinition[] definitions, bool hosted = false,
         string name = "Iron Skies Server", int discoveryPort = DiscoveryProtocol.DefaultPort,
         string? password = null)
     {
         _map = map;
-        _definition = definition;
+        _definitions = definitions.Length > 0 ? definitions : throw new ArgumentException(
+            "At least one aircraft definition is required.", nameof(definitions));
         _hosted = hosted;
         _passwordHash = string.IsNullOrEmpty(password) ? null : NetAuth.HashPassword(password);
 
@@ -213,10 +220,11 @@ public sealed partial class NetworkServer : Node
             return;
         }
 
-        AddPlayer(peerId);
+        // Wait for the client's JoinRequest so the server knows which aircraft to use.
+        _pending[peerId] = new PendingPeer { Authenticated = true };
     }
 
-    private void AddPlayer(long peerId)
+    private void AddPlayer(long peerId, byte requestedType)
     {
         byte playerId = 0;
         for (byte candidate = 1; candidate <= MaxPlayers; candidate++)
@@ -245,10 +253,19 @@ public sealed partial class NetworkServer : Node
             return;
         }
 
-        AircraftState spawn = SpawnState(playerId);
+        byte aircraftType = (byte)System.Math.Clamp(
+            (int)requestedType, 0, _definitions.Length - 1);
+        AircraftDefinition definition = _definitions[aircraftType];
+        AircraftState spawn = SpawnState(playerId, definition);
         var sim = new AircraftSimulator(
-            _definition, spawn, _map, (ulong)(0x9E3779B9u ^ (uint)playerId * 7919u));
-        var player = new ServerPlayer { Id = playerId, Sim = sim };
+            definition, spawn, _map, (ulong)(0x9E3779B9u ^ (uint)playerId * 7919u));
+        var player = new ServerPlayer
+        {
+            Id = playerId,
+            AircraftType = aircraftType,
+            Definition = definition,
+            Sim = sim,
+        };
 
         foreach (ServerPlayer other in _players.Values)
         {
@@ -259,12 +276,13 @@ public sealed partial class NetworkServer : Node
         _players[peerId] = player;
         _playersById[playerId] = player;
 
-        NetPlayerState state = NetPlayerState.FromSimulator(playerId, sim);
+        NetPlayerState state = NetPlayerState.FromSimulator(playerId, sim, aircraftType);
         byte[] welcome = NetProtocol.EncodeWelcome(playerId, state);
         _multiplayer.SendBytes(welcome, (int)peerId,
             MultiplayerPeer.TransferModeEnum.Reliable, 0);
 
-        GD.Print($"Player {playerId} joined (peer {peerId}); {_players.Count} online");
+        GD.Print($"Player {playerId} joined (peer {peerId}, {definition.DisplayName}); " +
+                 $"{_players.Count} online");
         Broadcast();
     }
 
@@ -297,16 +315,43 @@ public sealed partial class NetworkServer : Node
         if (_pending.TryGetValue(peerId, out PendingPeer? pending))
         {
             if (packet.Length > 0
+                && packet[0] == NetProtocol.TypeJoinRequest
+                && NetProtocol.TryDecodeJoinRequest(packet, out byte requestedType))
+            {
+                pending.AircraftType = requestedType;
+                pending.HasType = true;
+                if (pending.Authenticated)
+                {
+                    _pending.Remove(peerId);
+                    AddPlayer(peerId, requestedType);
+                }
+
+                return;
+            }
+
+            if (pending.Salt is not null
+                && !pending.Authenticated
+                && packet.Length > 0
                 && packet[0] == NetProtocol.TypeAuthResponse
                 && NetProtocol.TryDecodeAuthResponse(packet, out byte[] hash))
             {
                 byte[] expected = NetAuth.ComputeResponse(pending.Salt, _passwordHash!);
                 if (NetAuth.Verify(expected, hash))
                 {
-                    _pending.Remove(peerId);
-                    AddPlayer(peerId);
+                    pending.Authenticated = true;
+                    if (pending.HasType)
+                    {
+                        _pending.Remove(peerId);
+                        AddPlayer(peerId, pending.AircraftType);
+                    }
+
                     return;
                 }
+            }
+
+            if (pending.Salt is null || pending.Authenticated)
+            {
+                return;
             }
 
             _pending.Remove(peerId);
@@ -418,8 +463,8 @@ public sealed partial class NetworkServer : Node
             }
 
             victim.Sim.Health = DeterministicMath.Clamp(
-                _definition.StructuralHealth - damage, 0.0,
-                _definition.StructuralHealth);
+                victim.Definition.StructuralHealth - damage, 0.0,
+                victim.Definition.StructuralHealth);
 
             if (!victim.Sim.State.IsFinite)
             {
@@ -446,9 +491,9 @@ public sealed partial class NetworkServer : Node
 
     private void Respawn(ServerPlayer player)
     {
-        AircraftState spawn = SpawnState(player.Id);
+        AircraftState spawn = SpawnState(player.Id, player.Definition);
         var newSim = new AircraftSimulator(
-            _definition, spawn, _map, (ulong)(0xA5A5A5A5u ^ (uint)player.Id * 7919u));
+            player.Definition, spawn, _map, (ulong)(0xA5A5A5A5u ^ (uint)player.Id * 7919u));
         foreach (DamageTarget target in player.Targets.Values)
         {
             target.Health = target.MaxHealth;
@@ -477,15 +522,15 @@ public sealed partial class NetworkServer : Node
         {
             Position = victim.Sim.State.Position,
             Radius = 6.0,
-            MaxHealth = _definition.StructuralHealth,
-            Health = _definition.StructuralHealth,
+            MaxHealth = victim.Definition.StructuralHealth,
+            Health = victim.Definition.StructuralHealth,
             Static = false,
         };
         owner.Targets[victim.Id] = target;
         owner.Sim.AddTarget(target);
     }
 
-    private AircraftState SpawnState(byte playerId)
+    private AircraftState SpawnState(byte playerId, AircraftDefinition definition)
     {
         (double east, double north, double heading)[] spawns =
         {
@@ -513,7 +558,7 @@ public sealed partial class NetworkServer : Node
 
         double ground = _map.HeightAt(east, north);
         return AircraftState.CreateAirborne(
-            _definition, ground + 1500.0, 120.0, heading, east, north);
+            definition, ground + 1500.0, 120.0, heading, east, north);
     }
 
     private void Broadcast()
@@ -534,7 +579,7 @@ public sealed partial class NetworkServer : Node
                     .Length <= RelevanceMeters;
                 if (self || inRange)
                 {
-                    states.Add(NetPlayerState.FromSimulator(candidate.Id, candidate.Sim));
+                    states.Add(NetPlayerState.FromSimulator(candidate.Id, candidate.Sim, candidate.AircraftType));
                 }
             }
 

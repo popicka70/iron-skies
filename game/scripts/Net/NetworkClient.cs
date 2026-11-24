@@ -23,16 +23,19 @@ public sealed partial class NetworkClient : Node
 
     private SceneMultiplayer _multiplayer = null!;
     private string _password = string.Empty;
+    private byte _aircraftType;
     private bool _authFailed;
     private uint _sequence;
     private double _sendTimer;
     private double _timeSinceSend;
 
-    public void Start(string address, int port, string? password = null)
+    public void Start(
+        string address, int port, string? password = null, byte aircraftType = 0)
     {
         Address = address;
         Port = port;
         _password = password ?? string.Empty;
+        _aircraftType = aircraftType;
 
         var peer = new ENetMultiplayerPeer();
         Error error = peer.CreateClient(address, port);
@@ -75,6 +78,9 @@ public sealed partial class NetworkClient : Node
     private void OnConnected()
     {
         Connected = true;
+        _multiplayer.SendBytes(
+            NetProtocol.EncodeJoinRequest(_aircraftType), 1,
+            MultiplayerPeer.TransferModeEnum.Reliable, 0);
         GD.Print($"Connected to {Address}:{Port} as peer {_multiplayer.GetUniqueId()}");
     }
 
