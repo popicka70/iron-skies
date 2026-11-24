@@ -737,6 +737,23 @@ public sealed partial class MultiplayerMain : Node3D
         _hudText.Append("Health    ").Append(_localSim.Health.ToString("F0")).Append("   ")
             .Append(_localSim.Telemetry.OnGround ? "ON GROUND" : "AIRBORNE").Append('\n');
 
+        DamageModel damage = _localSim.Damage;
+        if (damage.EnginePowerScale < 0.99 || damage.ControlScale < 0.99
+            || damage.FuelLeakKgPerSecond > 0.0)
+        {
+            _hudText.Append("Damage    Engine ")
+                .Append((damage.EnginePowerScale * 100.0).ToString("F0"))
+                .Append("%   Controls ")
+                .Append((damage.ControlScale * 100.0).ToString("F0")).Append('%');
+            if (damage.FuelLeakKgPerSecond > 0.0)
+            {
+                _hudText.Append("   Fuel leak ")
+                    .Append(damage.FuelLeakKgPerSecond.ToString("F1")).Append(" kg/s");
+            }
+
+            _hudText.Append('\n');
+        }
+
         foreach (RemotePlayer remote in _remotes.Values)
         {
             _hudText.Append("Bandit ").Append((int)remote.Current.PlayerId)

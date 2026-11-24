@@ -374,6 +374,23 @@ public partial class Main : Node3D
             .Append("   Health ").Append((_sim.Health / _definition.StructuralHealth * 100.0).ToString("F0"))
             .Append("%   Bandit ")
             .Append((_aiSim.Health / _aiDefinition.StructuralHealth * 100.0).ToString("F0")).Append("%\n");
+        DamageModel damage = _sim.Damage;
+        if (damage.EnginePowerScale < 0.99 || damage.ControlScale < 0.99
+            || damage.FuelLeakKgPerSecond > 0.0)
+        {
+            _hudText.Append("Damage    Engine ")
+                .Append((damage.EnginePowerScale * 100.0).ToString("F0"))
+                .Append("%   Controls ")
+                .Append((damage.ControlScale * 100.0).ToString("F0")).Append('%');
+            if (damage.FuelLeakKgPerSecond > 0.0)
+            {
+                _hudText.Append("   Fuel leak ")
+                    .Append(damage.FuelLeakKgPerSecond.ToString("F1")).Append(" kg/s");
+            }
+
+            _hudText.Append('\n');
+        }
+
         _hudText.Append("Camera    ").Append(_cameraMode)
             .Append(_joystick >= 0 ? $"   Stick {_joystickName}" : "   Stick keyboard").Append('\n');
         _hudText.Append("Chunks    ").Append(_terrain.ResidentChunks).Append("   FPS ")

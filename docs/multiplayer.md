@@ -7,7 +7,9 @@ Two or more clients can fly together on a dedicated authoritative server:
 - ENet transport over UDP.
 - Client sends input frames at 30 Hz; server simulates at 240 Hz and broadcasts
   snapshots at 30 Hz.
-- Server owns damage, health and respawns (5 s).
+- Server owns damage, health and respawns (5 s). Health deterministically drives
+  engine power, control authority and fuel leaks on both sides, so prediction stays
+  consistent without extra network state.
 - Client predicts its own aircraft and blends snapshots; remote aircraft are
   interpolated between snapshots.
 - Verified with a headless two-client smoke test in CI.

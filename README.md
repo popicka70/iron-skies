@@ -12,8 +12,8 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 > M0 already starts the Spitfire on its gear, takes off, flies over a streamed
 > 40 × 40 km Normandy terrain with Sentinel-2 orthophoto/landcover, OSM roads and
 > hedgerows, a low-poly aircraft, cockpit view, engine simulation, procedural audio and
-> four working guns, a Bf 109 bandit with a pursuit AI, structural damage, and a live
-> cockpit instrument panel. Linux and Windows release packages are configured.
+> four working guns, a Bf 109 bandit with a pursuit AI, progressive battle damage
+> (engine, controls, fuel) and a live cockpit instrument panel. Linux and Windows release packages are configured.
 
 ![Iron Skies launcher](docs/media/m0-launcher.png)
 
@@ -29,7 +29,7 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 
 ![Iron Skies M0 combat](docs/media/m0-duel.png)
 
-*A Bf 109 bandit (placeholder airframe) in a head-on pass. Both aircraft carry structural damage.*
+*A Bf 109 bandit (placeholder airframe) in a head-on pass. Hits degrade the engine, controls and fuel tanks.*
 
 ---
 

@@ -38,7 +38,8 @@ simulation runs at 240 Hz with a stable 60 FPS render; CI is green on both OSes.
 - [ ] Full Merlin 66 supercharger stages and mixture leaning
 - [x] Spring-damper gear, brakes, tail-wheel steering and taildragger takeoff
 - [x] Trim, flaps and retractable gear (position/rate modelled; animation next)
-- Damage primitives: structure, control surfaces, engine, fuel, fire
+- [x] Damage primitives: structure, control surfaces, engine, fuel leak
+- [ ] Fire, smoke and visual damage effects
 - Wind, turbulence, gusts
 - Validation harness: compare climb/speed/turn/stall vs published data
 - Replay system and in-engine telemetry graphs
