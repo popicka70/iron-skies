@@ -571,6 +571,9 @@ public sealed partial class MultiplayerMain : Node3D
         var osm = new OsmDetail();
         osm.Build(_map, $"{TerrainDirectory}/osm.json");
         AddChild(osm);
+        var clouds = new Cloudscape();
+        clouds.Build();
+        AddChild(clouds);
         _terrain.Prewarm(new Vector3(0.0f, (float)_map.HeightAt(0, 6000) + 1500.0f, -6000.0f));
 
         _playerVisual = new SpitfireVisual();
