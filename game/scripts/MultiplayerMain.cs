@@ -83,10 +83,11 @@ public sealed partial class MultiplayerMain : Node3D
 
     public override void _Ready()
     {
-        _port = int.TryParse(ReadOption("--port"), out int port) ? port : 7777;
-        _serverAddress = ReadOption("--connect") ?? "127.0.0.1";
+        _port = int.TryParse(ReadOption("--port"), out int port) ? port : LaunchConfig.Port;
+        _serverAddress = ReadOption("--connect") ?? LaunchConfig.Address;
         _serverMode = HasFlag("--server");
         _headlessClient = HasFlag("--headless-client");
+        bool hosted = HasFlag("--hosted");
         if (double.TryParse(ReadOption("--net-test"), out double seconds))
         {
             _netTestRemaining = seconds;
@@ -105,7 +106,7 @@ public sealed partial class MultiplayerMain : Node3D
         {
             _server = new NetworkServer();
             AddChild(_server);
-            _server.Start(_port, _map, _definition);
+            _server.Start(_port, _map, _definition, hosted);
             return;
         }
 
@@ -697,7 +698,13 @@ public sealed partial class MultiplayerMain : Node3D
             GD.Print($"[net-test] health={_localSim!.Health:F0} pos={_localSim.State.Position}");
         }
 
+        ServerProcessManager.Instance?.Stop();
         GetTree().Quit();
+    }
+
+    public override void _ExitTree()
+    {
+        ServerProcessManager.Instance?.Stop();
     }
 
     private static Vec3 Lerp(Vec3 a, Vec3 b, double t) => a + (b - a) * t;

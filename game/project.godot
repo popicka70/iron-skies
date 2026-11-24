@@ -7,7 +7,7 @@ config_version=5
 
 config/name="Iron Skies"
 config/description="Open-source WW2 combat flight simulator"
-run/main_scene="res://scenes/Main.tscn"
+run/main_scene="res://scenes/Launcher.tscn"
 config/features=PackedStringArray("4.7", "C#", "Forward Plus")
 
 [dotnet]

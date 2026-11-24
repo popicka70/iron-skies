@@ -38,14 +38,18 @@ public sealed partial class NetworkServer : Node
     private uint _tick;
     private double _statsTimer;
     private double _bytesThisSecond;
+    private bool _hosted;
+    private double _emptySeconds;
     private double _tickMsAccum;
     private int _tickSamples;
     private readonly System.Diagnostics.Stopwatch _tickTimer = new();
 
-    public void Start(int port, Heightmap map, AircraftDefinition definition)
+    public void Start(
+        int port, Heightmap map, AircraftDefinition definition, bool hosted = false)
     {
         _map = map;
         _definition = definition;
+        _hosted = hosted;
 
         var peer = new ENetMultiplayerPeer();
         Error error = peer.CreateServer(port, MaxPlayers);
@@ -71,11 +75,27 @@ public sealed partial class NetworkServer : Node
 
     public override void _Process(double delta)
     {
-        if (_multiplayer is null || _players.Count == 0)
+        if (_multiplayer is null)
         {
             return;
         }
 
+        if (_players.Count == 0)
+        {
+            if (_hosted)
+            {
+                _emptySeconds += delta;
+                if (_emptySeconds > 8.0)
+                {
+                    GD.Print("Host server idle; exiting");
+                    GetTree().Quit();
+                }
+            }
+
+            return;
+        }
+
+        _emptySeconds = 0.0;
         _accumulator += delta;
         int guard = 0;
         while (_accumulator >= NetworkTick && guard++ < 5)
