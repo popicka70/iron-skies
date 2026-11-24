@@ -42,5 +42,8 @@ public sealed class DamageTarget
     public double MaxHealth = 100.0;
     public double Health = 100.0;
 
+    /// <summary>Static props are drawn by CombatVisual. Aircraft use their own visual.</summary>
+    public bool Static { get; init; } = true;
+
     public bool Alive => Health > 0.0;
 }

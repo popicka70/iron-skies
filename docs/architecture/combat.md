@@ -20,6 +20,22 @@
 - Guns are data (`aircraft.json`), not code. Adding a cannon or changing ammo is a data
   edit.
 
+## AI bandit
+
+`PursuitPilot` is a deterministic bank-to-turn controller with an extend/re-attack
+cycle. Heading error drives bank, altitude error drives pitch, rates are damped, and it
+fires inside a narrow cone. It avoids the ground with a hard altitude floor. The Bf 109
+G-6 data set is a placeholder (see its `validation.md`).
+
+Aircraft use a `DamageTarget` sphere exchanged between the two simulations:
+
+- the player's weapon system owns a target tracking the bandit;
+- the bandit's weapon system owns a target tracking the player;
+- each tick the game syncs target positions and copies health back into the aircraft.
+
+Structural health is 1,000 points; cannon/MG damage is balanced for several seconds of
+sustained fire rather than a one-second mutual kill.
+
 ## Next
 
 - Per-component aircraft damage (wings, controls, engine, fuel, pilot) with visual states.

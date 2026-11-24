@@ -173,6 +173,7 @@ public static class AircraftLoader
             BoostLimitSeconds = dto.BoostLimitSeconds,
             CoolantMaxC = dto.CoolantMaxC,
             OilMaxC = dto.OilMaxC,
+            StructuralHealth = dto.StructuralHealth > 0.0 ? dto.StructuralHealth : 1000.0,
             Weapons = weapons,
         };
 
@@ -245,6 +246,7 @@ internal sealed class AircraftDto
     public double BoostLimitSeconds { get; init; } = 300.0;
     public double CoolantMaxC { get; init; } = 135.0;
     public double OilMaxC { get; init; } = 95.0;
+    public double StructuralHealth { get; init; } = 1000.0;
     public WeaponDto[]? Weapons { get; init; }
 }
 

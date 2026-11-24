@@ -24,9 +24,9 @@ public sealed partial class SpitfireVisual : Node3D
     private StandardMaterial3D _glass = null!;
     private StandardMaterial3D _tyre = null!;
 
-    public void Build()
+    public void Build(Color? camo = null)
     {
-        _camo = Material(new Color(0.20f, 0.27f, 0.17f), 0.65f, 0.05f);
+        _camo = Material(camo ?? new Color(0.20f, 0.27f, 0.17f), 0.65f, 0.05f);
         _dark = Material(new Color(0.08f, 0.08f, 0.08f), 0.80f);
         _metal = Material(new Color(0.55f, 0.57f, 0.55f), 0.30f, 0.75f);
         _tyre = Material(new Color(0.04f, 0.04f, 0.04f), 0.95f);
