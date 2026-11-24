@@ -119,6 +119,16 @@ public static class NetProtocol
             Mixture: Read(span, ref offset),
             Fire: Read(span, ref offset) > 0.5);
 
+        if (!double.IsFinite(c.Elevator) || !double.IsFinite(c.Aileron)
+            || !double.IsFinite(c.Rudder) || !double.IsFinite(c.Throttle)
+            || !double.IsFinite(c.Flaps) || !double.IsFinite(c.GearDown)
+            || !double.IsFinite(c.Brake) || !double.IsFinite(c.Radiator)
+            || !double.IsFinite(c.TrimElevator) || !double.IsFinite(c.Mixture))
+        {
+            // A client must never be able to poison the authoritative state with NaNs.
+            return false;
+        }
+
         frame = new NetControlFrame(sequence, ackTick, c.Clamped());
         return true;
     }

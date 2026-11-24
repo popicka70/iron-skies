@@ -39,6 +39,7 @@ public sealed partial class NetworkServer : Node
         public double LagTicks;
         public int LagSteps;
         public bool HasAck;
+        public int InputsThisSecond;
         public double DeadSeconds;
     }
 
@@ -180,6 +181,11 @@ public sealed partial class NetworkServer : Node
                      $"outKBps={_bytesThisSecond / 1024.0:F1} avgTick={averageTick:F2}ms " +
                      $"full={_fullSent} delta={_deltaSent} lag={lagTicks:F1}t");
             _bytesThisSecond = 0.0;
+            foreach (ServerPlayer player in _players.Values)
+            {
+                player.InputsThisSecond = 0;
+            }
+
             _fullSent = 0;
             _deltaSent = 0;
             _tickMsAccum = 0.0;
@@ -328,6 +334,13 @@ public sealed partial class NetworkServer : Node
             return;
         }
 
+        // The client sends 30 Hz; allow headroom for jitter but not a packet flood.
+        if (player.InputsThisSecond >= 180)
+        {
+            return;
+        }
+
+        player.InputsThisSecond++;
         player.LastSequence = frame.Sequence;
         player.Controls = frame.Controls;
         if (frame.AckTick != 0 && frame.AckTick <= _tick)
@@ -407,6 +420,12 @@ public sealed partial class NetworkServer : Node
             victim.Sim.Health = DeterministicMath.Clamp(
                 _definition.StructuralHealth - damage, 0.0,
                 _definition.StructuralHealth);
+
+            if (!victim.Sim.State.IsFinite)
+            {
+                GD.PushWarning($"Player {victim.Id} state diverged; respawning");
+                Respawn(victim);
+            }
 
             if (victim.Sim.Destroyed)
             {

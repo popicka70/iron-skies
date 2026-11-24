@@ -88,7 +88,8 @@ popping in normal flight; an external art review calls it "convincing".
 - [ ] Internet server registry, whitelist and admin commands
 - [x] Load test: 16 players at ~120 KB/s outbound, 0.9 ms/tick
 - [ ] Finer relevance tiers to cut below ~17 KB/s/client
-- [ ] Basic anti-cheat validation and admin commands
+- [x] Input validation (finite controls, sequence, rate limit) and divergence recovery
+- [ ] Admin commands, kick/ban and whitelist
 - [x] Launcher (Single Player / Host & Play / Join) and executable CLI dispatch
 - [x] Docker image and dedicated-server deployment workflow
 
