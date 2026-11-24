@@ -15,6 +15,7 @@ public static class GameSettings
     public static string PlayerAircraft { get; set; } = "spitfire-mk9";
     public static float HudScale { get; set; } = 1.0f;
     public static bool InvertPitch { get; set; }
+    public static float HotasDeadzone { get; set; } = 0.08f;
 
     public static void Load()
     {
@@ -31,7 +32,10 @@ public static class GameSettings
         HudScale = Mathf.Clamp(
             (float)config.GetValue("game", "hud_scale", 1.0f), 0.8f, 1.6f);
         InvertPitch = (bool)config.GetValue("game", "invert_pitch", false);
+        HotasDeadzone = Mathf.Clamp(
+            (float)config.GetValue("game", "hotas_deadzone", 0.08f), 0.02f, 0.3f);
         FlightInput.Load(config);
+        HotasInput.Load(config);
     }
 
     public static void Save()
@@ -42,7 +46,9 @@ public static class GameSettings
         config.SetValue("game", "aircraft", PlayerAircraft);
         config.SetValue("game", "hud_scale", HudScale);
         config.SetValue("game", "invert_pitch", InvertPitch);
+        config.SetValue("game", "hotas_deadzone", HotasDeadzone);
         FlightInput.Save(config);
+        HotasInput.Save(config);
         config.Save(Path);
     }
 

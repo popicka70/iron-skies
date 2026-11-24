@@ -59,10 +59,6 @@ public sealed partial class MultiplayerMain : Node3D
     private readonly Dictionary<byte, RemotePlayer> _remotes = new();
     private readonly Dictionary<byte, DamageTarget> _remoteTargets = new();
 
-    private int _joystick = -1;
-    private string _joystickName = "";
-    private double _joyPollTimer;
-
     private double _accumulator;
     private double _hudTimer;
     private double _snapshotTime;
@@ -152,7 +148,6 @@ public sealed partial class MultiplayerMain : Node3D
         {
             BuildWorld();
             _hud.Scale = new Vector2(GameSettings.HudScale, GameSettings.HudScale);
-            DetectJoystick();
         }
 
         _client = new NetworkClient();
@@ -165,6 +160,8 @@ public sealed partial class MultiplayerMain : Node3D
 
     public override void _PhysicsProcess(double delta)
     {
+        HotasInput.Update();
+
         if (_serverMode)
         {
             return;
@@ -237,13 +234,6 @@ public sealed partial class MultiplayerMain : Node3D
 
         UpdateRemotes(delta);
         RemoveStaleRemotes();
-
-        _joyPollTimer += delta;
-        if (_joyPollTimer > 2.0)
-        {
-            _joyPollTimer = 0.0;
-            DetectJoystick();
-        }
 
         if (_localSim is not null)
         {
@@ -700,25 +690,22 @@ public sealed partial class MultiplayerMain : Node3D
         double yaw = (FlightInput.Pressed(FlightAction.RudderRight) ? 1.0 : 0.0)
             - (FlightInput.Pressed(FlightAction.RudderLeft) ? 1.0 : 0.0);
 
-        if (_joystick >= 0)
+        if (HotasInput.HasAxis(HotasAxis.Pitch))
         {
-            double joyPitch = Axis(JoyAxis.LeftY);
-            double joyRoll = Axis(JoyAxis.LeftX);
-            double joyYaw = Axis(JoyAxis.RightX);
-            if (joyPitch != 0.0)
-            {
-                pitch = joyPitch;
-            }
+            double value = HotasInput.GetAxis(HotasAxis.Pitch);
+            if (System.Math.Abs(value) > 0.001) pitch = value;
+        }
 
-            if (joyRoll != 0.0)
-            {
-                roll = joyRoll;
-            }
+        if (HotasInput.HasAxis(HotasAxis.Roll))
+        {
+            double value = HotasInput.GetAxis(HotasAxis.Roll);
+            if (System.Math.Abs(value) > 0.001) roll = value;
+        }
 
-            if (joyYaw != 0.0)
-            {
-                yaw = joyYaw;
-            }
+        if (HotasInput.HasAxis(HotasAxis.Yaw))
+        {
+            double value = HotasInput.GetAxis(HotasAxis.Yaw);
+            if (System.Math.Abs(value) > 0.001) yaw = value;
         }
 
         if (GameSettings.InvertPitch)
@@ -732,17 +719,44 @@ public sealed partial class MultiplayerMain : Node3D
         _rudder += (yaw - _rudder) * k;
 
         double throttleDelta = (FlightInput.Pressed(FlightAction.ThrottleUp) ? 1.0 : 0.0)
-            - (FlightInput.Pressed(FlightAction.ThrottleDown) ? 1.0 : 0.0);
-        _throttle = Mathf.Clamp(_throttle + throttleDelta * 0.4 * PhysicsDt, 0.0, 1.0);
-        _brake = FlightInput.Pressed(FlightAction.Brake) ? 1.0 : 0.0;
+            - (FlightInput.Pressed(FlightAction.ThrottleDown) ? 1.0 : 0.0)
+            + (HotasInput.Pressed(HotasButton.ThrottleUp) ? 1.0 : 0.0)
+            - (HotasInput.Pressed(HotasButton.ThrottleDown) ? 1.0 : 0.0);
+        if (HotasInput.IsAxisAvailable(HotasAxis.Throttle))
+        {
+            _throttle = HotasInput.GetAxis(HotasAxis.Throttle);
+        }
+        else
+        {
+            _throttle = Mathf.Clamp(_throttle + throttleDelta * 0.4 * PhysicsDt, 0.0, 1.0);
+        }
+
+        double brake = FlightInput.Pressed(FlightAction.Brake) ? 1.0 : 0.0;
+        if (HotasInput.Pressed(HotasButton.Brake))
+        {
+            brake = 1.0;
+        }
+
+        if (HotasInput.IsAxisAvailable(HotasAxis.Brake))
+        {
+            brake = System.Math.Max(brake, HotasInput.GetAxis(HotasAxis.Brake));
+        }
+
+        _brake = brake;
         _fire = FlightInput.Pressed(FlightAction.Fire)
+            || HotasInput.Pressed(HotasButton.Fire)
             || Input.IsMouseButtonPressed(MouseButton.Left);
 
         double radiatorDelta = (FlightInput.Pressed(FlightAction.RadiatorUp) ? 1.0 : 0.0)
-            - (FlightInput.Pressed(FlightAction.RadiatorDown) ? 1.0 : 0.0);
-        _radiator = Mathf.Clamp(_radiator + radiatorDelta * 0.4 * PhysicsDt, 0.0, 1.0);
+            - (FlightInput.Pressed(FlightAction.RadiatorDown) ? 1.0 : 0.0)
+            + (HotasInput.Pressed(HotasButton.RadiatorUp) ? 1.0 : 0.0)
+            - (HotasInput.Pressed(HotasButton.RadiatorDown) ? 1.0 : 0.0);
+        _radiator = HotasInput.IsAxisAvailable(HotasAxis.Radiator)
+            ? HotasInput.GetAxis(HotasAxis.Radiator)
+            : Mathf.Clamp(_radiator + radiatorDelta * 0.4 * PhysicsDt, 0.0, 1.0);
 
-        bool flapKey = FlightInput.Pressed(FlightAction.Flaps);
+        bool flapKey = FlightInput.Pressed(FlightAction.Flaps)
+            || HotasInput.Pressed(HotasButton.Flaps);
         if (flapKey && !_prevFlap)
         {
             _flapTarget = _flapTarget > 0.5 ? 0.0 : 1.0;
@@ -750,7 +764,8 @@ public sealed partial class MultiplayerMain : Node3D
 
         _prevFlap = flapKey;
 
-        bool gearKey = FlightInput.Pressed(FlightAction.Gear);
+        bool gearKey = FlightInput.Pressed(FlightAction.Gear)
+            || HotasInput.Pressed(HotasButton.Gear);
         if (gearKey && !_prevGear && _localSim is { Telemetry.OnGround: false })
         {
             _gearTarget = _gearTarget > 0.5 ? 0.0 : 1.0;
@@ -759,10 +774,15 @@ public sealed partial class MultiplayerMain : Node3D
         _prevGear = gearKey;
 
         double trimDelta = (FlightInput.Pressed(FlightAction.TrimUp) ? 1.0 : 0.0)
-            - (FlightInput.Pressed(FlightAction.TrimDown) ? 1.0 : 0.0);
-        _trimElevator = Mathf.Clamp(_trimElevator + trimDelta * 0.6 * PhysicsDt, -1.0, 1.0);
+            - (FlightInput.Pressed(FlightAction.TrimDown) ? 1.0 : 0.0)
+            + (HotasInput.Pressed(HotasButton.TrimUp) ? 1.0 : 0.0)
+            - (HotasInput.Pressed(HotasButton.TrimDown) ? 1.0 : 0.0);
+        _trimElevator = HotasInput.IsAxisAvailable(HotasAxis.TrimElevator)
+            ? HotasInput.GetAxis(HotasAxis.TrimElevator)
+            : Mathf.Clamp(_trimElevator + trimDelta * 0.6 * PhysicsDt, -1.0, 1.0);
 
-        bool cameraKey = FlightInput.Pressed(FlightAction.Camera);
+        bool cameraKey = FlightInput.Pressed(FlightAction.Camera)
+            || HotasInput.Pressed(HotasButton.Camera);
         if (cameraKey && !_prevCamera)
         {
             _cockpit = !_cockpit;
@@ -780,41 +800,11 @@ public sealed partial class MultiplayerMain : Node3D
             Brake: _brake,
             Radiator: _radiator,
             TrimElevator: _trimElevator,
-            Mixture: 0.85,
+            Mixture: HotasInput.IsAxisAvailable(HotasAxis.Mixture)
+                ? HotasInput.GetAxis(HotasAxis.Mixture) : 0.85,
             Fire: _fire,
-            Extinguish: FlightInput.Pressed(FlightAction.Extinguish));
-    }
-
-    private double Axis(JoyAxis axis, double deadzone = 0.08)
-    {
-        if (_joystick < 0)
-        {
-            return 0.0;
-        }
-
-        double value = Input.GetJoyAxis(_joystick, axis);
-        double magnitude = System.Math.Abs(value);
-        if (magnitude < deadzone)
-        {
-            return 0.0;
-        }
-
-        double scaled = (magnitude - deadzone) / (1.0 - deadzone);
-        return System.Math.Sign(value) * scaled * scaled;
-    }
-
-    private void DetectJoystick()
-    {
-        Godot.Collections.Array<int> pads = Input.GetConnectedJoypads();
-        int device = pads.Count > 0 ? pads[0] : -1;
-        if (device == _joystick)
-        {
-            return;
-        }
-
-        _joystick = device;
-        _joystickName = device >= 0 ? Input.GetJoyName(device) : "";
-        GD.Print(device >= 0 ? $"Joystick: {_joystickName}" : "Joystick: none (keyboard)");
+            Extinguish: FlightInput.Pressed(FlightAction.Extinguish)
+                || HotasInput.Pressed(HotasButton.Extinguish));
     }
 
     private void UpdateCamera(double delta)
@@ -871,8 +861,7 @@ public sealed partial class MultiplayerMain : Node3D
         _hudText.Append("Player ").Append((int)_localId)
             .Append("   Snapshots ").Append(_snapshotCount)
             .Append("   Players ").Append(_remotes.Count + 1)
-            .Append(_joystick >= 0 ? $"   Stick {_joystickName}" : "   Stick keyboard")
-            .Append('\n');
+            .Append("   Stick ").Append(HotasInput.Summary()).Append('\n');
         _hudText.Append("Speed     ").Append((_localSim.Telemetry.SpeedMs * 1.94384).ToString("F0"))
             .Append(" kt   Altitude ").Append((_localSim.State.AltitudeMeters * 3.28084).ToString("F0"))
             .Append(" ft\n");

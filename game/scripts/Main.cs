@@ -120,9 +120,6 @@ public partial class Main : Node3D
     }
 
     private CameraMode _cameraMode = CameraMode.Chase;
-    private int _joystick = -1;
-    private string _joystickName = "";
-    private double _joyPollTimer;
     private bool _prevCameraKey;
     private float _lookYaw;
     private float _lookPitch;
@@ -267,7 +264,6 @@ public partial class Main : Node3D
             _cameraMode = CameraMode.Top;
         }
 
-        DetectJoystick();
         if (int.TryParse(ReadUserOption("--screenshot-delay"), out int delaySeconds))
         {
             _screenshotTicks = delaySeconds * 240;
@@ -306,9 +302,12 @@ public partial class Main : Node3D
 
     public override void _PhysicsProcess(double delta)
     {
+        HotasInput.Update();
+
         if (_replaying)
         {
-            if (FlightInput.Pressed(FlightAction.Reset))
+            if (FlightInput.Pressed(FlightAction.Reset)
+                || HotasInput.JustPressed(HotasButton.Reset))
             {
                 ResetFlight();
             }
@@ -325,12 +324,14 @@ public partial class Main : Node3D
             Throttle: _throttle,
             Brake: _brake,
             Radiator: _radiator,
-            Mixture: 0.85,
+            Mixture: HotasInput.IsAxisAvailable(HotasAxis.Mixture)
+                ? HotasInput.GetAxis(HotasAxis.Mixture) : 0.85,
             Flaps: _flapTarget,
             GearDown: _gearTarget,
             TrimElevator: _trimElevator,
             Fire: _fire,
-            Extinguish: FlightInput.Pressed(FlightAction.Extinguish));
+            Extinguish: FlightInput.Pressed(FlightAction.Extinguish)
+                || HotasInput.Pressed(HotasButton.Extinguish));
 
         if (_takeoffTest)
         {
@@ -613,50 +614,11 @@ public partial class Main : Node3D
 
         UpdateHud();
 
-        _joyPollTimer += delta;
-        if (_joyPollTimer > 2.0)
-        {
-            _joyPollTimer = 0.0;
-            DetectJoystick();
-        }
-
         if (_screenshotPath is not null && !_screenshotStarted && _tick >= _screenshotTicks)
         {
             _screenshotStarted = true;
             CaptureScreenshot(_screenshotPath);
         }
-    }
-
-    private double Axis(JoyAxis axis, double deadzone = 0.08)
-    {
-        if (_joystick < 0)
-        {
-            return 0.0;
-        }
-
-        double value = Input.GetJoyAxis(_joystick, axis);
-        double magnitude = System.Math.Abs(value);
-        if (magnitude < deadzone)
-        {
-            return 0.0;
-        }
-
-        double scaled = (magnitude - deadzone) / (1.0 - deadzone);
-        return System.Math.Sign(value) * scaled * scaled;
-    }
-
-    private void DetectJoystick()
-    {
-        Godot.Collections.Array<int> pads = Input.GetConnectedJoypads();
-        int device = pads.Count > 0 ? pads[0] : -1;
-        if (device == _joystick)
-        {
-            return;
-        }
-
-        _joystick = device;
-        _joystickName = device >= 0 ? Input.GetJoyName(device) : "";
-        GD.Print(device >= 0 ? $"Joystick: {_joystickName}" : "Joystick: none (keyboard)");
     }
 
     private static bool HasUserFlag(string name)
@@ -845,7 +807,7 @@ public partial class Main : Node3D
         }
 
         _hudText.Append("Camera    ").Append(_cameraMode)
-            .Append(_joystick >= 0 ? $"   Stick {_joystickName}" : "   Stick keyboard").Append('\n');
+            .Append("   Stick ").Append(HotasInput.Summary()).Append('\n');
         _hudText.Append("Chunks    ").Append(_terrain.ResidentChunks).Append("   FPS ")
             .Append(Engine.GetFramesPerSecond()).Append('\n');
         _hudText.Append("Tick      ").Append(_tick).Append("\n\n");
@@ -1025,25 +987,22 @@ public partial class Main : Node3D
         double yaw = (FlightInput.Pressed(FlightAction.RudderRight) ? 1.0 : 0.0)
             - (FlightInput.Pressed(FlightAction.RudderLeft) ? 1.0 : 0.0);
 
-        if (_joystick >= 0)
+        if (HotasInput.HasAxis(HotasAxis.Pitch))
         {
-            double joyPitch = Axis(JoyAxis.LeftY);
-            double joyRoll = Axis(JoyAxis.LeftX);
-            double joyYaw = Axis(JoyAxis.RightX);
-            if (joyPitch != 0.0)
-            {
-                pitch = joyPitch;
-            }
+            double value = HotasInput.GetAxis(HotasAxis.Pitch);
+            if (System.Math.Abs(value) > 0.001) pitch = value;
+        }
 
-            if (joyRoll != 0.0)
-            {
-                roll = joyRoll;
-            }
+        if (HotasInput.HasAxis(HotasAxis.Roll))
+        {
+            double value = HotasInput.GetAxis(HotasAxis.Roll);
+            if (System.Math.Abs(value) > 0.001) roll = value;
+        }
 
-            if (joyYaw != 0.0)
-            {
-                yaw = joyYaw;
-            }
+        if (HotasInput.HasAxis(HotasAxis.Yaw))
+        {
+            double value = HotasInput.GetAxis(HotasAxis.Yaw);
+            if (System.Math.Abs(value) > 0.001) yaw = value;
         }
 
         if (GameSettings.InvertPitch)
@@ -1051,7 +1010,8 @@ public partial class Main : Node3D
             pitch = -pitch;
         }
 
-        bool cameraKey = FlightInput.Pressed(FlightAction.Camera);
+        bool cameraKey = FlightInput.Pressed(FlightAction.Camera)
+            || HotasInput.Pressed(HotasButton.Camera);
         if (cameraKey && !_prevCameraKey)
         {
             _cameraMode = _cameraMode switch { CameraMode.Chase => CameraMode.Cockpit, CameraMode.Cockpit => CameraMode.Chase, _ => CameraMode.Chase };
@@ -1059,16 +1019,44 @@ public partial class Main : Node3D
 
         _prevCameraKey = cameraKey;
         double throttleDelta = (FlightInput.Pressed(FlightAction.ThrottleUp) ? 1.0 : 0.0)
-            - (FlightInput.Pressed(FlightAction.ThrottleDown) ? 1.0 : 0.0);
-        _brake = FlightInput.Pressed(FlightAction.Brake) ? 1.0 : 0.0;
+            - (FlightInput.Pressed(FlightAction.ThrottleDown) ? 1.0 : 0.0)
+            + (HotasInput.Pressed(HotasButton.ThrottleUp) ? 1.0 : 0.0)
+            - (HotasInput.Pressed(HotasButton.ThrottleDown) ? 1.0 : 0.0);
+        if (HotasInput.IsAxisAvailable(HotasAxis.Throttle))
+        {
+            _throttle = HotasInput.GetAxis(HotasAxis.Throttle);
+        }
+        else
+        {
+            _throttle = Mathf.Clamp(_throttle + throttleDelta * 0.35 * PhysicsDt, 0.0, 1.0);
+        }
+
+        double brake = FlightInput.Pressed(FlightAction.Brake) ? 1.0 : 0.0;
+        if (HotasInput.Pressed(HotasButton.Brake))
+        {
+            brake = 1.0;
+        }
+
+        if (HotasInput.IsAxisAvailable(HotasAxis.Brake))
+        {
+            brake = System.Math.Max(brake, HotasInput.GetAxis(HotasAxis.Brake));
+        }
+
+        _brake = brake;
         _fire = _autoFire || FlightInput.Pressed(FlightAction.Fire)
+            || HotasInput.Pressed(HotasButton.Fire)
             || Input.IsMouseButtonPressed(MouseButton.Left);
 
         double radiatorDelta = (FlightInput.Pressed(FlightAction.RadiatorUp) ? 1.0 : 0.0)
-            - (FlightInput.Pressed(FlightAction.RadiatorDown) ? 1.0 : 0.0);
-        _radiator = Mathf.Clamp(_radiator + radiatorDelta * 0.4 * PhysicsDt, 0.0, 1.0);
+            - (FlightInput.Pressed(FlightAction.RadiatorDown) ? 1.0 : 0.0)
+            + (HotasInput.Pressed(HotasButton.RadiatorUp) ? 1.0 : 0.0)
+            - (HotasInput.Pressed(HotasButton.RadiatorDown) ? 1.0 : 0.0);
+        _radiator = HotasInput.IsAxisAvailable(HotasAxis.Radiator)
+            ? HotasInput.GetAxis(HotasAxis.Radiator)
+            : Mathf.Clamp(_radiator + radiatorDelta * 0.4 * PhysicsDt, 0.0, 1.0);
 
-        bool flapKey = FlightInput.Pressed(FlightAction.Flaps);
+        bool flapKey = FlightInput.Pressed(FlightAction.Flaps)
+            || HotasInput.Pressed(HotasButton.Flaps);
         if (flapKey && !_prevFlapKey)
         {
             _flapTarget = _flapTarget > 0.5 ? 0.0 : 1.0;
@@ -1076,7 +1064,8 @@ public partial class Main : Node3D
 
         _prevFlapKey = flapKey;
 
-        bool gearKey = FlightInput.Pressed(FlightAction.Gear);
+        bool gearKey = FlightInput.Pressed(FlightAction.Gear)
+            || HotasInput.Pressed(HotasButton.Gear);
         if (gearKey && !_prevGearKey && !_sim.Telemetry.OnGround)
         {
             _gearTarget = _gearTarget > 0.5 ? 0.0 : 1.0;
@@ -1085,17 +1074,20 @@ public partial class Main : Node3D
         _prevGearKey = gearKey;
 
         double trimDelta = (FlightInput.Pressed(FlightAction.TrimUp) ? 1.0 : 0.0)
-            - (FlightInput.Pressed(FlightAction.TrimDown) ? 1.0 : 0.0);
-        _trimElevator = Mathf.Clamp(_trimElevator + trimDelta * 0.6 * PhysicsDt, -1.0, 1.0);
+            - (FlightInput.Pressed(FlightAction.TrimDown) ? 1.0 : 0.0)
+            + (HotasInput.Pressed(HotasButton.TrimUp) ? 1.0 : 0.0)
+            - (HotasInput.Pressed(HotasButton.TrimDown) ? 1.0 : 0.0);
+        _trimElevator = HotasInput.IsAxisAvailable(HotasAxis.TrimElevator)
+            ? HotasInput.GetAxis(HotasAxis.TrimElevator)
+            : Mathf.Clamp(_trimElevator + trimDelta * 0.6 * PhysicsDt, -1.0, 1.0);
 
         // Simple first-order response stands in for stick forces until M1 input mapping.
         double k = 4.0 * PhysicsDt;
         _elevator += (pitch - _elevator) * k;
         _aileron += (roll - _aileron) * k;
         _rudder += (yaw - _rudder) * k;
-        _throttle = Mathf.Clamp(_throttle + throttleDelta * 0.35 * PhysicsDt, 0.0, 1.0);
-
-        if (FlightInput.Pressed(FlightAction.Reset))
+        if (FlightInput.Pressed(FlightAction.Reset)
+            || HotasInput.JustPressed(HotasButton.Reset))
         {
             ResetFlight();
         }
