@@ -17,7 +17,7 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 
 ![Iron Skies launcher](docs/media/m0-launcher.png)
 
-*Launcher: single-player, strike mission, duel, host-and-play, LAN server browser, or direct connect.*
+*Launcher: single-player, strike mission, duel, host-and-play, LAN server browser, settings, or direct connect.*
 
 ![Iron Skies M0: 40 × 40 km Normandy terrain](docs/media/m0-normandy-40km.png)
 
@@ -42,6 +42,10 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 ![Iron Skies airfield](docs/media/m0-airfield.png)
 
 *Free flight starts on a marked strip with a hangar, tower and windsock.*
+
+![Iron Skies settings](docs/media/m0-settings.png)
+
+*Settings persist master volume and fullscreen in `user://settings.cfg`.*
 
 ![Clouds over the Normandy coast](docs/media/m0-clouds.png)
 
