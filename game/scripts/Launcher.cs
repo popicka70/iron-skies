@@ -46,10 +46,11 @@ public sealed partial class Launcher : Control
             return;
         }
 
-        if (HasFlag("--screenshot") || HasFlag("--air-start") || HasFlag("--strike")
-            || HasFlag("--hunt") || HasFlag("--duel") || HasFlag("--autofire")
-            || HasFlag("--mission-test") || HasFlag("--hunt-test")
-            || HasFlag("--damage-test") || ReadOption("--aircraft") is not null)
+        if (!HasFlag("--host")
+            && (HasFlag("--screenshot") || HasFlag("--air-start") || HasFlag("--strike")
+                || HasFlag("--hunt") || HasFlag("--duel") || HasFlag("--autofire")
+                || HasFlag("--mission-test") || HasFlag("--hunt-test")
+                || HasFlag("--damage-test") || ReadOption("--aircraft") is not null))
         {
             GetTree().CallDeferred("change_scene_to_file", "res://scenes/Main.tscn");
             return;
