@@ -21,7 +21,7 @@ retrospective in `docs/retro/`.
 - [x] Sentinel-2 orthophoto (10 m) + landcover masks draped on the terrain
 - [x] OSM roads and hedgerows draped as 3D ribbons around the demo spawn
 - [x] Golden-replay determinism unit test (cross-platform CI replay pending)
-- [ ] Joystick/HOTAS input
+- [x] Joystick/HOTAS input (single-player)
 - [ ] Basic HUD (speed, altitude, RPM) — done, expand with engine gauges
 
 **Acceptance:** the test aircraft takes off, climbs, stalls, and lands without NaNs;
@@ -78,12 +78,12 @@ popping in normal flight; an external art review calls it "convincing".
 - [x] Server-authoritative health/damage and 5-second respawn
 - [x] Headless two-client smoke test in CI
 - [x] Distance-based interest management (15 km), compact quantised snapshots
-- [x] 64-client load test: 2.45 MB/s, 10.9 ms/tick (compact snapshots)
+- [x] 64-client load test: 1.06 MB/s, 5.5 ms/tick (delta snapshots)
 - [x] Ack-based delta snapshots: 1.06 MB/s, ~17 KB/s/client at 64 players
-- [ ] Finer relevance tiers and lag-compensated hitboxes
-- [ ] Lag-compensated hitboxes and rewind
-- [ ] Server browser (heartbeat registry), direct connect, password/whitelist
-- [x] Load test: 16 players, 0.9 ms/tick, ~520 KB/s server outbound
+- [x] Lag-compensated hitboxes: 240 Hz pose history + view-delay rewind
+- [ ] Server browser (LAN discovery + heartbeat registry), direct connect,
+      password/whitelist
+- [x] Load test: 16 players at ~120 KB/s outbound, 0.9 ms/tick
 - [ ] Finer relevance tiers to cut below ~17 KB/s/client
 - [ ] Basic anti-cheat validation and admin commands
 - [x] Launcher (Single Player / Host & Play / Join) and executable CLI dispatch

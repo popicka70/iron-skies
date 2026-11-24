@@ -56,19 +56,20 @@ Measured on the development machine:
 
 | Clients | Server outbound | Per client | Tick time |
 | --- | --- | --- | --- |
-| 16 | 120-139 KB/s | ~8 KB/s | 0.86 ms |
-| 64 | 1.06 MB/s | ~17 KB/s | 10.7 ms |
+| 16 | 120-139 KB/s | ~8 KB/s | 0.8 ms |
+| 64 | 1.06 MB/s | ~17 KB/s | 5.5 ms |
 
 ```
-[server] players=64 tick=723 outKBps=1059.1 avgTick=10.66ms full=64 delta=1856
+[server] players=64 tick=721 outKBps=1057.8 avgTick=5.46ms full=64 delta=1856 lag=1.2t
 clients welcome=64/64 joined=64
 ```
 
 Ack-based delta snapshots cut the 64-client worst case from 2.45 MB/s to 1.06 MB/s
-(2.3×); 96-97% of snapshots are deltas. The 64-client run used a single 16-core machine
-for the server **and** all 64 headless clients, which inflates the tick time through CPU
-contention; a dedicated server should be lower. All 64 aircraft were within 15 km, so
-this is the worst case at this player count.
+(2.3×); 96-97% of snapshots are deltas. The dictionary-based player lookup used by hit
+resolution also cut the 64-client tick from 10.7 ms to 5.5 ms. The run used a single
+16-core machine for the server **and** all 64 headless clients, which inflates the tick
+time through CPU contention; a dedicated server should be lower. All 64 aircraft were
+within 15 km, so this is the worst case at this player count.
 
 ## Protocol
 
@@ -114,15 +115,28 @@ On each snapshot it compares the server pose with the prediction:
   lerp.
 
 Remote aircraft are rendered between the previous and current snapshot over the
-snapshot interval. No rewind/replay rollback is implemented yet.
+snapshot interval.
+
+## Lag-compensated hitboxes
+
+Each input frame acks the newest snapshot the client applied. The server estimates the
+client's view delay from that (network delay plus roughly one snapshot of interpolation)
+and keeps a 2-second pose history per aircraft at the 240 Hz simulation rate. Projectile
+collision is tested against the pose the shooter saw, not the live authoritative pose, so
+a client that aims at a rendered target does not have to add the network delay to its
+lead. Rewind is capped at 20 ticks (0.67 s); clients that stop acking fall back to live
+poses. The server still owns the projectile simulation; this only changes which pose the
+hitboxes occupy.
 
 ## Boundaries
 
 - Up to 64 players per server, verified with the headless load test.
 - Both players fly Spitfires; the Bf 109 AI exists only in single-player.
 - No server browser, accounts, matchmaking or anti-cheat.
-- Interest management is distance-based only; no relevance tiers or lag-compensated
-  hitboxes yet.
+- Interest management is distance-based only; no relevance tiers yet.
+- Lag compensation is validated by the load test (clients run ≈1.2-1.4 ticks behind);
+  hit-registration quality against a manoeuvring target is not covered by an automated
+  test yet.
 - Keyboard only in the multiplayer scene (the single-player scene has joystick input).
 - The host-and-play server exits if it has no players for 8 seconds; the host's process
   manager also attempts an immediate shutdown.

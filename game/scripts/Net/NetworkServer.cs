@@ -29,10 +29,15 @@ public sealed partial class NetworkServer : Node
         public uint LastSequence;
         public uint LastAckTick;
         public readonly Dictionary<uint, NetSnapshot> History = new();
+        public readonly PoseHistory Poses = new(512);
+        public double LagTicks;
+        public int LagSteps;
+        public bool HasAck;
         public double DeadSeconds;
     }
 
     private readonly Dictionary<long, ServerPlayer> _players = new();
+    private readonly Dictionary<byte, ServerPlayer> _playersById = new();
     private Heightmap _map = null!;
     private AircraftDefinition _definition = null!;
     private SceneMultiplayer _multiplayer = null!;
@@ -46,6 +51,7 @@ public sealed partial class NetworkServer : Node
     private double _emptySeconds;
     private double _tickMsAccum;
     private int _tickSamples;
+    private long _simStep;
     private readonly System.Diagnostics.Stopwatch _tickTimer = new();
 
     public void Start(
@@ -113,9 +119,16 @@ public sealed partial class NetworkServer : Node
         {
             _statsTimer = 0.0;
             double averageTick = _tickSamples > 0 ? _tickMsAccum / _tickSamples : 0.0;
+            double lagTicks = 0.0;
+            foreach (ServerPlayer player in _players.Values)
+            {
+                lagTicks += player.LagTicks;
+            }
+
+            lagTicks = _players.Count > 0 ? lagTicks / _players.Count : 0.0;
             GD.Print($"[server] players={_players.Count} tick={_tick} " +
                      $"outKBps={_bytesThisSecond / 1024.0:F1} avgTick={averageTick:F2}ms " +
-                     $"full={_fullSent} delta={_deltaSent}");
+                     $"full={_fullSent} delta={_deltaSent} lag={lagTicks:F1}t");
             _bytesThisSecond = 0.0;
             _fullSent = 0;
             _deltaSent = 0;
@@ -172,6 +185,7 @@ public sealed partial class NetworkServer : Node
         }
 
         _players[peerId] = player;
+        _playersById[playerId] = player;
 
         NetPlayerState state = NetPlayerState.FromSimulator(playerId, sim);
         byte[] welcome = NetProtocol.EncodeWelcome(playerId, state);
@@ -188,6 +202,8 @@ public sealed partial class NetworkServer : Node
         {
             return;
         }
+
+        _playersById.Remove(player.Id);
 
         foreach (ServerPlayer other in _players.Values)
         {
@@ -220,29 +236,62 @@ public sealed partial class NetworkServer : Node
 
         player.LastSequence = frame.Sequence;
         player.Controls = frame.Controls;
-        if (frame.AckTick != 0)
+        if (frame.AckTick != 0 && frame.AckTick <= _tick)
         {
             player.LastAckTick = frame.AckTick;
+
+            // The client renders remotes roughly one snapshot behind the newest
+            // applied snapshot, so rewind by that plus its network delay.
+            double sample = System.Math.Clamp(
+                _tick - frame.AckTick + 1.0, 0.0, 20.0);
+            player.LagTicks = player.HasAck
+                ? player.LagTicks * 0.75 + sample * 0.25
+                : sample;
+            player.HasAck = true;
         }
     }
 
     private void ServerTick(float dt)
     {
         _tickTimer.Restart();
+
+        foreach (ServerPlayer player in _players.Values)
+        {
+            player.LagSteps = player.HasAck
+                ? (int)System.Math.Round(
+                    System.Math.Clamp(player.LagTicks, 0.0, 20.0) * SimStepsPerTick)
+                : 0;
+        }
+
         for (int step = 0; step < SimStepsPerTick; step++)
         {
+            long index = _simStep;
+            foreach (ServerPlayer player in _players.Values)
+            {
+                player.Poses.Add(index, player.Sim.State.Position);
+            }
+
             foreach (ServerPlayer player in _players.Values)
             {
                 foreach ((byte victimId, DamageTarget target) in player.Targets)
                 {
-                    if (FindPlayer(victimId) is { } victim)
+                    if (!_playersById.TryGetValue(victimId, out ServerPlayer? victim))
                     {
-                        target.Position = victim.Sim.State.Position;
+                        continue;
                     }
+
+                    // Lag-compensated hitboxes: projectiles are tested against the
+                    // pose the shooter saw, not the live authoritative pose.
+                    target.Position = player.LagSteps > 0
+                        && victim.Poses.TryGet(index - player.LagSteps, out Vec3 historical)
+                            ? historical
+                            : victim.Sim.State.Position;
                 }
 
                 player.Sim.Step(player.Controls, 1.0 / 240.0);
             }
+
+            _simStep++;
         }
 
         foreach (ServerPlayer victim in _players.Values)
@@ -294,6 +343,7 @@ public sealed partial class NetworkServer : Node
         }
 
         player.Sim = newSim;
+        player.Poses.Clear();
         player.DeadSeconds = 0.0;
         player.Controls = new Controls(GearDown: 0.0, Throttle: 0.6, Mixture: 0.9);
         foreach (ServerPlayer other in _players.Values)
@@ -320,19 +370,6 @@ public sealed partial class NetworkServer : Node
         };
         owner.Targets[victim.Id] = target;
         owner.Sim.AddTarget(target);
-    }
-
-    private ServerPlayer? FindPlayer(byte id)
-    {
-        foreach (ServerPlayer player in _players.Values)
-        {
-            if (player.Id == id)
-            {
-                return player;
-            }
-        }
-
-        return null;
     }
 
     private AircraftState SpawnState(byte playerId)
