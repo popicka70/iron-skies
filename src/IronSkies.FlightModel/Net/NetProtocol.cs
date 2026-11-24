@@ -54,6 +54,9 @@ public static class NetProtocol
     public const byte TypeWelcome = 2;
     public const byte TypeSnapshot = 3;
     public const byte TypeSnapshotDelta = 4;
+    public const byte TypeAuthRequest = 5;
+    public const byte TypeAuthResponse = 6;
+    public const byte TypeAuthFailed = 7;
 
     private const int InputSize = 1 + 4 + 4 + 11 * 4;
     private const int PlayerStateSize = 1 + 4 + 3 * 4 + 4 * 4 + 3 * 4 + 3 * 4 + 3 * 4;
@@ -117,6 +120,73 @@ public static class NetProtocol
             Fire: Read(span, ref offset) > 0.5);
 
         frame = new NetControlFrame(sequence, ackTick, c.Clamped());
+        return true;
+    }
+
+    public static byte[] EncodeAuthRequest(byte[] salt)
+    {
+        if (salt.Length != NetAuth.SaltSize)
+        {
+            throw new ArgumentException("Unexpected salt length.", nameof(salt));
+        }
+
+        byte[] data = new byte[1 + NetAuth.SaltSize];
+        data[0] = TypeAuthRequest;
+        salt.CopyTo(data, 1);
+        return data;
+    }
+
+    public static bool TryDecodeAuthRequest(byte[] data, out byte[] salt)
+    {
+        salt = Array.Empty<byte>();
+        if (data.Length != 1 + NetAuth.SaltSize || data[0] != TypeAuthRequest)
+        {
+            return false;
+        }
+
+        salt = data.AsSpan(1, NetAuth.SaltSize).ToArray();
+        return true;
+    }
+
+    public static byte[] EncodeAuthResponse(byte[] hash)
+    {
+        if (hash.Length != NetAuth.HashSize)
+        {
+            throw new ArgumentException("Unexpected hash length.", nameof(hash));
+        }
+
+        byte[] data = new byte[1 + NetAuth.HashSize];
+        data[0] = TypeAuthResponse;
+        hash.CopyTo(data, 1);
+        return data;
+    }
+
+    public static bool TryDecodeAuthResponse(byte[] data, out byte[] hash)
+    {
+        hash = Array.Empty<byte>();
+        if (data.Length != 1 + NetAuth.HashSize || data[0] != TypeAuthResponse)
+        {
+            return false;
+        }
+
+        hash = data.AsSpan(1, NetAuth.HashSize).ToArray();
+        return true;
+    }
+
+    public static byte[] EncodeAuthFailed(byte reason)
+    {
+        return new[] { TypeAuthFailed, reason };
+    }
+
+    public static bool TryDecodeAuthFailed(byte[] data, out byte reason)
+    {
+        reason = 0;
+        if (data.Length != 2 || data[0] != TypeAuthFailed)
+        {
+            return false;
+        }
+
+        reason = data[1];
         return true;
     }
 

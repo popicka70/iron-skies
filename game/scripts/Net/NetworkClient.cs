@@ -13,21 +13,26 @@ public sealed partial class NetworkClient : Node
 {
     public event Action<byte, NetPlayerState>? WelcomeReceived;
     public event Action<byte[]>? SnapshotPacketReceived;
+    public event Action<string>? AuthenticationFailed;
 
     public bool Connected { get; private set; }
     public bool Failed { get; private set; }
+    public bool Joined { get; private set; }
     public string Address { get; private set; } = "";
     public int Port { get; private set; }
 
     private SceneMultiplayer _multiplayer = null!;
+    private string _password = string.Empty;
+    private bool _authFailed;
     private uint _sequence;
     private double _sendTimer;
     private double _timeSinceSend;
 
-    public void Start(string address, int port)
+    public void Start(string address, int port, string? password = null)
     {
         Address = address;
         Port = port;
+        _password = password ?? string.Empty;
 
         var peer = new ENetMultiplayerPeer();
         Error error = peer.CreateClient(address, port);
@@ -82,7 +87,16 @@ public sealed partial class NetworkClient : Node
     private void OnServerDisconnected()
     {
         Connected = false;
-        GD.Print("Disconnected from server");
+        if (Joined)
+        {
+            GD.Print("Disconnected from server");
+        }
+        else if (!_authFailed)
+        {
+            const string message = "Disconnected before joining (wrong password?)";
+            GD.PushError(message);
+            AuthenticationFailed?.Invoke(message);
+        }
     }
 
     private void OnPeerPacket(long peerId, byte[] packet)
@@ -94,8 +108,30 @@ public sealed partial class NetworkClient : Node
 
         switch (packet[0])
         {
+            case NetProtocol.TypeAuthRequest when NetProtocol.TryDecodeAuthRequest(
+                packet, out byte[] salt):
+                // The server only asks for this when it is password-protected.
+                byte[] hash = NetAuth.ComputeResponse(salt, NetAuth.HashPassword(_password));
+                _multiplayer.SendBytes(
+                    NetProtocol.EncodeAuthResponse(hash), 1,
+                    MultiplayerPeer.TransferModeEnum.Reliable, 0);
+                GD.Print("Responded to server password challenge");
+                break;
+
+            case NetProtocol.TypeAuthFailed when NetProtocol.TryDecodeAuthFailed(
+                packet, out byte reason):
+                Failed = true;
+                _authFailed = true;
+                string message = reason == 1
+                    ? $"Incorrect password for {Address}:{Port}"
+                    : $"Authentication failed ({reason})";
+                GD.PushError(message);
+                AuthenticationFailed?.Invoke(message);
+                break;
+
             case NetProtocol.TypeWelcome when NetProtocol.TryDecodeWelcome(
                 packet, out byte playerId, out NetPlayerState state):
+                Joined = true;
                 WelcomeReceived?.Invoke(playerId, state);
                 break;
 

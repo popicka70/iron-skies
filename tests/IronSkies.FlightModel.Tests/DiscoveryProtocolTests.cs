@@ -17,14 +17,16 @@ public sealed class DiscoveryProtocolTests
     public void ResponseRoundTrips()
     {
         byte[] data = DiscoveryProtocol.EncodeResponse(
-            "Normandy Training", 7777, 12, 64);
+            "Normandy Training", 7777, 12, 64, hasPassword: true);
 
         Assert.True(DiscoveryProtocol.TryDecodeResponse(
-            data, out string name, out int port, out int players, out int maxPlayers));
+            data, out string name, out int port, out int players, out int maxPlayers,
+            out bool hasPassword));
         Assert.Equal("Normandy Training", name);
         Assert.Equal(7777, port);
         Assert.Equal(12, players);
         Assert.Equal(64, maxPlayers);
+        Assert.True(hasPassword);
     }
 
     [Fact]
@@ -34,7 +36,7 @@ public sealed class DiscoveryProtocolTests
         byte[] data = DiscoveryProtocol.EncodeResponse(longName, 8000, 1, 16);
 
         Assert.True(DiscoveryProtocol.TryDecodeResponse(
-            data, out string name, out _, out _, out _));
+            data, out string name, out _, out _, out _, out _));
         Assert.Equal(DiscoveryProtocol.MaxNameLength, name.Length);
     }
 
@@ -42,11 +44,11 @@ public sealed class DiscoveryProtocolTests
     public void RejectsMalformedOrForeignPackets()
     {
         Assert.False(DiscoveryProtocol.TryDecodeResponse(
-            new byte[] { 1, 2, 3 }, out _, out _, out _, out _));
+            new byte[] { 1, 2, 3 }, out _, out _, out _, out _, out _));
 
         byte[] data = DiscoveryProtocol.EncodeResponse("x", 7777, 0, 64);
         data[0] ^= 0xFF;
         Assert.False(DiscoveryProtocol.TryDecodeResponse(
-            data, out _, out _, out _, out _));
+            data, out _, out _, out _, out _, out _));
     }
 }

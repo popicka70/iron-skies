@@ -21,7 +21,8 @@ includes it.
 
 ```bash
 cd build/server
-./iron-skies-server.x86_64 --headless -- --server --port 7777 --name "Normandy 1944"
+./iron-skies-server.x86_64 --headless -- --server --port 7777 \
+  --name "Normandy 1944" --password secret
 ```
 
 User arguments go after `--` (`OS.GetCmdlineUserArgs`); the launcher dispatches to the
@@ -67,6 +68,7 @@ quits.
 
 - Port: `--port <n>` (default 7777).
 - Name: `--name <text>` (shown in the LAN browser).
+- Password: `--password <text>` (challenge/response; the browser marks it `[PW]`).
 - Discovery: `--discovery-port <n>` (default 7778, `0` disables).
 - Player cap: 64.
 - Spawns: four named positions plus a circle for additional players.
