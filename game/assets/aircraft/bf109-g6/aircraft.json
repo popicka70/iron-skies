@@ -1,6 +1,6 @@
 {
   "id": "bf109-g6",
-  "displayName": "Messerschmitt Bf 109 G-6 (AI)",
+  "displayName": "Messerschmitt Bf 109 G-6",
   "notes": "AI bandit placeholder. Uses an estimated aero table and DB 605 power curve; not validated.",
   "aeroTable": "aero.csv",
   "emptyMassKg": 2700.0,

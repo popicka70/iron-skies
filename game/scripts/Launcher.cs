@@ -20,6 +20,7 @@ public sealed partial class Launcher : Control
     private Control _missionsOverlay = null!;
     private HSlider _volumeSlider = null!;
     private CheckButton _fullscreenCheck = null!;
+    private OptionButton _aircraftOption = null!;
     private ServerProcessManager? _serverProcess;
 
     private PacketPeerUdp? _browserSocket;
@@ -48,7 +49,7 @@ public sealed partial class Launcher : Control
         if (HasFlag("--screenshot") || HasFlag("--air-start") || HasFlag("--strike")
             || HasFlag("--hunt") || HasFlag("--duel") || HasFlag("--autofire")
             || HasFlag("--mission-test") || HasFlag("--hunt-test")
-            || HasFlag("--damage-test"))
+            || HasFlag("--damage-test") || ReadOption("--aircraft") is not null)
         {
             GetTree().CallDeferred("change_scene_to_file", "res://scenes/Main.tscn");
             return;
@@ -275,7 +276,7 @@ public sealed partial class Launcher : Control
         content.AddChild(strike);
         content.AddChild(new Label
         {
-            Text = "Free Hunt — shoot down two Bf 109s, then land.",
+            Text = "Free Hunt — shoot down two enemy fighters, then land.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
         });
         var hunt = new Button
@@ -369,9 +370,9 @@ public sealed partial class Launcher : Control
             AnchorRight = 0.5f,
             AnchorBottom = 0.5f,
             OffsetLeft = -240.0f,
-            OffsetTop = -150.0f,
+            OffsetTop = -190.0f,
             OffsetRight = 240.0f,
-            OffsetBottom = 150.0f,
+            OffsetBottom = 190.0f,
         };
         var style = new StyleBoxFlat
         {
@@ -431,6 +432,21 @@ public sealed partial class Launcher : Control
         };
         content.AddChild(_fullscreenCheck);
 
+        content.AddChild(new Label { Text = "Player aircraft (single-player)" });
+        _aircraftOption = new OptionButton();
+        _aircraftOption.AddItem("Supermarine Spitfire LF Mk IX");
+        _aircraftOption.SetItemMetadata(0, "spitfire-mk9");
+        _aircraftOption.AddItem("Messerschmitt Bf 109 G-6");
+        _aircraftOption.SetItemMetadata(1, "bf109-g6");
+        _aircraftOption.Selected = GameSettings.PlayerAircraft == "bf109-g6" ? 1 : 0;
+        _aircraftOption.ItemSelected += index =>
+        {
+            GameSettings.PlayerAircraft =
+                _aircraftOption.GetItemMetadata((int)index).AsString();
+            GameSettings.Save();
+        };
+        content.AddChild(_aircraftOption);
+
         content.AddChild(new Control { CustomMinimumSize = new Vector2(0.0f, 6.0f) });
 
         var close = new Button { Text = "Close", CustomMinimumSize = new Vector2(0.0f, 38.0f) };
@@ -444,6 +460,7 @@ public sealed partial class Launcher : Control
         _settingsOverlay.Visible = true;
         _volumeSlider.Value = GameSettings.MasterVolume;
         _fullscreenCheck.ButtonPressed = GameSettings.Fullscreen;
+        _aircraftOption.Selected = GameSettings.PlayerAircraft == "bf109-g6" ? 1 : 0;
     }
 
     private void HideSettings()

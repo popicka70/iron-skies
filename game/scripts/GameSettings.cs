@@ -12,6 +12,7 @@ public static class GameSettings
 
     public static float MasterVolume { get; set; } = 0.8f;
     public static bool Fullscreen { get; set; }
+    public static string PlayerAircraft { get; set; } = "spitfire-mk9";
 
     public static void Load()
     {
@@ -24,6 +25,7 @@ public static class GameSettings
         MasterVolume = Mathf.Clamp(
             (float)config.GetValue("audio", "master", 0.8f), 0.0f, 1.0f);
         Fullscreen = (bool)config.GetValue("display", "fullscreen", false);
+        PlayerAircraft = (string)config.GetValue("game", "aircraft", "spitfire-mk9");
     }
 
     public static void Save()
@@ -31,6 +33,7 @@ public static class GameSettings
         var config = new ConfigFile();
         config.SetValue("audio", "master", MasterVolume);
         config.SetValue("display", "fullscreen", Fullscreen);
+        config.SetValue("game", "aircraft", PlayerAircraft);
         config.Save(Path);
     }
 
