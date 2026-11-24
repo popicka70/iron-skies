@@ -10,8 +10,9 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 > slice is targeted for milestone M2 (see [docs/ROADMAP.md](docs/ROADMAP.md)).
 >
 > M0 already starts the Spitfire on a marked runway, takes off, flies over a streamed
-> 40 × 40 km Normandy terrain with Sentinel-2 orthophoto/landcover, OSM roads and
-> hedgerows, two flyable aircraft on placeholder airframes, cockpit view, engine
+> 40 × 40 km Normandy terrain with Sentinel-2 orthophoto/landcover, OSM roads,
+> hedgerows, woods and extruded buildings around the airfield, two flyable aircraft on
+> placeholder airframes, cockpit view, engine
 > simulation, procedural audio and four working guns, up to six AI bandits plus AI wingmen,
 > hit-zone battle damage
 > (engine, controls, fuel) and a live cockpit instrument panel. Linux and Windows release packages are configured.
@@ -52,6 +53,10 @@ key bindings, or direct connect.*
 ![Iron Skies airfield](docs/media/m0-airfield.png)
 
 *Free flight starts on a marked strip with a hangar, tower and windsock.*
+
+![OSM woods and buildings](docs/media/m0-osm.png)
+
+*OSM woods and extruded buildings around the airfield (2 km OSM API patch).*
 
 ![Iron Skies settings](docs/media/m0-settings.png)
 

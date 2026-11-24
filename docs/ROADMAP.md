@@ -20,7 +20,7 @@ retrospective in `docs/retro/`. The playable M0 slice is written up in
 - [x] Terrain pipeline: Copernicus DEM → 16-bit heightmap → 40 km mesh + ground queries
 - [x] Chunked LOD terrain streaming (1 km chunks, 25–200 m, 10 km radius, far base mesh)
 - [x] Sentinel-2 orthophoto (10 m) + landcover masks draped on the terrain
-- [x] OSM roads and hedgerows draped as 3D ribbons around the demo spawn
+- [x] OSM roads/hedgerows + woods/buildings draped around the demo spawn
 - [x] Golden-replay determinism unit test (cross-platform CI replay pending)
 - [x] Joystick/HOTAS input (single-player and multiplayer)
 - [ ] Basic HUD (speed, altitude, RPM) — done, expand with engine gauges
@@ -64,7 +64,8 @@ sortie with engine management; deterministic replays reproduce exactly.
 
 - Art pass over the existing 40 × 40 km theatre (no hand-placed terrain meshes)
 - Geomorphing/skirts to remove LOD seams; streaming budget instrumentation
-- OSM landcover: woods, settlements and extruded buildings (roads/hedges are in)
+- [x] OSM woods and extruded buildings (2 km patch around the spawn)
+- [ ] Larger OSM settlement/wood coverage across the theatre
 - [x] Animated water normals + fresnel on the sea
 - [ ] Detail normals and 3D vegetation
 - Splat-blended ground, forests via MultiMesh, water, roads

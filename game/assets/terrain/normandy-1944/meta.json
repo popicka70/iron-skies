@@ -45,6 +45,9 @@
     "radiusMeters": 10000.0,
     "roads": 9851,
     "hedges": 1970,
-    "attribution": "\u00a9 OpenStreetMap contributors (ODbL 1.0)"
+    "attribution": "\u00a9 OpenStreetMap contributors (ODbL 1.0)",
+    "buildings": 2873,
+    "woods": 29,
+    "patchRadiusMeters": 2000.0
   }
 }

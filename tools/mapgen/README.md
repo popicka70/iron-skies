@@ -9,8 +9,10 @@ See [../../docs/architecture/terrain-and-maps.md](../../docs/architecture/terrai
 orthophoto + landcover masks. The STAC query picks the clearest June/July scene set
 that covers the theatre, reads only the needed windows over HTTP, and writes the bundle.
 
-**OSM roads and hedges** are also implemented for a patch around the spawn. **Next:**
-woods, water, building extrusion and object placement.
+**OSM roads and hedges** are implemented for a 10 km patch around the spawn.
+`fetch_osm_objects.py` adds **woods and extruded buildings** for a smaller 2 km patch
+through the OSM API (a fallback while the public Overpass instances are saturated).
+**Next:** larger OSM coverage, water and object placement.
 
 ## Planned usage
 

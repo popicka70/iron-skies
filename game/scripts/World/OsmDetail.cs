@@ -15,6 +15,14 @@ public sealed partial class OsmDetail : Node3D
     {
         public RoadWay[]? Roads { get; set; }
         public double[][][]? Hedges { get; set; }
+        public BuildingWay[]? Buildings { get; set; }
+        public double[][][]? Woods { get; set; }
+    }
+
+    private sealed class BuildingWay
+    {
+        public double Height { get; set; } = 6.0;
+        public double[][]? Points { get; set; }
     }
 
     private sealed class RoadWay
@@ -100,7 +108,189 @@ public sealed partial class OsmDetail : Node3D
             CullMode = BaseMaterial3D.CullModeEnum.Disabled,
         }, "OSM_Hedges");
 
-        GD.Print($"OSM: {roadCount} roads, {hedgeCount} hedges draped");
+        int buildingCount = BuildBuildings(root.Buildings, map);
+        int treeCount = BuildWoods(root.Woods, map, buildingCount);
+        GD.Print($"OSM: {roadCount} roads, {hedgeCount} hedges, " +
+                 $"{buildingCount} buildings, {treeCount} trees");
+    }
+
+    private int BuildBuildings(BuildingWay[]? buildings, Heightmap map)
+    {
+        if (buildings is null || buildings.Length == 0)
+        {
+            return 0;
+        }
+
+        var tool = new SurfaceTool();
+        tool.Begin(Mesh.PrimitiveType.Triangles);
+        int count = 0;
+        foreach (BuildingWay building in buildings)
+        {
+            double[][]? points = building.Points;
+            if (points is null || points.Length < 4)
+            {
+                continue;
+            }
+
+            int n = points.Length - 1;
+            double sumEast = 0.0;
+            double sumNorth = 0.0;
+            double maxGround = double.MinValue;
+            for (int i = 0; i < n; i++)
+            {
+                sumEast += points[i][0];
+                sumNorth += points[i][1];
+                maxGround = Math.Max(maxGround, map.HeightAt(points[i][0], points[i][1]));
+            }
+
+            double centerEast = sumEast / n;
+            double centerNorth = sumNorth / n;
+            float roof = (float)(maxGround + building.Height);
+            var center = new Vector3((float)centerEast, roof, (float)-centerNorth);
+
+            for (int i = 0; i < n; i++)
+            {
+                double e0 = points[i][0], n0 = points[i][1];
+                double e1 = points[i + 1][0], n1 = points[i + 1][1];
+                float h0 = (float)map.HeightAt(e0, n0);
+                float h1 = (float)map.HeightAt(e1, n1);
+                var a = new Vector3((float)e0, h0 - 0.1f, (float)-n0);
+                var b = new Vector3((float)e1, h1 - 0.1f, (float)-n1);
+                var at = new Vector3((float)e0, roof, (float)-n0);
+                var bt = new Vector3((float)e1, roof, (float)-n1);
+
+                AddTriangle(tool, a, b, bt);
+                AddTriangle(tool, a, bt, at);
+                AddTriangle(tool, center, at, bt);
+            }
+
+            count++;
+        }
+
+        AddMesh(tool, new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.58f, 0.54f, 0.46f),
+            Roughness = 0.9f,
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            CullMode = BaseMaterial3D.CullModeEnum.Disabled,
+        }, "OSM_Buildings");
+        return count;
+    }
+
+    private int BuildWoods(double[][][]? woods, Heightmap map, int buildingCount)
+    {
+        if (woods is null || woods.Length == 0)
+        {
+            return 0;
+        }
+
+        var cone = new CylinderMesh
+        {
+            TopRadius = 0.0f,
+            BottomRadius = 2.0f,
+            Height = 7.0f,
+            RadialSegments = 6,
+        };
+        var material = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.10f, 0.20f, 0.09f),
+            Roughness = 0.98f,
+        };
+        cone.Material = material;
+
+        var transforms = new List<Transform3D>();
+        var random = new RandomNumberGenerator { Seed = 19440606 };
+        const int maxTrees = 8000;
+        const double spacing = 13.0;
+
+        foreach (double[][] polygon in woods)
+        {
+            if (polygon.Length < 4)
+            {
+                continue;
+            }
+
+            double minE = double.MaxValue, maxE = double.MinValue;
+            double minN = double.MaxValue, maxN = double.MinValue;
+            foreach (double[] point in polygon)
+            {
+                minE = Math.Min(minE, point[0]);
+                maxE = Math.Max(maxE, point[0]);
+                minN = Math.Min(minN, point[1]);
+                maxN = Math.Max(maxN, point[1]);
+            }
+
+            for (double east = minE; east <= maxE && transforms.Count < maxTrees; east += spacing)
+            {
+                for (double north = minN; north <= maxN && transforms.Count < maxTrees;
+                     north += spacing)
+                {
+                    double jitterE = east + random.RandfRange(-4.0f, 4.0f);
+                    double jitterN = north + random.RandfRange(-4.0f, 4.0f);
+                    if (!PointInPolygon(jitterE, jitterN, polygon))
+                    {
+                        continue;
+                    }
+
+                    double ground = map.HeightAt(jitterE, jitterN);
+                    float scale = random.RandfRange(0.65f, 1.35f);
+                    var basis = Basis.Identity.Rotated(
+                            Vector3.Up, random.RandfRange(0.0f, Mathf.Tau))
+                        .Scaled(new Vector3(scale, scale, scale));
+                    var position = new Vector3(
+                        (float)jitterE,
+                        (float)ground + 3.5f * scale,
+                        (float)-jitterN);
+                    transforms.Add(new Transform3D(basis, position));
+                }
+            }
+
+            if (transforms.Count >= maxTrees)
+            {
+                break;
+            }
+        }
+
+        if (transforms.Count == 0)
+        {
+            return 0;
+        }
+
+        var multiMesh = new MultiMesh
+        {
+            TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
+            Mesh = cone,
+            InstanceCount = transforms.Count,
+        };
+        for (int i = 0; i < transforms.Count; i++)
+        {
+            multiMesh.SetInstanceTransform(i, transforms[i]);
+        }
+
+        AddChild(new MultiMeshInstance3D
+        {
+            Name = "OSM_Woods",
+            Multimesh = multiMesh,
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+        });
+        return transforms.Count;
+    }
+
+    private static bool PointInPolygon(double east, double north, double[][] polygon)
+    {
+        bool inside = false;
+        for (int i = 0, j = polygon.Length - 1; i < polygon.Length; j = i++)
+        {
+            double ei = polygon[i][0], ni = polygon[i][1];
+            double ej = polygon[j][0], nj = polygon[j][1];
+            if (((ni > north) != (nj > north))
+                && east < (ej - ei) * (north - ni) / (nj - ni) + ei)
+            {
+                inside = !inside;
+            }
+        }
+
+        return inside;
     }
 
     private void AddMesh(SurfaceTool tool, Material material, string name)
