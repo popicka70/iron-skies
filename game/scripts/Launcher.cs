@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using Godot;
+using IronSkies.FlightModel.Net;
 
 namespace IronSkies.Game;
 
@@ -11,7 +13,17 @@ public sealed partial class Launcher : Control
     private LineEdit _address = null!;
     private LineEdit _port = null!;
     private Label _status = null!;
+    private ItemList _servers = null!;
+    private Label _scanStatus = null!;
     private ServerProcessManager? _serverProcess;
+
+    private PacketPeerUdp? _browserSocket;
+    private double _scanRemaining;
+    private bool _silentScan;
+    private sealed record FoundServer(
+        string Name, string Address, int Port, int Players, int MaxPlayers);
+
+    private readonly Dictionary<string, FoundServer> _found = new();
 
     public override void _Ready()
     {
@@ -31,7 +43,15 @@ public sealed partial class Launcher : Control
             return;
         }
 
+        if (HasFlag("--scan-servers"))
+        {
+            _silentScan = true;
+            StartScan();
+            return;
+        }
+
         BuildUi();
+        StartScan();
 
         string? launcherShot = ReadOption("--launcher-shot");
         if (launcherShot is not null)
@@ -58,10 +78,10 @@ public sealed partial class Launcher : Control
             AnchorTop = 0.5f,
             AnchorRight = 0.5f,
             AnchorBottom = 0.5f,
-            OffsetLeft = -240.0f,
-            OffsetTop = -250.0f,
-            OffsetRight = 240.0f,
-            OffsetBottom = 250.0f,
+            OffsetLeft = -260.0f,
+            OffsetTop = -350.0f,
+            OffsetRight = 260.0f,
+            OffsetBottom = 350.0f,
             Alignment = BoxContainer.AlignmentMode.Center,
         };
         box.AddThemeConstantOverride("separation", 14);
@@ -106,6 +126,41 @@ public sealed partial class Launcher : Control
         };
 
         MakeButton("Host & Play").Pressed += OnHostPressed;
+
+        var lanLabel = new Label
+        {
+            Text = "LAN SERVERS",
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        lanLabel.AddThemeFontSizeOverride("font_size", 12);
+        lanLabel.AddThemeColorOverride("font_color", new Color(0.55f, 0.62f, 0.58f));
+        box.AddChild(lanLabel);
+
+        _servers = new ItemList { CustomMinimumSize = new Vector2(440.0f, 96.0f) };
+        _servers.ItemSelected += OnServerSelected;
+        box.AddChild(_servers);
+
+        var scanRow = new HBoxContainer();
+        scanRow.AddThemeConstantOverride("separation", 10);
+        box.AddChild(scanRow);
+
+        var scanButton = new Button
+        {
+            Text = "Scan LAN",
+            CustomMinimumSize = new Vector2(140.0f, 34.0f),
+        };
+        scanButton.AddThemeFontSizeOverride("font_size", 14);
+        scanButton.Pressed += StartScan;
+        scanRow.AddChild(scanButton);
+
+        _scanStatus = new Label
+        {
+            Text = "Press Scan LAN to look for local servers",
+            SizeFlagsVertical = SizeFlags.ShrinkCenter,
+        };
+        _scanStatus.AddThemeFontSizeOverride("font_size", 13);
+        _scanStatus.AddThemeColorOverride("font_color", new Color(0.6f, 0.68f, 0.62f));
+        scanRow.AddChild(_scanStatus);
 
         var row = new HBoxContainer();
         row.AddThemeConstantOverride("separation", 8);
@@ -152,8 +207,182 @@ public sealed partial class Launcher : Control
         box.AddChild(hint);
     }
 
+    private void OnServerSelected(long index)
+    {
+        string metadata = _servers.GetItemMetadata((int)index).AsString();
+        string[] parts = metadata.Split('\n');
+        if (parts.Length == 2)
+        {
+            _address.Text = parts[0];
+            _port.Text = parts[1];
+        }
+    }
+
+    private void StartScan()
+    {
+        CloseBrowserSocket();
+        _found.Clear();
+        _servers?.Clear();
+        _browserSocket = new PacketPeerUdp();
+        if (!BindBrowserSocket(_browserSocket))
+        {
+            _browserSocket = null;
+            if (!_silentScan && _scanStatus is not null)
+            {
+                _scanStatus.Text = "Could not open the discovery socket";
+            }
+
+            return;
+        }
+
+        _browserSocket.SetBroadcastEnabled(true);
+        byte[] query = DiscoveryProtocol.EncodeQuery();
+        SendQuery("255.255.255.255", query);
+        SendQuery("127.0.0.1", query);
+
+        _scanRemaining = 1.5;
+        if (!_silentScan && _scanStatus is not null)
+        {
+            _scanStatus.Text = "Scanning...";
+        }
+    }
+
+    public override void _Process(double delta)
+    {
+        if (_browserSocket is null)
+        {
+            return;
+        }
+
+        while (_browserSocket.GetAvailablePacketCount() > 0)
+        {
+            byte[] packet = _browserSocket.GetPacket();
+            string ip = _browserSocket.GetPacketIP();
+            if (DiscoveryProtocol.TryDecodeResponse(
+                packet, out string name, out int port, out int players, out int maxPlayers))
+            {
+                AddServer(ip, name, port, players, maxPlayers);
+            }
+        }
+
+        _scanRemaining -= delta;
+        if (_scanRemaining <= 0.0)
+        {
+            FinishScan();
+        }
+    }
+
+    private void AddServer(
+        string ip, string name, int port, int players, int maxPlayers)
+    {
+        // The same local server can answer both the broadcast and the loopback probe.
+        // Prefer the non-loopback address when both arrive.
+        string key = $"{name}|{port}";
+        bool loopback = ip is "127.0.0.1" or "::1" or "::ffff:127.0.0.1";
+        if (_found.TryGetValue(key, out FoundServer? existing))
+        {
+            bool existingLoopback =
+                existing.Address is "127.0.0.1" or "::1" or "::ffff:127.0.0.1";
+            if (!existingLoopback || loopback)
+            {
+                return;
+            }
+        }
+
+        _found[key] = new FoundServer(name, ip, port, players, maxPlayers);
+        if (_silentScan)
+        {
+            return;
+        }
+
+        RebuildServerList();
+    }
+
+    private void RebuildServerList()
+    {
+        _servers.Clear();
+        foreach (FoundServer server in _found.Values)
+        {
+            int index = _servers.ItemCount;
+            _servers.AddItem(
+                $"{server.Name}   {server.Players}/{server.MaxPlayers}   " +
+                $"{server.Address}:{server.Port}");
+            _servers.SetItemMetadata(index, $"{server.Address}\n{server.Port}");
+        }
+
+        _scanStatus.Text = _found.Count == 0
+            ? "Scanning..."
+            : $"{_found.Count} server(s) found";
+    }
+
+    private void SendQuery(string address, byte[] query)
+    {
+        if (_browserSocket is null)
+        {
+            return;
+        }
+
+        if (_browserSocket.SetDestAddress(address, DiscoveryProtocol.DefaultPort) == Error.Ok)
+        {
+            _browserSocket.PutPacket(query);
+        }
+    }
+
+    private static bool BindBrowserSocket(PacketPeerUdp socket)
+    {
+        if (socket.Bind(0) == Error.Ok)
+        {
+            return true;
+        }
+
+        for (int attempt = 0; attempt < 16; attempt++)
+        {
+            int port = 40000 + (int)(GD.Randi() % 20000);
+            if (socket.Bind(port) == Error.Ok)
+            {
+                return true;
+            }
+        }
+
+        socket.Close();
+        return false;
+    }
+
+    private void FinishScan()
+    {
+        CloseBrowserSocket();
+        if (_silentScan)
+        {
+            foreach (FoundServer server in _found.Values)
+            {
+                GD.Print($"[scan] {server.Name} | {server.Address}:{server.Port} | " +
+                         $"{server.Players}/{server.MaxPlayers}");
+            }
+
+            GD.Print($"[scan] {_found.Count} server(s) found");
+            GetTree().Quit();
+            return;
+        }
+
+        _scanStatus.Text = _found.Count == 0
+            ? "No LAN servers found"
+            : $"{_found.Count} server(s) found";
+    }
+
+    private void CloseBrowserSocket()
+    {
+        _browserSocket?.Close();
+        _browserSocket = null;
+    }
+
+    public override void _ExitTree()
+    {
+        CloseBrowserSocket();
+    }
+
     private async void OnHostPressed()
     {
+        CloseBrowserSocket();
         int port = HostPort();
         _serverProcess = new ServerProcessManager();
         GetTree().Root.AddChild(_serverProcess);
@@ -183,6 +412,7 @@ public sealed partial class Launcher : Control
 
     private void OnJoinPressed()
     {
+        CloseBrowserSocket();
         LaunchConfig.Address = string.IsNullOrWhiteSpace(_address.Text)
             ? "127.0.0.1"
             : _address.Text.Trim();
@@ -207,7 +437,7 @@ public sealed partial class Launcher : Control
 
     private async void CaptureScreenshot(string path)
     {
-        await ToSignal(GetTree().CreateTimer(0.4), SceneTreeTimer.SignalName.Timeout);
+        await ToSignal(GetTree().CreateTimer(1.7), SceneTreeTimer.SignalName.Timeout);
         await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
         Image image = GetViewport().GetTexture().GetImage();
         Error error = image.SavePng(path);

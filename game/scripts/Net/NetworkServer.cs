@@ -17,7 +17,7 @@ public sealed partial class NetworkServer : Node
 {
     private const double NetworkTick = 1.0 / 30.0;
     private const int SimStepsPerTick = 8; // 240 Hz / 30 Hz
-    private const int MaxPlayers = 64;
+    public const int MaxPlayers = 64;
     private const double RelevanceMeters = 15_000.0;
 
     private sealed class ServerPlayer
@@ -55,7 +55,8 @@ public sealed partial class NetworkServer : Node
     private readonly System.Diagnostics.Stopwatch _tickTimer = new();
 
     public void Start(
-        int port, Heightmap map, AircraftDefinition definition, bool hosted = false)
+        int port, Heightmap map, AircraftDefinition definition, bool hosted = false,
+        string name = "Iron Skies Server", int discoveryPort = DiscoveryProtocol.DefaultPort)
     {
         _map = map;
         _definition = definition;
@@ -76,6 +77,10 @@ public sealed partial class NetworkServer : Node
         _multiplayer.PeerPacket += OnPeerPacket;
 
         GD.Print($"Iron Skies server listening on UDP {port} (max {MaxPlayers} players)");
+
+        var beacon = new ServerBeacon(name, port, () => _players.Count, discoveryPort);
+        AddChild(beacon);
+        beacon.Start();
     }
 
     public override void _ExitTree()

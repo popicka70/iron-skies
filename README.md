@@ -17,7 +17,7 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 
 ![Iron Skies launcher](docs/media/m0-launcher.png)
 
-*Launcher: single-player, host-and-play, or join a dedicated server.*
+*Launcher: single-player, host-and-play, LAN server browser, or direct connect.*
 
 ![Iron Skies M0: 40 × 40 km Normandy terrain](docs/media/m0-normandy-40km.png)
 
@@ -163,6 +163,7 @@ docker build -t iron-skies-server .
 docker run -d --name iron-skies -p 7777:7777/udp iron-skies-server
 ```
 
+Servers advertise themselves on the LAN (UDP 7778) and appear in the launcher's browser.
 See [docs/dedicated-server.md](docs/dedicated-server.md). A manual GitHub workflow
 (`.github/workflows/export.yml`) builds the packages and uploads them as artifacts.
 
