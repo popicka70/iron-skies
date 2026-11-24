@@ -38,7 +38,7 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 
 ![Iron Skies missions](docs/media/m0-missions.png)
 
-*Two scripted sorties: Supply Dump Strike and Free Hunt. See [docs/missions.md](docs/missions.md).*
+*Three scripted sorties: Supply Dump Strike, Free Hunt and Bomber Intercept. See [docs/missions.md](docs/missions.md).*
 
 ![Iron Skies strike mission](docs/media/m0-mission.png)
 

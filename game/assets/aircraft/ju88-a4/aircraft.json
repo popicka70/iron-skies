@@ -1,0 +1,125 @@
+{
+  "id": "ju88-a4",
+  "displayName": "Junkers Ju 88 A-4 (placeholder)",
+  "notes": "Bomber formation placeholder. Single-engine approximation of a twin-engine bomber; not validated.",
+  "aeroTable": "aero.csv",
+  "emptyMassKg": 8500.0,
+  "fuelMassKg": 1600.0,
+  "wingAreaM2": 54.7,
+  "wingSpanM": 20.1,
+  "meanChordM": 2.72,
+  "cl0": 0.2,
+  "clAlphaPerRad": 4.6,
+  "clElevatorPerRad": 0.12,
+  "clFlapsPerUnit": 0.4,
+  "alphaStallDeg": 16.0,
+  "stallBlendDeg": 3.0,
+  "cd0": 0.027,
+  "oswaldEfficiency": 0.8,
+  "cdGear": 0.02,
+  "cdFlapsPerUnit": 0.032,
+  "cdRadiator": 0.004,
+  "cyBetaPerRad": 0.3,
+  "cm0": 0.03,
+  "cmAlphaPerRad": -0.55,
+  "cmElevatorPerRad": 0.35,
+  "cmQ": -12.0,
+  "clBetaPerRad": -0.08,
+  "clAileronPerRad": 0.04,
+  "clP": -0.75,
+  "cnBetaPerRad": 0.12,
+  "cnRudderPerRad": 0.05,
+  "cnR": -0.15,
+  "ixxKgM2": 50000.0,
+  "iyyKgM2": 110000.0,
+  "izzKgM2": 150000.0,
+  "maxStaticThrustN": 30000.0,
+  "fuelBurnKgPerSecondAtFullThrottle": 0.5,
+  "propellerEfficiency": 0.82,
+  "idleRpm": 500,
+  "maxRpm": 2400,
+  "rpmLagSeconds": 1.6,
+  "maxManifoldPressureInHg": 36,
+  "boostLimitSeconds": 300,
+  "coolantMaxC": 120,
+  "oilMaxC": 95,
+  "trimElevatorAuthority": 0.3,
+  "trimAileronAuthority": 0.1,
+  "trimRudderAuthority": 0.2,
+  "flapTravelSeconds": 12.0,
+  "gearTravelSeconds": 12.0,
+  "gear": [
+    {
+      "contact": [
+        1.1700000000000002,
+        -1.92,
+        1.6500000000000001
+      ],
+      "spring": 80000,
+      "damping": 20000,
+      "maxCompression": 0.38,
+      "rollingFriction": 0.03,
+      "lateralFriction": 0.9,
+      "braked": true
+    },
+    {
+      "contact": [
+        1.1700000000000002,
+        1.92,
+        1.6500000000000001
+      ],
+      "spring": 80000,
+      "damping": 20000,
+      "maxCompression": 0.38,
+      "rollingFriction": 0.03,
+      "lateralFriction": 0.9,
+      "braked": true
+    },
+    {
+      "contact": [
+        -5.720000000000001,
+        0.0,
+        0.49500000000000005
+      ],
+      "spring": 55000,
+      "damping": 12000,
+      "maxCompression": 0.42,
+      "rollingFriction": 0.05,
+      "lateralFriction": 0.5,
+      "braked": false,
+      "steerable": true
+    }
+  ],
+  "enginePowerHp": [
+    [
+      0,
+      2600
+    ],
+    [
+      1737,
+      2950
+    ],
+    [
+      4877,
+      2710
+    ],
+    [
+      6706,
+      2200
+    ],
+    [
+      7925,
+      1800
+    ],
+    [
+      9144,
+      1400
+    ],
+    [
+      10668,
+      900
+    ]
+  ],
+  "weapons": [],
+  "structuralHealth": 3000.0
+}
