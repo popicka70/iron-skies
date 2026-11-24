@@ -40,6 +40,13 @@ public sealed class DamageModel
 
     public bool EngineSeized => EngineDamage >= 0.98;
 
+    // Progressive control-surface failures. They are deterministic functions of the
+    // synced control damage, so no extra network state is needed.
+    public bool TrimJammed => ControlDamage >= 0.40;
+    public bool RudderJammed => ControlDamage >= 0.55;
+    public bool AileronJammed => ControlDamage >= 0.70;
+    public bool ElevatorJammed => ControlDamage >= 0.85;
+
     /// <summary>Applies the authoritative zone damage (0…1 per component).</summary>
     public void SetComponents(double engine, double control, double fuel)
     {

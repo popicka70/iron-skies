@@ -97,13 +97,22 @@ public sealed class AircraftSimulator
         _gearPosition = MoveToward(_gearPosition, c.GearDown, dt, d.GearTravelSeconds);
 
         double authority = Damage.ControlScale;
+        double elevatorInput = Damage.ElevatorJammed ? 0.05 : c.Elevator;
+        double aileronInput = Damage.AileronJammed ? 0.0 : c.Aileron;
+        double rudderInput = Damage.RudderJammed ? 0.0 : c.Rudder;
+        double trimElevator = Damage.TrimJammed ? 0.0 : c.TrimElevator;
+        double trimAileron = Damage.TrimJammed ? 0.0 : c.TrimAileron;
+        double trimRudder = Damage.TrimJammed ? 0.0 : c.TrimRudder;
+
         double elevator = DeterministicMath.Clamp(
-            (c.Elevator + c.TrimElevator * d.TrimElevatorAuthority) * authority, -1.0, 1.0);
+            (elevatorInput + trimElevator * d.TrimElevatorAuthority) * authority,
+            -1.0, 1.0);
         double aileron = DeterministicMath.Clamp(
-            (c.Aileron + c.TrimAileron * d.TrimAileronAuthority) * authority
+            (aileronInput + trimAileron * d.TrimAileronAuthority) * authority
             + Damage.RollBias, -1.0, 1.0);
         double rudder = DeterministicMath.Clamp(
-            (c.Rudder + c.TrimRudder * d.TrimRudderAuthority) * authority, -1.0, 1.0);
+            (rudderInput + trimRudder * d.TrimRudderAuthority) * authority,
+            -1.0, 1.0);
 
         Quat q = State.Orientation;
         Vec3 vBody = q.InverseRotate(State.VelocityEnu);

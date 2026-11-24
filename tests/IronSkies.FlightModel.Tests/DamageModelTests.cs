@@ -75,6 +75,44 @@ public sealed class DamageModelTests
     }
 
     [Fact]
+    public void ControlSurfaceFailuresFollowDamageThresholds()
+    {
+        var damage = new DamageModel();
+        damage.SetComponents(0.0, 0.45, 0.0);
+        damage.Update(1000.0, 1000.0);
+        Assert.True(damage.TrimJammed);
+        Assert.False(damage.RudderJammed);
+        Assert.False(damage.AileronJammed);
+        Assert.False(damage.ElevatorJammed);
+
+        damage.SetComponents(0.0, 0.90, 0.0);
+        damage.Update(1000.0, 1000.0);
+        Assert.True(damage.TrimJammed);
+        Assert.True(damage.RudderJammed);
+        Assert.True(damage.AileronJammed);
+        Assert.True(damage.ElevatorJammed);
+    }
+
+    [Fact]
+    public void JammedElevatorIgnoresPilotInput()
+    {
+        AircraftDefinition d = AircraftDefinition.TrainingAircraft;
+        var healthy = new AircraftSimulator(d, AircraftState.CreateAirborne(d));
+        var damaged = new AircraftSimulator(d, AircraftState.CreateAirborne(d));
+        damaged.Damage.SetComponents(0.0, 1.0, 0.0);
+
+        var controls = new Controls(Elevator: 0.8, Throttle: 0.7);
+        for (int i = 0; i < 60; i++)
+        {
+            healthy.Step(controls, Dt);
+            damaged.Step(controls, Dt);
+        }
+
+        Assert.True(System.Math.Abs(damaged.State.AngularVelocityBody.Y)
+            < System.Math.Abs(healthy.State.AngularVelocityBody.Y) * 0.5);
+    }
+
+    [Fact]
     public void SeizedEngineProducesNoPowerAndWindsDown()
     {
         AircraftDefinition d = AircraftDefinition.TrainingAircraft;

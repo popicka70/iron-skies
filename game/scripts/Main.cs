@@ -520,7 +520,8 @@ public partial class Main : Node3D
             _hudText.Append('\n');
         }
 
-        if (damage.EngineSeized || damage.Fire > 0.15 || damage.ControlDamage > 0.70)
+        if (damage.EngineSeized || damage.Fire > 0.15 || damage.TrimJammed
+            || damage.RudderJammed || damage.AileronJammed || damage.ElevatorJammed)
         {
             _hudText.Append("Status    ");
             if (damage.EngineSeized)
@@ -533,11 +534,10 @@ public partial class Main : Node3D
                 _hudText.Append("FIRE   ");
             }
 
-            if (damage.ControlDamage > 0.70)
-            {
-                _hudText.Append("CONTROLS JAMMED");
-            }
-
+            if (damage.TrimJammed) _hudText.Append("TRIM JAM   ");
+            if (damage.RudderJammed) _hudText.Append("RUDDER JAM   ");
+            if (damage.AileronJammed) _hudText.Append("AILERON JAM   ");
+            if (damage.ElevatorJammed) _hudText.Append("ELEVATOR JAM");
             _hudText.Append('\n');
         }
 
