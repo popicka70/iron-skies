@@ -70,6 +70,9 @@ public sealed class AircraftDefinition
     public double CoolantMaxC { get; init; } = 135.0;
     public double OilMaxC { get; init; } = 95.0;
 
+    /// <summary>Structural hit points used by the damage model.</summary>
+    public double StructuralHealth { get; init; } = 1000.0;
+
     // Gun installations. Empty means unarmed.
     public WeaponDefinition[] Weapons { get; init; } = Array.Empty<WeaponDefinition>();
 

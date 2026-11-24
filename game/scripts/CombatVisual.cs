@@ -21,8 +21,8 @@ public sealed partial class CombatVisual : Node3D
 
     private readonly List<TargetVisual> _targets = new();
 
+    private readonly List<AircraftSimulator> _sims = new();
     private ImmediateMesh _tracers = null!;
-    private AircraftSimulator _sim = null!;
     private StandardMaterial3D _tracerMaterial = null!;
 
     public void Build()
@@ -42,9 +42,14 @@ public sealed partial class CombatVisual : Node3D
         });
     }
 
-    public void Bind(AircraftSimulator sim)
+    public void Bind(AircraftSimulator sim, AircraftSimulator? other = null)
     {
-        _sim = sim;
+        _sims.Clear();
+        _sims.Add(sim);
+        if (other is not null)
+        {
+            _sims.Add(other);
+        }
 
         foreach (TargetVisual visual in _targets)
         {
@@ -57,6 +62,11 @@ public sealed partial class CombatVisual : Node3D
         var mesh = new BoxMesh { Size = new Vector3(4.0f, 3.0f, 6.0f) };
         foreach (DamageTarget target in sim.Weapons.Targets)
         {
+            if (!target.Static)
+            {
+                continue;
+            }
+
             var material = new StandardMaterial3D
             {
                 AlbedoColor = new Color(0.35f, 0.30f, 0.16f),
@@ -83,18 +93,31 @@ public sealed partial class CombatVisual : Node3D
     private void UpdateTracers()
     {
         _tracers.ClearSurfaces();
-        if (_sim is null || _sim.Weapons.Projectiles.Count == 0)
+        bool any = false;
+        foreach (AircraftSimulator sim in _sims)
+        {
+            if (sim.Weapons.Projectiles.Count > 0)
+            {
+                any = true;
+                break;
+            }
+        }
+
+        if (!any)
         {
             return;
         }
 
         _tracers.SurfaceBegin(Mesh.PrimitiveType.Lines, _tracerMaterial);
-        foreach (Projectile projectile in _sim.Weapons.Projectiles)
+        foreach (AircraftSimulator sim in _sims)
         {
-            Vector3 head = SimBridge.ToGodot(projectile.Position);
-            Vector3 tail = SimBridge.ToGodot(projectile.Position - projectile.Velocity * 0.02);
-            _tracers.SurfaceAddVertex(head);
-            _tracers.SurfaceAddVertex(tail);
+            foreach (Projectile projectile in sim.Weapons.Projectiles)
+            {
+                Vector3 head = SimBridge.ToGodot(projectile.Position);
+                Vector3 tail = SimBridge.ToGodot(projectile.Position - projectile.Velocity * 0.02);
+                _tracers.SurfaceAddVertex(head);
+                _tracers.SurfaceAddVertex(tail);
+            }
         }
 
         _tracers.SurfaceEnd();

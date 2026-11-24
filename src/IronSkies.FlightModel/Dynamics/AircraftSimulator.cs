@@ -49,6 +49,11 @@ public sealed class AircraftSimulator
     public double EnginePowerWatts => _engine.PowerWatts;
     public double BoostSeconds => _engine.BoostSeconds;
     public WeaponSystem Weapons => _weapons;
+
+    /// <summary>Structural health, 0…100. The game syncs this from projectile hits.</summary>
+    public double Health { get; set; } = 100.0;
+
+    public bool Destroyed => Health <= 0.0;
     public void AddTarget(DamageTarget target) => _weapons.AddTarget(target);
 
     public AircraftSimulator(
@@ -64,6 +69,7 @@ public sealed class AircraftSimulator
         _ground = ground ?? FlatGround.Instance;
         _engine = new EngineModel(definition);
         _weapons = new WeaponSystem(definition, randomSeed);
+        Health = definition.StructuralHealth;
     }
 
     public void Step(Controls rawControls, double dt)
@@ -74,6 +80,11 @@ public sealed class AircraftSimulator
         }
 
         Controls c = rawControls.Clamped();
+        if (Destroyed)
+        {
+            c = c with { Throttle = 0.0, Fire = false };
+        }
+
         AircraftDefinition d = Definition;
 
         _flapPosition = MoveToward(_flapPosition, c.Flaps, dt, d.FlapTravelSeconds);

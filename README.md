@@ -12,7 +12,8 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 > M0 already starts the Spitfire on its gear, takes off, flies over a streamed
 > 40 × 40 km Normandy terrain with Sentinel-2 orthophoto/landcover, OSM roads and
 > hedgerows, a low-poly aircraft, cockpit view, engine simulation, procedural audio and
-> four working guns with a small ground target range, and a live cockpit instrument panel.
+> four working guns, a Bf 109 bandit with a pursuit AI, structural damage, and a live
+> cockpit instrument panel.
 
 ![Iron Skies M0: 40 × 40 km Normandy terrain](docs/media/m0-normandy-40km.png)
 
@@ -21,6 +22,10 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 ![Iron Skies M0 cockpit](docs/media/m0-cockpit.png)
 
 *Cockpit view with the live instrument panel: airspeed, artificial horizon, altimeter, engine, fuel and ammunition.*
+
+![Iron Skies M0 combat](docs/media/m0-duel.png)
+
+*A Bf 109 bandit (placeholder airframe) in a head-on pass. Both aircraft carry structural damage.*
 
 ---
 
@@ -93,7 +98,8 @@ docs/                       Specification, architecture, ADRs
 | R | Reset sortie |
 
 The demo starts on its gear beside a Normandy hedgerow. Throttle up, keep straight with
-rudder, and ease back at ~100 mph to unstick.
+rudder, and ease back at ~100 mph to unstick. A bandit patrols about 1.5 km north; both
+aircraft have 1,000 structural points.
 
 ## Quick start (developers)
 

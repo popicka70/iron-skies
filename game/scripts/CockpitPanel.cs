@@ -97,8 +97,24 @@ public sealed partial class CockpitPanel : Control
                 "STALL", HorizontalAlignment.Left, -1, 18, WarnColor);
         }
 
+        int rangeTotal = 0;
+        int rangeAlive = 0;
+        foreach (var target in _sim.Weapons.Targets)
+        {
+            if (!target.Static)
+            {
+                continue;
+            }
+
+            rangeTotal++;
+            if (target.Alive)
+            {
+                rangeAlive++;
+            }
+        }
+
         DrawString(_font, origin + new Vector2(18, height - 12),
-            $"{_sim.Weapons.AliveTargets}/{_sim.Weapons.Targets.Count} targets", HorizontalAlignment.Left, -1, 13, TextColor);
+            $"{rangeAlive}/{rangeTotal} targets", HorizontalAlignment.Left, -1, 13, TextColor);
     }
 
     private void DrawDial(
