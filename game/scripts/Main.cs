@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime;
 using System.Text;
@@ -6,6 +7,7 @@ using Godot;
 using IronSkies.FlightModel.Aircraft;
 using IronSkies.FlightModel.Combat;
 using IronSkies.FlightModel.Math;
+using IronSkies.FlightModel.Mission;
 using IronSkies.Game.World;
 
 namespace IronSkies.Game;
@@ -40,6 +42,8 @@ public partial class Main : Node3D
 
     private DamageTarget _playerTarget = null!;
     private DamageTarget _aiTarget = null!;
+    private MissionState? _mission;
+    private readonly List<DamageTarget> _missionTargets = new();
     private bool _playerDown;
     private bool _banditDown;
     private double _downTimer;
@@ -57,6 +61,8 @@ public partial class Main : Node3D
     private bool _strikeStart;
     private bool _autoFire;
     private bool _duel;
+    private bool _missionTest;
+    private int _missionTestTick;
     private double _accumulator;
 
     private enum CameraMode
@@ -86,7 +92,9 @@ public partial class Main : Node3D
         GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
         _screenshotPath = ReadUserOption("--screenshot");
         _airStart = HasUserFlag("--air-start");
-        _strikeStart = HasUserFlag("--strike");
+        _missionTest = HasUserFlag("--mission-test");
+        _strikeStart = HasUserFlag("--strike") || LaunchConfig.Mission == "strike"
+            || _missionTest;
         _autoFire = HasUserFlag("--autofire");
         _duel = HasUserFlag("--duel");
         string? cameraOption = ReadUserOption("--camera");
@@ -189,10 +197,20 @@ public partial class Main : Node3D
             _banditDown = true;
         }
 
+        if (_mission is not null)
+        {
+            UpdateMission(delta);
+        }
+
+        if (_missionTest)
+        {
+            RunMissionTest();
+        }
+
         if (_playerDown)
         {
             _downTimer += delta;
-            if (_downTimer > 5.0)
+            if (_downTimer > 5.0 && _mission is null)
             {
                 ResetFlight();
                 return;
@@ -219,8 +237,19 @@ public partial class Main : Node3D
         Vector2 viewport = GetViewport().GetVisibleRect().Size;
         _crosshair.Position = new Vector2(viewport.X * 0.5f - 16.0f, viewport.Y * 0.5f - 18.0f);
         _message.Position = new Vector2(viewport.X * 0.5f - 210.0f, viewport.Y * 0.5f + 48.0f);
-        _message.Visible = _playerDown || _banditDown;
-        if (_playerDown)
+        bool missionOver = _mission is { Active: false };
+        _message.Visible = _playerDown || _banditDown || missionOver;
+        if (_mission is { Failed: true })
+        {
+            _message.Text = "MISSION FAILED — R TO RETRY";
+            _message.AddThemeColorOverride("font_color", new Color(1.0f, 0.4f, 0.3f));
+        }
+        else if (_mission is { Complete: true })
+        {
+            _message.Text = $"MISSION COMPLETE  {_mission.ElapsedText()} — R TO FLY AGAIN";
+            _message.AddThemeColorOverride("font_color", new Color(0.55f, 1.0f, 0.55f));
+        }
+        else if (_playerDown)
         {
             _message.Text = "SHOT DOWN — RESETTING";
             _message.AddThemeColorOverride("font_color", new Color(1.0f, 0.4f, 0.3f));
@@ -331,6 +360,18 @@ public partial class Main : Node3D
         double agl = _sim.State.AltitudeMeters - ground;
         _hudText.Clear();
         _hudText.Append("Iron Skies — ").Append(_definition.DisplayName).Append('\n');
+        if (_mission is not null)
+        {
+            _hudText.Append(_mission.Name).Append("   ")
+                .Append(_mission.ElapsedText()).Append('\n');
+            foreach (MissionObjective objective in _mission.Objectives)
+            {
+                _hudText.Append(objective.Complete ? "[x] " : "[ ] ")
+                    .Append(objective.Label).Append("  ")
+                    .Append(objective.Progress).Append('/').Append(objective.Required)
+                    .Append('\n');
+            }
+        }
         _hudText.Append("Speed     ").Append((t.SpeedMs * 1.94384).ToString("F1"))
             .Append(" kt   (").Append(t.SpeedMs.ToString("F1")).Append(" m/s)\n");
         _hudText.Append("Altitude  ").Append((_sim.State.AltitudeMeters * 3.28084).ToString("F0"))
@@ -398,6 +439,87 @@ public partial class Main : Node3D
         _hudText.Append("Tick      ").Append(_tick).Append("\n\n");
         _hudText.Append("W/S throttle  B brakes  SPACE fire  C camera  RMB look  F flaps  G gear  K/L radiator  , . trim  ↑/↓ pitch  ←/→ roll  A/D rudder");
         _hud.Text = _hudText.ToString();
+    }
+
+    private static MissionState CreateStrikeMission() => new()
+    {
+        Name = "Supply Dump Strike",
+        Brief = "Destroy the three supply trucks east of the airfield, then land safely.",
+        Objectives = new[]
+        {
+            new MissionObjective { Label = "Destroy the supply dump", Required = 3 },
+            new MissionObjective { Label = "Land safely" },
+        },
+    };
+
+    private void RunMissionTest()
+    {
+        _missionTestTick++;
+        if (_missionTestTick == 30)
+        {
+            foreach (DamageTarget target in _missionTargets)
+            {
+                target.Health = 0.0;
+            }
+        }
+        else if (_missionTestTick == 90)
+        {
+            double ground = _heightmap.HeightAt(900.0, 7000.0);
+            _sim.State.Position = new Vec3(900.0, 7000.0, ground + 0.05);
+            _sim.State.VelocityEnu = Vec3.Zero;
+            _sim.State.AngularVelocityBody = Vec3.Zero;
+            _sim.State.Orientation = Quat.FromHeading(0.0);
+            _throttle = 0.0;
+            _brake = 1.0;
+            _gearTarget = 1.0;
+            _flapTarget = 1.0;
+        }
+        else if (_missionTestTick >= 600)
+        {
+            GD.Print($"[mission-test] complete={_mission?.Complete} " +
+                     $"failed={_mission?.Failed} " +
+                     $"trucks={_mission?.Objectives[0].Progress}/{_mission?.Objectives[0].Required} " +
+                     $"landed={_mission?.Objectives[1].Progress} " +
+                     $"elapsed={_mission?.ElapsedText()}");
+            GetTree().Quit();
+        }
+    }
+
+    private void UpdateMission(double delta)
+    {
+        if (_mission is null)
+        {
+            return;
+        }
+
+        _mission.Tick(delta);
+
+        if (_mission.Objectives.Count != 2)
+        {
+            return;
+        }
+
+        int destroyed = 0;
+        foreach (DamageTarget target in _missionTargets)
+        {
+            if (!target.Alive)
+            {
+                destroyed++;
+            }
+        }
+
+        _mission.Objectives[0].SetProgress(destroyed);
+        bool landed = _mission.Objectives[0].Complete
+            && !_sim.Destroyed
+            && _sim.Telemetry.OnGround
+            && _sim.Telemetry.SpeedMs < 8.0;
+        _mission.Objectives[1].SetProgress(landed ? 1 : 0);
+        _mission.Evaluate();
+
+        if (_sim.Destroyed)
+        {
+            _mission.Fail();
+        }
     }
 
     /// <summary>
@@ -524,6 +646,8 @@ public partial class Main : Node3D
                 _definition, ground, eastMeters: east, northMeters: north);
         _sim = new AircraftSimulator(_definition, state, _heightmap);
         _cockpitPanel.Bind(_sim);
+        _missionTargets.Clear();
+        _mission = _strikeStart ? CreateStrikeMission() : null;
         AddTargets(_sim);
         CreateBandit(east, north, _sim.State.Position.Z);
         _throttle = airborne ? 0.75 : 0.0;
@@ -593,13 +717,18 @@ public partial class Main : Node3D
             double e = 700.0 + east;
             double n = 6750.0 + north;
             double ground = _heightmap.HeightAt(e, n);
-            sim.AddTarget(new DamageTarget
+            var target = new DamageTarget
             {
                 Position = new Vec3(e, n, ground + 1.5),
                 Radius = 4.5,
                 MaxHealth = 100.0,
                 Health = 100.0,
-            });
+            };
+            sim.AddTarget(target);
+            if (_strikeStart)
+            {
+                _missionTargets.Add(target);
+            }
         }
     }
 
