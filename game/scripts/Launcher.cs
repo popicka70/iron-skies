@@ -17,6 +17,7 @@ public sealed partial class Launcher : Control
     private ItemList _servers = null!;
     private Label _scanStatus = null!;
     private Control _settingsOverlay = null!;
+    private Control _missionsOverlay = null!;
     private HSlider _volumeSlider = null!;
     private CheckButton _fullscreenCheck = null!;
     private ServerProcessManager? _serverProcess;
@@ -45,7 +46,9 @@ public sealed partial class Launcher : Control
         }
 
         if (HasFlag("--screenshot") || HasFlag("--air-start") || HasFlag("--strike")
-            || HasFlag("--duel") || HasFlag("--autofire"))
+            || HasFlag("--hunt") || HasFlag("--duel") || HasFlag("--autofire")
+            || HasFlag("--mission-test") || HasFlag("--hunt-test")
+            || HasFlag("--damage-test"))
         {
             GetTree().CallDeferred("change_scene_to_file", "res://scenes/Main.tscn");
             return;
@@ -64,6 +67,10 @@ public sealed partial class Launcher : Control
         if (HasFlag("--open-settings"))
         {
             ShowSettings();
+        }
+        else if (HasFlag("--open-missions"))
+        {
+            ShowMissions();
         }
 
         string? launcherShot = ReadOption("--launcher-shot");
@@ -138,12 +145,7 @@ public sealed partial class Launcher : Control
             GetTree().ChangeSceneToFile("res://scenes/Main.tscn");
         };
 
-        MakeButton("Strike Mission").Pressed += () =>
-        {
-            LaunchConfig.Reset();
-            LaunchConfig.Mission = "strike";
-            GetTree().ChangeSceneToFile("res://scenes/Main.tscn");
-        };
+        MakeButton("Missions").Pressed += ShowMissions;
 
         MakeButton("Duel").Pressed += () =>
         {
@@ -244,6 +246,110 @@ public sealed partial class Launcher : Control
         box.AddChild(hint);
 
         BuildSettingsOverlay();
+        BuildMissionsOverlay();
+    }
+
+    private void BuildMissionsOverlay()
+    {
+        _missionsOverlay = BuildOverlay();
+        var content = (VBoxContainer)_missionsOverlay.GetChild(1).GetChild(0);
+
+        var title = new Label
+        {
+            Text = "MISSIONS",
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        title.AddThemeFontSizeOverride("font_size", 24);
+        content.AddChild(title);
+        content.AddChild(new Label
+        {
+            Text = "Supply Dump Strike — destroy the trucks, then land.",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        });
+        var strike = new Button
+        {
+            Text = "Start Supply Dump Strike",
+            CustomMinimumSize = new Vector2(0.0f, 40.0f),
+        };
+        strike.Pressed += () => StartMission("strike");
+        content.AddChild(strike);
+        content.AddChild(new Label
+        {
+            Text = "Free Hunt — shoot down two Bf 109s, then land.",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        });
+        var hunt = new Button
+        {
+            Text = "Start Free Hunt",
+            CustomMinimumSize = new Vector2(0.0f, 40.0f),
+        };
+        hunt.Pressed += () => StartMission("hunt");
+        content.AddChild(hunt);
+
+        var close = new Button { Text = "Close", CustomMinimumSize = new Vector2(0.0f, 34.0f) };
+        close.Pressed += HideMissions;
+        content.AddChild(close);
+    }
+
+    private void StartMission(string mission)
+    {
+        LaunchConfig.Reset();
+        LaunchConfig.Mission = mission;
+        GetTree().ChangeSceneToFile("res://scenes/Main.tscn");
+    }
+
+    private void ShowMissions()
+    {
+        HideSettings();
+        _missionsOverlay.Visible = true;
+    }
+
+    private void HideMissions()
+    {
+        _missionsOverlay.Visible = false;
+    }
+
+    private Control BuildOverlay()
+    {
+        var overlay = new Control { Visible = false };
+        overlay.SetAnchorsPreset(LayoutPreset.FullRect);
+        AddChild(overlay);
+
+        var dim = new ColorRect { Color = new Color(0.0f, 0.0f, 0.0f, 0.68f) };
+        dim.SetAnchorsPreset(LayoutPreset.FullRect);
+        overlay.AddChild(dim);
+
+        var panel = new PanelContainer
+        {
+            AnchorLeft = 0.5f,
+            AnchorTop = 0.5f,
+            AnchorRight = 0.5f,
+            AnchorBottom = 0.5f,
+            OffsetLeft = -250.0f,
+            OffsetTop = -180.0f,
+            OffsetRight = 250.0f,
+            OffsetBottom = 180.0f,
+        };
+        var style = new StyleBoxFlat
+        {
+            BgColor = new Color(0.075f, 0.095f, 0.11f),
+            BorderColor = new Color(0.22f, 0.27f, 0.25f),
+            BorderWidthLeft = 1,
+            BorderWidthTop = 1,
+            BorderWidthRight = 1,
+            BorderWidthBottom = 1,
+            ContentMarginLeft = 24.0f,
+            ContentMarginRight = 24.0f,
+            ContentMarginTop = 18.0f,
+            ContentMarginBottom = 18.0f,
+        };
+        panel.AddThemeStyleboxOverride("panel", style);
+        overlay.AddChild(panel);
+
+        var content = new VBoxContainer();
+        content.AddThemeConstantOverride("separation", 12);
+        panel.AddChild(content);
+        return overlay;
     }
 
     private void BuildSettingsOverlay()
@@ -334,6 +440,7 @@ public sealed partial class Launcher : Control
 
     private void ShowSettings()
     {
+        HideMissions();
         _settingsOverlay.Visible = true;
         _volumeSlider.Value = GameSettings.MasterVolume;
         _fullscreenCheck.ButtonPressed = GameSettings.Fullscreen;

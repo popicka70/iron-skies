@@ -67,13 +67,22 @@ public partial class Main : Node3D
     private bool _prevFlapKey;
     private bool _prevGearKey;
     private bool _airStart;
+    private MissionKind _missionKind;
     private bool _strikeStart;
+    private bool _huntStart;
     private bool _autoFire;
     private bool _duel;
     private bool _missionTest;
     private bool _damageTest;
     private int _missionTestTick;
     private double _accumulator;
+
+    private enum MissionKind
+    {
+        None,
+        Strike,
+        Hunt,
+    }
 
     private enum CameraMode
     {
@@ -105,11 +114,36 @@ public partial class Main : Node3D
         GameSettings.ApplyDisplay();
         _screenshotPath = ReadUserOption("--screenshot");
         _airStart = HasUserFlag("--air-start");
-        _missionTest = HasUserFlag("--mission-test");
+        _missionTest = HasUserFlag("--mission-test") || HasUserFlag("--hunt-test");
         _damageTest = HasUserFlag("--damage-test");
+
+        if (HasUserFlag("--strike") || LaunchConfig.Mission == "strike")
+        {
+            _missionKind = MissionKind.Strike;
+        }
+        else if (HasUserFlag("--hunt") || LaunchConfig.Mission == "hunt")
+        {
+            _missionKind = MissionKind.Hunt;
+        }
+
+        if (HasUserFlag("--hunt-test"))
+        {
+            _missionKind = MissionKind.Hunt;
+        }
+        else if (HasUserFlag("--mission-test"))
+        {
+            _missionKind = MissionKind.Strike;
+        }
+
+        _strikeStart = _missionKind == MissionKind.Strike;
+        _huntStart = _missionKind == MissionKind.Hunt;
         _banditCount = int.TryParse(ReadUserOption("--bandits"), out int bandits)
             ? System.Math.Clamp(bandits, 0, 6)
-            : _strikeStart ? 2 : 1;
+            : _strikeStart || _huntStart ? 2 : 1;
+        if (_huntStart && _banditCount < 1)
+        {
+            _banditCount = 1;
+        }
         _strikeStart = HasUserFlag("--strike") || LaunchConfig.Mission == "strike"
             || _missionTest;
         _autoFire = HasUserFlag("--autofire");
@@ -493,11 +527,16 @@ public partial class Main : Node3D
             {
                 target.Health = 0.0;
             }
+
+            foreach (Enemy enemy in _enemies)
+            {
+                enemy.Target.Health = 0.0;
+            }
         }
         else if (_missionTestTick == 90)
         {
-            double ground = _heightmap.HeightAt(900.0, 7000.0);
-            _sim.State.Position = new Vec3(900.0, 7000.0, ground + 0.05);
+            double ground = _ground.HeightAt(Airfield.East, Airfield.North);
+            _sim.State.Position = new Vec3(Airfield.East, Airfield.North, ground + 0.05);
             _sim.State.VelocityEnu = Vec3.Zero;
             _sim.State.AngularVelocityBody = Vec3.Zero;
             _sim.State.Orientation = Quat.FromHeading(0.0);
@@ -510,12 +549,27 @@ public partial class Main : Node3D
         {
             GD.Print($"[mission-test] complete={_mission?.Complete} " +
                      $"failed={_mission?.Failed} " +
-                     $"trucks={_mission?.Objectives[0].Progress}/{_mission?.Objectives[0].Required} " +
+                     $"objective0={_mission?.Objectives[0].Progress}/{_mission?.Objectives[0].Required} " +
                      $"landed={_mission?.Objectives[1].Progress} " +
                      $"elapsed={_mission?.ElapsedText()}");
             GetTree().Quit();
         }
     }
+
+    private MissionState CreateHuntMission() => new()
+    {
+        Name = "Free Hunt",
+        Brief = "Shoot down the Bf 109s, then land at the airfield.",
+        Objectives = new[]
+        {
+            new MissionObjective
+            {
+                Label = "Destroy the bandits",
+                Required = System.Math.Max(1, _banditCount),
+            },
+            new MissionObjective { Label = "Land safely" },
+        },
+    };
 
     private void UpdateMission(double delta)
     {
@@ -531,16 +585,24 @@ public partial class Main : Node3D
             return;
         }
 
-        int destroyed = 0;
-        foreach (DamageTarget target in _missionTargets)
+        int progress;
+        if (_missionKind == MissionKind.Strike)
         {
-            if (!target.Alive)
+            progress = 0;
+            foreach (DamageTarget target in _missionTargets)
             {
-                destroyed++;
+                if (!target.Alive)
+                {
+                    progress++;
+                }
             }
         }
+        else
+        {
+            progress = EnemiesDown();
+        }
 
-        _mission.Objectives[0].SetProgress(destroyed);
+        _mission.Objectives[0].SetProgress(progress);
         double airfieldEast = _sim.State.Position.X - Airfield.East;
         double airfieldNorth = _sim.State.Position.Y - Airfield.North;
         bool nearAirfield = airfieldEast * airfieldEast + airfieldNorth * airfieldNorth
@@ -672,11 +734,13 @@ public partial class Main : Node3D
         double east = _strikeStart ? 900.0 : Airfield.East;
         double north = _strikeStart ? 7000.0 : Airfield.SouthThreshold + 100.0;
         double ground = _ground.HeightAt(east, north);
-        bool airborne = _airStart || _strikeStart || _duel;
+        bool airborne = _airStart || _strikeStart || _huntStart || _duel;
         AircraftState state = airborne
             ? AircraftState.CreateAirborne(
                 _definition,
-                altitudeMeters: ground + (_strikeStart ? 250.0 : _duel ? 1500.0 : 2000.0),
+                altitudeMeters: ground + (_strikeStart ? 250.0
+                    : _huntStart || _duel ? 1500.0
+                    : 2000.0),
                 speedMs: _strikeStart ? 90.0 : 120.0,
                 eastMeters: east, northMeters: north)
             : AircraftState.CreateOnGround(
@@ -684,7 +748,12 @@ public partial class Main : Node3D
         _sim = new AircraftSimulator(_definition, state, _ground);
         _cockpitPanel.Bind(_sim);
         _missionTargets.Clear();
-        _mission = _strikeStart ? CreateStrikeMission() : null;
+        _mission = _missionKind switch
+        {
+            MissionKind.Strike => CreateStrikeMission(),
+            MissionKind.Hunt => CreateHuntMission(),
+            _ => null,
+        };
         AddTargets(_sim);
         CreateEnemies(east, north, _sim.State.Position.Z);
         _throttle = airborne ? 0.75 : 0.0;
@@ -730,14 +799,15 @@ public partial class Main : Node3D
             _playerTarget.Health = _definition.StructuralHealth * 0.35;
         }
 
-        double baseNorth = playerNorth + (_duel ? 400.0 : 1500.0);
+        bool closeSpawn = _duel || _huntStart;
+        double baseNorth = playerNorth + (closeSpawn ? 400.0 : 1500.0);
         for (int i = 0; i < _banditCount; i++)
         {
             double lateral = (i - (_banditCount - 1) * 0.5) * 500.0;
             double east = playerEast + lateral;
             double north = baseNorth + i * 260.0;
             double ground = _heightmap.HeightAt(east, north);
-            double altitude = _duel
+            double altitude = closeSpawn
                 ? playerAltitude + (i - (_banditCount - 1) * 0.5) * 80.0
                 : System.Math.Max(playerAltitude + 300.0, ground + 400.0) + i * 80.0;
 
