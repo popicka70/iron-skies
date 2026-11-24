@@ -179,8 +179,8 @@ No application-level rewrite is expected; only the repository implementation cha
 
 - Height accuracy: sample N points, compare to source DEM within 2 m RMSE.
 - M0 baseline: 40 × 40 km, 1601² samples at 25 m, heights −44…248 m, built in < 1 s.
-- Regional baseline: 400 × 400 km, 8001² samples at 50 m, 19-date Sentinel-2 mosaic at
-  8192²; the runtime keeps the same 10 km detailed ring.
+- Regional baseline: 400 × 400 km, 8001² samples at 50 m, multi-date Sentinel-2 mosaic
+  at 4096² (optionally 8192²); the runtime keeps the same 10 km detailed ring.
 - Visual: side-by-side screenshots vs. reference photos at 6 landmark locations.
 - Streaming: fly a 40 km transect, assert no hitch > 16 ms and memory within budget.
 - Persistence: kill -9 the server mid-mission, restart, assert state matches the journal.

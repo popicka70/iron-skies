@@ -57,6 +57,12 @@ detailed streaming ring; the committed Normandy ortho is blended over the centre
 10 m inset. The generated bundle is deliberately git-ignored. If a selected theatre is
 not installed, the game falls back to the Normandy sample.
 
+![Iron Skies 400 km North-west France theatre](docs/media/m0-france-400km.png)
+
+*The generated 400 × 400 km theatre: Normandy, the Brittany coast and the approaches to
+Paris. Chunk meshes stream within 10 km; the committed 40 km sample is blended over the
+airfield as a sharp 10 m inset.*
+
 ![Iron Skies M0 combat](docs/media/m0-duel.png)
 
 *A Bf 109 bandit (placeholder airframe) in a head-on pass, with AI wingmen in support. Hits degrade the engine, controls and fuel tanks.*
