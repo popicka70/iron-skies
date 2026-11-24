@@ -189,7 +189,8 @@ public readonly record struct Controls(
     double TrimAileron = 0.0,
     double TrimRudder = 0.0,
     double Mixture = 0.8,
-    bool Fire = false)
+    bool Fire = false,
+    bool Extinguish = false)
 {
     // Explicit values: `new()` on a struct runs the zeroing constructor and would
     // ignore the primary constructor's optional defaults (e.g. gear down).
@@ -208,5 +209,6 @@ public readonly record struct Controls(
         DeterministicMath.Clamp(TrimAileron, -1.0, 1.0),
         DeterministicMath.Clamp(TrimRudder, -1.0, 1.0),
         DeterministicMath.Clamp(Mixture, 0.0, 1.0),
-        Fire);
+        Fire,
+        Extinguish);
 }

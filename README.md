@@ -166,7 +166,7 @@ godot --path game scenes/Multiplayer.tscn -- --connect 127.0.0.1 --port 7777
 
 30 Hz snapshots, local prediction with snapshot blending, interpolated remote aircraft,
 server-owned damage and 5-second respawns. Spitfires and Bf 109s share a server. Up to
-**64 players**; measured at **1.48 MB/s and ~6.5 ms/tick** with delta and component
+**64 players**; measured at **~1.6 MB/s and ~6 ms/tick** with delta, component and fire
 snapshots on a shared 16-core machine (worst-case relevance).
 
 ```bash

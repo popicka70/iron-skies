@@ -18,6 +18,7 @@ public sealed class NetPlayerState
     public byte EngineDamage;
     public byte ControlDamage;
     public byte FuelDamage;
+    public byte Fire;
     public Vec3 Position;
     public Quat Orientation = Quat.Identity;
     public Vec3 Velocity;
@@ -35,6 +36,7 @@ public sealed class NetPlayerState
         EngineDamage = DamageByte(sim.Damage.EngineDamage),
         ControlDamage = DamageByte(sim.Damage.ControlDamage),
         FuelDamage = DamageByte(sim.Damage.FuelDamage),
+        Fire = DamageByte(sim.Damage.Fire),
         Position = sim.State.Position,
         Orientation = sim.State.Orientation,
         Velocity = sim.State.VelocityEnu,
@@ -73,13 +75,13 @@ public static class NetProtocol
     public const byte TypeAuthFailed = 7;
     public const byte TypeJoinRequest = 8;
 
-    private const int InputSize = 1 + 4 + 4 + 11 * 4;
-    private const int PlayerStateSize = 1 + 1 + 4 + 3 + 3 * 4 + 4 * 4 + 3 * 4 + 3 * 4 + 3 * 4;
+    private const int InputSize = 1 + 4 + 4 + 12 * 4;
+    private const int PlayerStateSize = 1 + 1 + 4 + 4 + 3 * 4 + 4 * 4 + 3 * 4 + 3 * 4 + 3 * 4;
     private const int WelcomeHeader = 1 + 1;
 
     // Compact snapshot: quantised pose, smallest-three quaternion, scaled health/RPM.
     private const int SnapshotHeader = 1 + 4 + 1 + 1 + 12;
-    private const int CompactPlayerSize = 1 + 1 + 2 + 3 + 6 + 7 + 2 + 1 + 1;
+    private const int CompactPlayerSize = 1 + 1 + 2 + 4 + 6 + 7 + 2 + 1 + 1;
     private const int SelfExtraSize = 6 + 3;
     private const double PositionScale = 2.0;      // 0.5 m
     private const double VelocityScale = 20.0;     // 0.05 m/s
@@ -106,6 +108,7 @@ public static class NetProtocol
         Write(span, ref offset, c.TrimElevator);
         Write(span, ref offset, c.Mixture);
         Write(span, ref offset, c.Fire ? 1.0 : 0.0);
+        Write(span, ref offset, c.Extinguish ? 1.0 : 0.0);
         return data;
     }
 
@@ -132,7 +135,8 @@ public static class NetProtocol
             Radiator: Read(span, ref offset),
             TrimElevator: Read(span, ref offset),
             Mixture: Read(span, ref offset),
-            Fire: Read(span, ref offset) > 0.5);
+            Fire: Read(span, ref offset) > 0.5,
+            Extinguish: Read(span, ref offset) > 0.5);
 
         if (!double.IsFinite(c.Elevator) || !double.IsFinite(c.Aileron)
             || !double.IsFinite(c.Rudder) || !double.IsFinite(c.Throttle)
@@ -242,7 +246,7 @@ public static class NetProtocol
     private const byte MaskSelfVelocity = 64;
     private const byte MaskSelfAngular = 128;
     private const int DeltaHeader = 1 + 4 + 1 + 4 + 1 + 12;
-    private const int DeltaPlayerMaxSize = 3 + 3 + 2 + 6 + 7 + 2 + 1 + 1 + 6 + 3;
+    private const int DeltaPlayerMaxSize = 3 + 4 + 2 + 6 + 7 + 2 + 1 + 1 + 6 + 3;
 
     public static byte[] EncodeSnapshotDelta(NetSnapshot current, NetSnapshot baseline)
     {
@@ -307,6 +311,7 @@ public static class NetProtocol
             span[offset++] = player.EngineDamage;
             span[offset++] = player.ControlDamage;
             span[offset++] = player.FuelDamage;
+            span[offset++] = player.Fire;
             if ((mask & MaskHealth) != 0) WriteUShort(span, ref offset, player.Health);
             if ((mask & MaskPosition) != 0)
             {
@@ -412,7 +417,7 @@ public static class NetProtocol
                 aircraftType = span[offset++];
             }
 
-            if (offset + 3 > span.Length)
+            if (offset + 4 > span.Length)
             {
                 return false;
             }
@@ -424,6 +429,7 @@ public static class NetProtocol
                 EngineDamage = span[offset++],
                 ControlDamage = span[offset++],
                 FuelDamage = span[offset++],
+                Fire = span[offset++],
                 Health = old?.Health ?? 0.0,
                 Position = old?.Position ?? Vec3.Zero,
                 Orientation = old?.Orientation ?? Quat.Identity,
@@ -638,6 +644,7 @@ public static class NetProtocol
         span[offset++] = state.EngineDamage;
         span[offset++] = state.ControlDamage;
         span[offset++] = state.FuelDamage;
+        span[offset++] = state.Fire;
         WriteShort(span, ref offset, state.Position.X - anchor.X, PositionScale);
         WriteShort(span, ref offset, state.Position.Y - anchor.Y, PositionScale);
         WriteShort(span, ref offset, state.Position.Z - anchor.Z, PositionScale);
@@ -662,6 +669,7 @@ public static class NetProtocol
         state.EngineDamage = span[offset++];
         state.ControlDamage = span[offset++];
         state.FuelDamage = span[offset++];
+        state.Fire = span[offset++];
         state.Position = new Vec3(
             anchor.X + ReadShortRaw(span, ref offset) / PositionScale,
             anchor.Y + ReadShortRaw(span, ref offset) / PositionScale,
@@ -799,6 +807,7 @@ public static class NetProtocol
         span[offset++] = state.EngineDamage;
         span[offset++] = state.ControlDamage;
         span[offset++] = state.FuelDamage;
+        span[offset++] = state.Fire;
         Write(span, ref offset, state.Position.X);
         Write(span, ref offset, state.Position.Y);
         Write(span, ref offset, state.Position.Z);
@@ -830,6 +839,7 @@ public static class NetProtocol
         state.EngineDamage = span[offset++];
         state.ControlDamage = span[offset++];
         state.FuelDamage = span[offset++];
+        state.Fire = span[offset++];
         double px = Read(span, ref offset);
         double py = Read(span, ref offset);
         double pz = Read(span, ref offset);

@@ -67,15 +67,15 @@ Measured on the development machine:
 | Clients | Server outbound | Per client | Tick time |
 | --- | --- | --- | --- |
 | 16 (mixed) | 120-137 KB/s | ~8 KB/s | 0.9 ms |
-| 64 (mixed) | 1.48 MB/s | ~23 KB/s | 6.5 ms |
+| 64 (mixed) | ~1.6 MB/s | ~25 KB/s | ~6.0 ms |
 
 ```
-[server] players=64 tick=721 outKBps=1475.5 avgTick=6.47ms full=64 delta=1856 lag=1.4t
+[server] players=62 tick=752 outKBps=1617.5 avgTick=5.94ms full=62 delta=1972 lag=1.4t
 clients welcome=64/64 joined=64
 ```
 
-The load test alternates Spitfires and Bf 109s. Aircraft type and three component-damage
-bytes add ~0.3 MB/s at 64 players; per-client bandwidth stays under the 32 KB/s target.
+The load test alternates Spitfires and Bf 109s. Aircraft type, component damage and the fire byte add ~0.4 MB/s at 64 players;
+per-client bandwidth stays under the 32 KB/s target.
 
 Ack-based delta snapshots cut the 64-client worst case from 2.45 MB/s to ~1.5 MB/s
 (1.6×) while carrying aircraft type and component damage; 96-97% of snapshots are
@@ -115,17 +115,18 @@ Little-endian, float32 payloads, type-tagged:
 - `JoinRequest` (client → server, reliable): requested aircraft type (0 = Spitfire,
   1 = Bf 109). The server waits for this before spawning; password servers may receive
   it before or after the auth response.
-- `Input` (client → server, unreliable): sequence, acked snapshot tick + 11 control
-  floats.
+- `Input` (client → server, unreliable): sequence, acked snapshot tick + 12 control
+  values (including fire and extinguisher).
 - `AuthRequest` / `AuthResponse` / `AuthFailed` (reliable): password challenge and result.
 - `Welcome` (server → client, reliable): player id + spawn state.
 - `Snapshot` (server → client, unreliable): tick + up to 255 player states
-  (id, aircraft type, health, engine/control/fuel damage, pose, velocity, rates, RPM,
-  flap, gear). Full keyframe.
+  (id, aircraft type, health, engine/control/fuel damage, fire, pose, velocity, rates,
+  RPM, flap, gear). Full keyframe.
 - `SnapshotDelta` (server → client, unreliable): tick, the baseline tick it applies to,
   anchor, and per-player field masks against that baseline. The aircraft type is sent
   only for players absent from the baseline; existing players inherit it. Component
-  damage bytes are sent every snapshot (they are small and can change on any hit).
+  damage and fire bytes are sent every snapshot (they are small and can change on any
+  hit).
 
 Snapshots use a compact wire format:
 

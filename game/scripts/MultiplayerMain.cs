@@ -307,6 +307,7 @@ public sealed partial class MultiplayerMain : Node3D
             state.EngineDamage / 255.0,
             state.ControlDamage / 255.0,
             state.FuelDamage / 255.0);
+        _localSim.Damage.SetFire(state.Fire / 255.0);
         if (!_headlessClient)
         {
             _playerVisual.Visible = true;
@@ -453,6 +454,7 @@ public sealed partial class MultiplayerMain : Node3D
             server.EngineDamage / 255.0,
             server.ControlDamage / 255.0,
             server.FuelDamage / 255.0);
+        _localSim.Damage.SetFire(server.Fire / 255.0);
     }
 
     private void UpdateRemote(NetPlayerState state)
@@ -563,8 +565,7 @@ public sealed partial class MultiplayerMain : Node3D
                 : 1.0;
             double engine = remote.Current.EngineDamage / 255.0;
             double structural = 1.0 - healthFraction;
-            double fuel = remote.Current.FuelDamage / 255.0;
-            double fire = DamageModel.ComputeFire(engine, fuel);
+            double fire = remote.Current.Fire / 255.0;
             remote.Smoke.Update(
                 System.Math.Max(System.Math.Max(engine * 1.1, structural * 0.8), fire),
                 fire);
@@ -774,7 +775,8 @@ public sealed partial class MultiplayerMain : Node3D
             Radiator: _radiator,
             TrimElevator: _trimElevator,
             Mixture: 0.85,
-            Fire: _fire);
+            Fire: _fire,
+            Extinguish: Input.IsPhysicalKeyPressed(Key.X));
     }
 
     private double Axis(JoyAxis axis, double deadzone = 0.08)
@@ -847,7 +849,8 @@ public sealed partial class MultiplayerMain : Node3D
         if (_client is null || !_client.Connected)
         {
             _hudText.Append("Connecting to ").Append(_serverAddress).Append(':').Append(_port).Append("\n\n");
-            _hudText.Append("W/S throttle   arrows pitch/roll   A/D rudder   Space fire   C camera");
+            _hudText.Append(
+                "W/S throttle   arrows pitch/roll   A/D rudder   Space fire   C camera   X extinguish");
             _hud.Text = _hudText.ToString();
             return;
         }

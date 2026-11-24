@@ -63,15 +63,18 @@ public sealed class DamageModelTests
         var damage = new DamageModel();
         damage.SetComponents(0.0, 0.0, 0.8);
         damage.Update(1000.0, 1000.0);
+        damage.Tick(1.0, extinguish: false);
+        damage.Update(1000.0, 1000.0);
 
         Assert.True(damage.Fire > 0.0);
         Assert.True(damage.FuelLeakKgPerSecond > 4.0);
         Assert.True(damage.Smoke > 0.5);
 
-        damage.SetComponents(0.0, 1.0, 0.0);
-        damage.Update(1000.0, 1000.0);
-        Assert.True(damage.RollBias > 0.0);
-        Assert.Equal(0.0, damage.Fire, 1e-6);
+        var controls = new DamageModel();
+        controls.SetComponents(0.0, 1.0, 0.0);
+        controls.Update(1000.0, 1000.0);
+        Assert.True(controls.RollBias > 0.0);
+        Assert.Equal(0.0, controls.Fire, 1e-6);
     }
 
     [Fact]
@@ -110,6 +113,25 @@ public sealed class DamageModelTests
 
         Assert.True(System.Math.Abs(damaged.State.AngularVelocityBody.Y)
             < System.Math.Abs(healthy.State.AngularVelocityBody.Y) * 0.5);
+    }
+
+    [Fact]
+    public void FireGrowsBurnsStructureAndIsExtinguished()
+    {
+        var damage = new DamageModel();
+        damage.SetComponents(0.0, 0.0, 0.8);
+        damage.Update(1000.0, 1000.0);
+        damage.Tick(1.0, extinguish: false);
+
+        Assert.True(damage.Fire > 0.0);
+        Assert.True(damage.StructuralBurnPerSecond > 0.0);
+
+        double burning = damage.Fire;
+        damage.Tick(2.0, extinguish: true);
+        Assert.True(damage.Fire < burning);
+
+        damage.SetFire(0.5);
+        Assert.Equal(0.5, damage.Fire, 1e-6);
     }
 
     [Fact]
