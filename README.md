@@ -117,6 +117,24 @@ godot --path game
 godot --path game -- --screenshot /tmp/iron-skies.png
 ```
 
+## Multiplayer
+
+Dedicated authoritative server and predicted clients:
+
+```bash
+# server (headless)
+godot --headless --path game scenes/Multiplayer.tscn -- --server --port 7777
+
+# client
+godot --path game scenes/Multiplayer.tscn -- --connect 127.0.0.1 --port 7777
+```
+
+30 Hz snapshots, local prediction with snapshot blending, interpolated remote aircraft,
+server-owned damage and 5-second respawns. Headless two-client test:
+`./tools/net_smoke_test.sh`. See [docs/multiplayer.md](docs/multiplayer.md).
+
+![Iron Skies multiplayer](docs/media/m0-multiplayer.png)
+
 ## Packaging
 
 Linux and Windows export presets are committed in `game/export_presets.cfg`.

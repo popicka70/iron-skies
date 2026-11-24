@@ -46,25 +46,32 @@ public sealed partial class SpitfireVisual : Node3D
         BuildCockpit();
     }
 
-    public void UpdateFrom(AircraftSimulator sim, double delta)
-    {
-        float rpm = (float)(sim.EngineRpm / 3000.0);
-        _propeller.RotateZ((float)(rpm * 90.0 * delta));
+    public void UpdateFrom(AircraftSimulator sim, double delta) =>
+        UpdateExternal(sim.EngineRpm, sim.FlapPosition, sim.GearPosition, delta);
 
-        bool blurred = sim.EngineRpm > 350.0;
+    /// <summary>Updates animation for a remote aircraft driven by network snapshots.</summary>
+    public void UpdateExternal(double rpm, double flapPosition, double gearPosition, double delta)
+    {
+        float rpmFraction = (float)(rpm / 3000.0);
+        _propeller.RotateZ((float)(rpmFraction * 90.0 * delta));
+
+        bool blurred = rpm > 350.0;
         _propDisc.Visible = blurred;
         foreach (MeshInstance3D blade in _propBlades)
         {
             blade.Visible = !blurred;
         }
 
-        float flap = (float)sim.FlapPosition * 0.7f;
+        float flap = (float)flapPosition * 0.7f;
         _leftFlap.Rotation = new Vector3(flap, 0.0f, 0.0f);
         _rightFlap.Rotation = new Vector3(flap, 0.0f, 0.0f);
 
-        _gearGroup.Visible = sim.GearPosition > 0.04;
-        _gearGroup.Scale = new Vector3(1.0f, (float)Math.Max(0.04, sim.GearPosition), 1.0f);
+        _gearGroup.Visible = gearPosition > 0.04;
+        _gearGroup.Scale = new Vector3(1.0f, (float)Math.Max(0.04, gearPosition), 1.0f);
     }
+
+    public void SetExternalTransform(FlightModel.Math.Vec3 position, FlightModel.Math.Quat orientation) =>
+        GlobalTransform = SimBridge.ToGodot(orientation, position);
 
     private void BuildFuselage()
     {

@@ -79,6 +79,22 @@ public readonly struct Quat : IEquatable<Quat>
             orientation.W + 0.5 * dt * delta.W).Normalized();
     }
 
+    /// <summary>Normalised linear interpolation (fast, adequate for render correction).</summary>
+    public static Quat Nlerp(Quat a, Quat b, double t)
+    {
+        double dot = a.X * b.X + a.Y * b.Y + a.Z * b.Z + a.W * b.W;
+        if (dot < 0.0)
+        {
+            b = new Quat(-b.X, -b.Y, -b.Z, -b.W);
+        }
+
+        return new Quat(
+            a.X + (b.X - a.X) * t,
+            a.Y + (b.Y - a.Y) * t,
+            a.Z + (b.Z - a.Z) * t,
+            a.W + (b.W - a.W) * t).Normalized();
+    }
+
     /// <summary>Heading (clockwise from north), wings level, using the ENU body convention.</summary>
     public static Quat FromHeading(double headingRad)
     {

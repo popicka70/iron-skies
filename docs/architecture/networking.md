@@ -1,5 +1,11 @@
 # Networking
 
+> **Implementation status (M0 slice):** a dedicated ENet server and predicted clients
+> exist in `game/scenes/Multiplayer.tscn`; see [../multiplayer.md](../multiplayer.md).
+> Snapshots are currently uncompressed and broadcast to every client; interest
+> management, delta compression and lag-compensated rewind are the next steps.
+> The design below remains the target.
+
 ## 1. Model
 
 **Server-authoritative, client-predicted.** Clients send *inputs*; the server owns the
