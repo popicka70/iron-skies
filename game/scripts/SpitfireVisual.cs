@@ -89,7 +89,6 @@ public sealed partial class SpitfireVisual : Node3D
 
         _cockpitView = active;
         _fuselage.Visible = !active;
-        _canopyGlass.Visible = !active;
     }
 
     private void BuildFuselage()
