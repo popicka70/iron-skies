@@ -58,7 +58,8 @@ sortie with engine management; deterministic replays reproduce exactly.
 - Art pass over the existing 40 × 40 km theatre (no hand-placed terrain meshes)
 - Geomorphing/skirts to remove LOD seams; streaming budget instrumentation
 - OSM landcover: woods, settlements and extruded buildings (roads/hedges are in)
-- Detail normals, water shading and 3D vegetation
+- [x] Animated water normals + fresnel on the sea
+- [ ] Detail normals and 3D vegetation
 - Splat-blended ground, forests via MultiMesh, water, roads
 - Airfield with hangars, revetments, runway markings, static props
 - [x] Procedural cumulus cloud layer

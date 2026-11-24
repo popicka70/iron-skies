@@ -7,6 +7,7 @@ uniform sampler2D ortho_tex : source_color, filter_linear_mipmap, repeat_disable
 uniform sampler2D landcover_tex : filter_linear_mipmap, repeat_disable;
 // x, z origin then width, height (Godot world space).
 uniform vec4 map_rect = vec4(-20000.0, -20000.0, 40000.0, 40000.0);
+uniform float water_wave_strength = 0.14;
 
 varying vec3 world_pos;
 varying vec3 world_normal;
@@ -43,8 +44,23 @@ void fragment() {
     float fine_detail = value_noise(world_pos.xz * 1.7);
     albedo *= 0.93 + 0.10 * macro_detail + 0.04 * fine_detail;
 
-    // Inland water: cool and darken, low roughness.
-    albedo = mix(albedo, albedo * vec3(0.30, 0.55, 0.75), landcover.r * 0.75);
+    // Inland water and sea: cool tint, animated normal, low roughness.
+    float water = smoothstep(0.20, 0.75, landcover.r);
+    albedo = mix(albedo, albedo * vec3(0.30, 0.55, 0.75), water * 0.75);
+    if (water > 0.01) {
+        vec2 p = world_pos.xz;
+        float h1 = value_noise(p * 0.015 + vec2(TIME * 0.020, 0.0));
+        float h2 = value_noise(p * 0.037 - vec2(0.0, TIME * 0.017));
+        vec2 grad = vec2(h1 - h2, h2 - h1) * water_wave_strength;
+        vec3 water_normal = normalize(world_normal + vec3(grad.x, 0.0, grad.y));
+        NORMAL = normalize((VIEW_MATRIX * vec4(water_normal, 0.0)).xyz);
+        ROUGHNESS = mix(ROUGHNESS, 0.06, water);
+        SPECULAR = mix(SPECULAR, 0.65, water);
+    }
+
+    float fresnel = pow(1.0 - clamp(dot(normalize(NORMAL), normalize(-VERTEX)), 0.0, 1.0), 4.0);
+    albedo = mix(albedo, vec3(0.48, 0.60, 0.70), fresnel * water * 0.55);
+
     // Vegetation: gentle green push.
     albedo = mix(albedo, albedo * vec3(0.93, 1.07, 0.88), landcover.g * 0.30);
     // Bare soil / urban: slightly desaturate.
@@ -52,6 +68,6 @@ void fragment() {
     albedo = mix(albedo, vec3(grey), landcover.b * 0.22);
 
     ALBEDO = albedo;
-    ROUGHNESS = mix(0.95, 0.25, landcover.r);
-    SPECULAR = 0.15;
+    ROUGHNESS = mix(ROUGHNESS, 0.25, water);
+    SPECULAR = mix(SPECULAR, 0.15, water);
 }
