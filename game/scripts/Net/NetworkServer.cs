@@ -48,7 +48,7 @@ public sealed partial class NetworkServer : Node
     private readonly Dictionary<long, PendingPeer> _pending = new();
     private readonly Dictionary<long, double> _disconnectAt = new();
     private byte[]? _passwordHash;
-    private Heightmap _map = null!;
+    private IGroundSurface _map = null!;
     private AircraftDefinition _definition = null!;
     private SceneMultiplayer _multiplayer = null!;
     private double _accumulator;
@@ -65,7 +65,7 @@ public sealed partial class NetworkServer : Node
     private readonly System.Diagnostics.Stopwatch _tickTimer = new();
 
     public void Start(
-        int port, Heightmap map, AircraftDefinition definition, bool hosted = false,
+        int port, IGroundSurface map, AircraftDefinition definition, bool hosted = false,
         string name = "Iron Skies Server", int discoveryPort = DiscoveryProtocol.DefaultPort,
         string? password = null)
     {

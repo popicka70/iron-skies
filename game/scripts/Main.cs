@@ -35,6 +35,7 @@ public partial class Main : Node3D
     private AircraftDefinition _definition = null!;
     private AircraftDefinition _aiDefinition = null!;
     private Heightmap _heightmap = null!;
+    private IGroundSurface _ground = null!;
     private TerrainWorld _terrain = null!;
     private SpitfireVisual _aircraft = null!;
     private DamageSmoke _playerSmoke = null!;
@@ -376,7 +377,7 @@ public partial class Main : Node3D
     private void UpdateHud()
     {
         FlightTelemetry t = _sim.Telemetry;
-        double ground = _heightmap.HeightAt(_sim.State.Position.X, _sim.State.Position.Y);
+        double ground = _ground.HeightAt(_sim.State.Position.X, _sim.State.Position.Y);
         double agl = _sim.State.AltitudeMeters - ground;
         _hudText.Clear();
         _hudText.Append("Iron Skies — ").Append(_definition.DisplayName).Append('\n');
@@ -537,10 +538,15 @@ public partial class Main : Node3D
         }
 
         _mission.Objectives[0].SetProgress(destroyed);
+        double airfieldEast = _sim.State.Position.X - Airfield.East;
+        double airfieldNorth = _sim.State.Position.Y - Airfield.North;
+        bool nearAirfield = airfieldEast * airfieldEast + airfieldNorth * airfieldNorth
+            < 2_000.0 * 2_000.0;
         bool landed = _mission.Objectives[0].Complete
             && !_sim.Destroyed
             && _sim.Telemetry.OnGround
-            && _sim.Telemetry.SpeedMs < 8.0;
+            && _sim.Telemetry.SpeedMs < 8.0
+            && nearAirfield;
         _mission.Objectives[1].SetProgress(landed ? 1 : 0);
         _mission.Evaluate();
 
@@ -660,9 +666,9 @@ public partial class Main : Node3D
 
     private void ResetFlight()
     {
-        double east = _strikeStart ? 900.0 : 700.0;
-        double north = _strikeStart ? 7000.0 : 6750.0;
-        double ground = _heightmap.HeightAt(east, north);
+        double east = _strikeStart ? 900.0 : Airfield.East;
+        double north = _strikeStart ? 7000.0 : Airfield.SouthThreshold + 100.0;
+        double ground = _ground.HeightAt(east, north);
         bool airborne = _airStart || _strikeStart || _duel;
         AircraftState state = airborne
             ? AircraftState.CreateAirborne(
@@ -672,7 +678,7 @@ public partial class Main : Node3D
                 eastMeters: east, northMeters: north)
             : AircraftState.CreateOnGround(
                 _definition, ground, eastMeters: east, northMeters: north);
-        _sim = new AircraftSimulator(_definition, state, _heightmap);
+        _sim = new AircraftSimulator(_definition, state, _ground);
         _cockpitPanel.Bind(_sim);
         _missionTargets.Clear();
         _mission = _strikeStart ? CreateStrikeMission() : null;
@@ -735,7 +741,7 @@ public partial class Main : Node3D
             AircraftState state = AircraftState.CreateAirborne(
                 _aiDefinition, altitude, 130.0, System.Math.PI, east, north);
             var sim = new AircraftSimulator(
-                _aiDefinition, state, _heightmap,
+                _aiDefinition, state, _ground,
                 0x51A7C0DE12345678UL + (ulong)i * 0x9E3779B9UL);
             var target = new DamageTarget
             {
@@ -862,6 +868,7 @@ public partial class Main : Node3D
         const string directory = "res://assets/terrain/normandy-1944";
         var timer = Stopwatch.StartNew();
         _heightmap = Heightmap.Load(directory);
+        _ground = new AirfieldSurface(_heightmap);
         _terrain = new TerrainWorld();
         _terrain.Build(_heightmap, directory);
         AddChild(_terrain);
@@ -869,6 +876,9 @@ public partial class Main : Node3D
         var osm = new OsmDetail();
         osm.Build(_heightmap, $"{directory}/osm.json");
         AddChild(osm);
+        var airfield = new Airfield();
+        airfield.Build(_heightmap);
+        AddChild(airfield);
         var clouds = new Cloudscape();
         clouds.Build();
         AddChild(clouds);
