@@ -76,6 +76,8 @@ jobs:
           output=$(godot --headless --path game scenes/Main.tscn -- --bomber-test)
           echo "$output"
           echo "$output" | grep -q "\[mission-test\] complete=True"
+      - name: Replay smoke test
+        run: ./tools/replay_smoke_test.sh
 
       - name: Multiplayer smoke test (server + 2 clients)
         run: ./tools/net_smoke_test.sh
