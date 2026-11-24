@@ -35,6 +35,10 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 
 *Supply Dump Strike: destroy the trucks, then land. See [docs/missions.md](docs/missions.md).*
 
+![Damaged Spitfire trailing smoke](docs/media/m0-damage.png)
+
+*Battle damage is progressive: engine power, control authority and fuel leaks degrade, and damaged aircraft trail smoke.*
+
 ---
 
 ## Why this project
