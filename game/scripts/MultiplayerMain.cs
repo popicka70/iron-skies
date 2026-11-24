@@ -92,6 +92,15 @@ public sealed partial class MultiplayerMain : Node3D
         _serverAddress = ReadOption("--connect") ?? LaunchConfig.Address;
         _serverMode = HasFlag("--server");
         _headlessClient = HasFlag("--headless-client");
+        string serverName = ReadOption("--name") ?? "Iron Skies Server";
+        if (string.IsNullOrWhiteSpace(serverName))
+        {
+            serverName = "Iron Skies Server";
+        }
+
+        int discoveryPort = int.TryParse(ReadOption("--discovery-port"), out int dp)
+            ? dp
+            : DiscoveryProtocol.DefaultPort;
         bool hosted = HasFlag("--hosted");
         if (double.TryParse(ReadOption("--net-test"), out double seconds))
         {
@@ -111,7 +120,7 @@ public sealed partial class MultiplayerMain : Node3D
         {
             _server = new NetworkServer();
             AddChild(_server);
-            _server.Start(_port, _map, _definition, hosted);
+            _server.Start(_port, _map, _definition, hosted, serverName, discoveryPort);
             return;
         }
 

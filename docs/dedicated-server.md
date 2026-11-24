@@ -21,11 +21,14 @@ includes it.
 
 ```bash
 cd build/server
-./iron-skies-server.x86_64 --headless -- --server --port 7777
+./iron-skies-server.x86_64 --headless -- --server --port 7777 --name "Normandy 1944"
 ```
 
 User arguments go after `--` (`OS.GetCmdlineUserArgs`); the launcher dispatches to the
 multiplayer server scene and never shows the menu. The server listens on **UDP 7777**.
+
+The server answers LAN discovery queries on **UDP 7778**, so the launcher's server
+browser lists it automatically. Pass `--discovery-port 0` to disable discovery.
 
 Clients connect with the launcher's *Join Server* screen or:
 
@@ -42,7 +45,13 @@ docker logs -f iron-skies
 ```
 
 The image is based on `mcr.microsoft.com/dotnet/runtime:10.0`, includes the server
-package and runs the launcher in `--server` mode. Only UDP 7777 is exposed.
+package and runs the launcher in `--server` mode. Only UDP 7777 is exposed, so LAN
+discovery does not reach the host; use `--network host` and publish both UDP ports if
+you want the server to appear in the browser:
+
+```bash
+docker run -d --name iron-skies --network host iron-skies-server
+```
 
 `docker logs` can lag because Godot's stdout is block-buffered when not attached to a
 TTY; the server itself is unaffected.
@@ -57,6 +66,8 @@ quits.
 ## Configuration
 
 - Port: `--port <n>` (default 7777).
+- Name: `--name <text>` (shown in the LAN browser).
+- Discovery: `--discovery-port <n>` (default 7778, `0` disables).
 - Player cap: 64.
 - Spawns: four named positions plus a circle for additional players.
 - Persistence, server browser, accounts and moderation are not implemented yet.

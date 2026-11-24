@@ -81,8 +81,8 @@ popping in normal flight; an external art review calls it "convincing".
 - [x] 64-client load test: 1.06 MB/s, 5.5 ms/tick (delta snapshots)
 - [x] Ack-based delta snapshots: 1.06 MB/s, ~17 KB/s/client at 64 players
 - [x] Lag-compensated hitboxes: 240 Hz pose history + view-delay rewind
-- [ ] Server browser (LAN discovery + heartbeat registry), direct connect,
-      password/whitelist
+- [x] LAN server discovery and browser, direct connect, `--name`
+- [ ] Internet server registry, password/whitelist
 - [x] Load test: 16 players at ~120 KB/s outbound, 0.9 ms/tick
 - [ ] Finer relevance tiers to cut below ~17 KB/s/client
 - [ ] Basic anti-cheat validation and admin commands

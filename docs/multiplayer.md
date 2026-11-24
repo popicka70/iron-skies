@@ -15,9 +15,11 @@ Two or more clients can fly together on a dedicated authoritative server:
 ## Commands
 
 From the launcher, **Host & Play** starts a local server subprocess and joins it; **Join**
-connects to the address/port in the form. Closing the game kills the host server; if the
-process cannot be killed, the server exits after 8 s with no players. The same executable
-supports command-line dispatch, so exported builds can run a dedicated server.
+connects to the address/port in the form. The launcher scans the local network for servers
+on start and on **Scan LAN**, and selecting a result fills the address row. Closing the
+game kills the host server; if the process cannot be killed, the server exits after 8 s
+with no players. The same executable supports command-line dispatch, so exported builds
+can run a dedicated server.
 
 Dedicated server (no window, no terrain rendering):
 
@@ -38,6 +40,9 @@ Options:
 | `--server` | Run the authoritative server |
 | `--connect <ip>` | Connect to a server |
 | `--port <n>` | UDP port (default 7777) |
+| `--name <text>` | Server name shown in the LAN browser |
+| `--discovery-port <n>` | LAN discovery port (default 7778, `0` disables) |
+| `--scan-servers` | Print LAN servers and exit |
 | `--net-test <seconds>` | Headless client exits after N seconds and prints a summary |
 | `--headless-client` | No terrain/visuals; used by the load test |
 | `--screenshot <path>` / `--screenshot-delay <s>` | Capture and exit (client) |
@@ -70,6 +75,17 @@ resolution also cut the 64-client tick from 10.7 ms to 5.5 ms. The run used a si
 16-core machine for the server **and** all 64 headless clients, which inflates the tick
 time through CPU contention; a dedicated server should be lower. All 64 aircraft were
 within 15 km, so this is the worst case at this player count.
+
+## LAN discovery
+
+The server answers discovery queries on **UDP 7778**. The launcher broadcasts
+`IRONSKIES?1` to 7778 (and probes loopback for a local server); each server replies
+unicast with its name, game port and population. Replies are versioned and limited to
+64 UTF-8 bytes for the name, so foreign or future packets are ignored. Discovery is
+LAN-only by design; there is no global registry yet.
+
+In Docker, the container's discovery port is not published. Use `--network host` to make
+a container discoverable, or connect by IP and port.
 
 ## Protocol
 
@@ -134,6 +150,8 @@ hitboxes occupy.
 - Both players fly Spitfires; the Bf 109 AI exists only in single-player.
 - No server browser, accounts, matchmaking or anti-cheat.
 - Interest management is distance-based only; no relevance tiers yet.
+- Server discovery is LAN broadcast only; there is no internet server list, password or
+  whitelist yet.
 - Lag compensation is validated by the load test (clients run ≈1.2-1.4 ticks behind);
   hit-registration quality against a manoeuvring target is not covered by an automated
   test yet.
