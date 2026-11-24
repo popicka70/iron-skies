@@ -85,6 +85,7 @@ popping in normal flight; an external art review calls it "convincing".
 - [x] Load test: 16 players, 0.9 ms/tick, ~520 KB/s server outbound
 - [ ] Delta compression and relevance tiers to cut the ~40 KB/s/client
 - [ ] Basic anti-cheat validation and admin commands
+- [x] Launcher (Single Player / Host & Play / Join) and executable CLI dispatch
 - [ ] Docker image and deployment workflow
 
 **Acceptance:** 16-player session at 60 ms RTT shows no rubber-banding; hits register

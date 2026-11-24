@@ -15,6 +15,10 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 > four working guns, a Bf 109 bandit with a pursuit AI, structural damage, and a live
 > cockpit instrument panel. Linux and Windows release packages are configured.
 
+![Iron Skies launcher](docs/media/m0-launcher.png)
+
+*Launcher: single-player, host-and-play, or join a dedicated server.*
+
 ![Iron Skies M0: 40 × 40 km Normandy terrain](docs/media/m0-normandy-40km.png)
 
 *M0: low-poly Spitfire over 40 × 40 km streamed terrain with Sentinel-2 orthophoto and landcover.*
@@ -110,10 +114,13 @@ to run the game, not to build/test the simulation library.
 # Simulation library + tests (no Godot required)
 dotnet test
 
-# Run the game (once a Godot .NET build is on PATH)
+# Run the game (launcher: Single Player / Host & Play / Join)
 godot --path game
 
-# Capture a deterministic screenshot and exit (used for art review/docs)
+# Direct single-player
+godot --path game scenes/Main.tscn
+
+# Capture a deterministic screenshot and exit
 godot --path game -- --screenshot /tmp/iron-skies.png
 ```
 

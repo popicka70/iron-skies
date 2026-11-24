@@ -14,6 +14,11 @@ Two or more clients can fly together on a dedicated authoritative server:
 
 ## Commands
 
+From the launcher, **Host & Play** starts a local server subprocess and joins it; **Join**
+connects to the address/port in the form. Closing the game kills the host server; if the
+process cannot be killed, the server exits after 8 s with no players. The same executable
+supports command-line dispatch, so exported builds can run a dedicated server.
+
 Dedicated server (no window, no terrain rendering):
 
 ```bash
@@ -107,5 +112,7 @@ snapshot interval. No rewind/replay rollback is implemented yet.
 - Interest management is distance-based only; no delta compression or lag-compensated
   hitboxes yet.
 - Keyboard only in the multiplayer scene (the single-player scene has joystick input).
-- The MP scene is run from the project; the exported build's default scene remains
-  single-player until a launcher scene is added.
+- The host-and-play server exits if it has no players for 8 seconds; the host's process
+  manager also attempts an immediate shutdown.
+- The launcher is the exported main scene; `--server`, `--connect` and the single-player
+  flags dispatch before the menu is built.
