@@ -36,14 +36,18 @@ public sealed class EngineModel
     public double PowerWatts { get; private set; }
     public double FuelBurnKgPerSecond { get; private set; }
 
+    /// <summary>Battle-damage power multiplier supplied by the aircraft.</summary>
+    public double PowerScale { get; set; } = 1.0;
+
     public void Step(in Controls controls, in AtmosphereSample atmosphere, double dt, double fuelKg)
     {
         double ambientC = atmosphere.TemperatureK - 273.15;
         double maxPowerW = MaxPowerWatts(atmosphere.AltitudeMeters);
 
         double throttle = fuelKg > 0.0 ? controls.Throttle : 0.0;
-        double targetRpm = _definition.IdleRpm
-            + (_definition.MaxRpm - _definition.IdleRpm) * throttle;
+        double rpmScale = 0.55 + 0.45 * PowerScale;
+        double targetRpm = (_definition.IdleRpm
+            + (_definition.MaxRpm - _definition.IdleRpm) * throttle) * rpmScale;
         double rpmBlend = _definition.RpmLagSeconds > 0.0
             ? DeterministicMath.Clamp(dt / _definition.RpmLagSeconds, 0.0, 1.0)
             : 1.0;
@@ -68,7 +72,7 @@ public sealed class EngineModel
         }
 
         double mixture = controls.Mixture > 0.1 ? 1.0 : 0.0;
-        PowerWatts = maxPowerW * throttle * mixture * boostDerate;
+        PowerWatts = maxPowerW * throttle * mixture * boostDerate * PowerScale;
 
         double heat = maxPowerW > 0.0 ? PowerWatts / maxPowerW : 0.0;
         double cooling = 0.020 + 0.060 * controls.Radiator;

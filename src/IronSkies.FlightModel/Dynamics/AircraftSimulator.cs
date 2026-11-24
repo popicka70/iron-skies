@@ -50,8 +50,11 @@ public sealed class AircraftSimulator
     public double BoostSeconds => _engine.BoostSeconds;
     public WeaponSystem Weapons => _weapons;
 
-    /// <summary>Structural health, 0…100. The game syncs this from projectile hits.</summary>
+    /// <summary>Structural health, 0…<see cref="AircraftDefinition.StructuralHealth"/>. The game syncs this from projectile hits.</summary>
     public double Health { get; set; } = 100.0;
+
+    /// <summary>Battle damage derived from <see cref="Health"/>.</summary>
+    public DamageModel Damage { get; } = new();
 
     public bool Destroyed => Health <= 0.0;
     public void AddTarget(DamageTarget target) => _weapons.AddTarget(target);
@@ -86,16 +89,19 @@ public sealed class AircraftSimulator
         }
 
         AircraftDefinition d = Definition;
+        Damage.Update(Health, d.StructuralHealth);
+        _engine.PowerScale = Damage.EnginePowerScale;
 
         _flapPosition = MoveToward(_flapPosition, c.Flaps, dt, d.FlapTravelSeconds);
         _gearPosition = MoveToward(_gearPosition, c.GearDown, dt, d.GearTravelSeconds);
 
+        double authority = Damage.ControlScale;
         double elevator = DeterministicMath.Clamp(
-            c.Elevator + c.TrimElevator * d.TrimElevatorAuthority, -1.0, 1.0);
+            (c.Elevator + c.TrimElevator * d.TrimElevatorAuthority) * authority, -1.0, 1.0);
         double aileron = DeterministicMath.Clamp(
-            c.Aileron + c.TrimAileron * d.TrimAileronAuthority, -1.0, 1.0);
+            (c.Aileron + c.TrimAileron * d.TrimAileronAuthority) * authority, -1.0, 1.0);
         double rudder = DeterministicMath.Clamp(
-            c.Rudder + c.TrimRudder * d.TrimRudderAuthority, -1.0, 1.0);
+            (c.Rudder + c.TrimRudder * d.TrimRudderAuthority) * authority, -1.0, 1.0);
 
         Quat q = State.Orientation;
         Vec3 vBody = q.InverseRotate(State.VelocityEnu);
@@ -183,7 +189,7 @@ public sealed class AircraftSimulator
 
     private void BurnFuel(double dt)
     {
-        double burn = _engine.FuelBurnKgPerSecond * dt;
+        double burn = (_engine.FuelBurnKgPerSecond + Damage.FuelLeakKgPerSecond) * dt;
         if (burn <= 0.0 || State.FuelKg <= 0.0)
         {
             return;
