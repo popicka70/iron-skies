@@ -26,6 +26,7 @@ public sealed partial class MultiplayerMain : Node3D
         public NetPlayerState Previous = new();
         public NetPlayerState Current = new();
         public bool HasState;
+        public double LastSeen;
     }
 
     private Heightmap _map = null!;
@@ -73,6 +74,7 @@ public sealed partial class MultiplayerMain : Node3D
     private int _port = 7777;
     private string _serverAddress = "127.0.0.1";
     private bool _serverMode;
+    private bool _headlessClient;
     private double _netTestRemaining = -1.0;
     private string? _screenshotPath;
     private int _screenshotTicks = 480;
@@ -84,6 +86,7 @@ public sealed partial class MultiplayerMain : Node3D
         _port = int.TryParse(ReadOption("--port"), out int port) ? port : 7777;
         _serverAddress = ReadOption("--connect") ?? "127.0.0.1";
         _serverMode = HasFlag("--server");
+        _headlessClient = HasFlag("--headless-client");
         if (double.TryParse(ReadOption("--net-test"), out double seconds))
         {
             _netTestRemaining = seconds;
@@ -106,7 +109,10 @@ public sealed partial class MultiplayerMain : Node3D
             return;
         }
 
-        BuildWorld();
+        if (!_headlessClient)
+        {
+            BuildWorld();
+        }
 
         _client = new NetworkClient();
         AddChild(_client);
@@ -124,6 +130,22 @@ public sealed partial class MultiplayerMain : Node3D
 
         if (_localSim is null)
         {
+            return;
+        }
+
+        if (_headlessClient)
+        {
+            var aiControls = new Controls(Throttle: 0.6, GearDown: 0.0, Mixture: 0.9);
+            _accumulator += delta;
+            int headlessSteps = 0;
+            while (_accumulator >= PhysicsDt && headlessSteps < 8)
+            {
+                _localSim.Step(aiControls, PhysicsDt);
+                _accumulator -= PhysicsDt;
+                headlessSteps++;
+            }
+
+            _client?.SendControls(aiControls, delta);
             return;
         }
 
@@ -163,7 +185,14 @@ public sealed partial class MultiplayerMain : Node3D
             return;
         }
 
+        if (_headlessClient)
+        {
+            TickNetTest(delta);
+            return;
+        }
+
         UpdateRemotes(delta);
+        RemoveStaleRemotes();
 
         if (_localSim is not null)
         {
@@ -177,14 +206,7 @@ public sealed partial class MultiplayerMain : Node3D
             UpdateHud();
         }
 
-        if (_netTestRemaining > 0.0)
-        {
-            _netTestRemaining -= delta;
-            if (_netTestRemaining <= 0.0)
-            {
-                PrintNetTest();
-            }
-        }
+        TickNetTest(delta);
 
         if (_screenshotPath is not null && !_screenshotStarted && _hasWelcome
             && _tick >= _screenshotTicks)
@@ -211,11 +233,15 @@ public sealed partial class MultiplayerMain : Node3D
 
         _localSim = new AircraftSimulator(_definition, localState, _map, 0xC0FFEE1234UL);
         _localSim.Health = state.Health;
-        _playerVisual.Visible = true;
-        _playerVisual.GlobalTransform = SimBridge.ToGodot(state.Orientation, state.Position);
-        _combat.Bind(_localSim);
-        _terrain.Prewarm(SimBridge.ToGodot(state.Position));
-        _camera.GlobalPosition = SimBridge.ToGodot(state.Position) + new Vector3(0, 12, 40);
+        if (!_headlessClient)
+        {
+            _playerVisual.Visible = true;
+            _playerVisual.GlobalTransform = SimBridge.ToGodot(state.Orientation, state.Position);
+            _combat.Bind(_localSim);
+            _terrain.Prewarm(SimBridge.ToGodot(state.Position));
+            _camera.GlobalPosition = SimBridge.ToGodot(state.Position) + new Vector3(0, 12, 40);
+        }
+
         GD.Print($"[mp] welcome: player {playerId} at {state.Position}");
 
         if (_pendingSnapshot is not null)
@@ -242,42 +268,22 @@ public sealed partial class MultiplayerMain : Node3D
 
         _snapshotTime = now;
 
-        var present = new HashSet<byte>();
         foreach (NetPlayerState state in snapshot.Players)
         {
-            present.Add(state.PlayerId);
             if (state.PlayerId == _localId)
             {
                 ReconcileLocal(state);
             }
-            else
+            else if (!_headlessClient)
             {
                 UpdateRemote(state);
             }
         }
 
-        var gone = new List<byte>();
-        foreach (byte id in _remotes.Keys)
+        if (!_headlessClient)
         {
-            if (!present.Contains(id))
-            {
-                gone.Add(id);
-            }
+            UpdateHud();
         }
-
-        foreach (byte id in gone)
-        {
-            RemotePlayer remote = _remotes[id];
-            RemoveChild(remote.Visual);
-            remote.Visual.QueueFree();
-            _remotes.Remove(id);
-            if (_remoteTargets.TryGetValue(id, out DamageTarget? target))
-            {
-                target.Health = 0.0;
-            }
-        }
-
-        UpdateHud();
     }
 
     private void ReconcileLocal(NetPlayerState server)
@@ -321,6 +327,8 @@ public sealed partial class MultiplayerMain : Node3D
             GD.Print($"[mp] remote player {state.PlayerId} appeared");
         }
 
+        remote.LastSeen = Time.GetTicksMsec() / 1000.0;
+
         if (remote.HasState)
         {
             remote.Previous = remote.Current;
@@ -345,6 +353,31 @@ public sealed partial class MultiplayerMain : Node3D
             };
             _remoteTargets[state.PlayerId] = target;
             _localSim.AddTarget(target);
+        }
+    }
+
+    private void RemoveStaleRemotes()
+    {
+        double now = Time.GetTicksMsec() / 1000.0;
+        var stale = new List<byte>();
+        foreach ((byte id, RemotePlayer remote) in _remotes)
+        {
+            if (now - remote.LastSeen > 5.0)
+            {
+                stale.Add(id);
+            }
+        }
+
+        foreach (byte id in stale)
+        {
+            RemotePlayer remote = _remotes[id];
+            RemoveChild(remote.Visual);
+            remote.Visual.QueueFree();
+            _remotes.Remove(id);
+            if (_remoteTargets.TryGetValue(id, out DamageTarget? target))
+            {
+                target.Health = 0.0;
+            }
         }
     }
 
@@ -638,6 +671,20 @@ public sealed partial class MultiplayerMain : Node3D
         }
 
         GetTree().Quit();
+    }
+
+    private void TickNetTest(double delta)
+    {
+        if (_netTestRemaining <= 0.0)
+        {
+            return;
+        }
+
+        _netTestRemaining -= delta;
+        if (_netTestRemaining <= 0.0)
+        {
+            PrintNetTest();
+        }
     }
 
     private void PrintNetTest()
