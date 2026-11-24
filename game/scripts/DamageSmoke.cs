@@ -26,11 +26,10 @@ public sealed partial class DamageSmoke : Node3D
         AddChild(_fire);
     }
 
-    public void Update(double smokeLevel)
+    public void Update(double smokeLevel, double fireLevel = 0.0)
     {
-        smokeLevel = Mathf.Clamp(smokeLevel, 0.0, 1.0);
-        _smoke.Emitting = smokeLevel > 0.08;
-        _fire.Emitting = smokeLevel > 0.72;
+        _smoke.Emitting = Mathf.Clamp(smokeLevel, 0.0, 1.0) > 0.08;
+        _fire.Emitting = Mathf.Clamp(fireLevel, 0.0, 1.0) > 0.15;
     }
 
     private static CpuParticles3D Create(

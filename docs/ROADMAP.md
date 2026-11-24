@@ -42,6 +42,7 @@ simulation runs at 240 Hz with a stable 60 FPS render; CI is green on both OSes.
 - [x] Trim, flaps and retractable gear (position/rate modelled; animation next)
 - [x] Damage primitives: structure, control surfaces, engine, fuel leak
 - [x] Hit-zone component damage (engine, wings, fuel)
+- [x] Engine seizure, fuel fires and damaged-wing roll bias
 - [x] Damage smoke and fire effects
 - [ ] Impact effects, decals and contrails
 - Wind, turbulence, gusts

@@ -58,6 +58,40 @@ public sealed class DamageModelTests
     }
 
     [Fact]
+    public void FuelDamageStartsAFireAndBurnsMoreFuel()
+    {
+        var damage = new DamageModel();
+        damage.SetComponents(0.0, 0.0, 0.8);
+        damage.Update(1000.0, 1000.0);
+
+        Assert.True(damage.Fire > 0.0);
+        Assert.True(damage.FuelLeakKgPerSecond > 4.0);
+        Assert.True(damage.Smoke > 0.5);
+
+        damage.SetComponents(0.0, 1.0, 0.0);
+        damage.Update(1000.0, 1000.0);
+        Assert.True(damage.RollBias > 0.0);
+        Assert.Equal(0.0, damage.Fire, 1e-6);
+    }
+
+    [Fact]
+    public void SeizedEngineProducesNoPowerAndWindsDown()
+    {
+        AircraftDefinition d = AircraftDefinition.TrainingAircraft;
+        var sim = new AircraftSimulator(d, AircraftState.CreateAirborne(d));
+        sim.Damage.SetComponents(1.0, 0.0, 0.0);
+
+        for (int i = 0; i < 240; i++)
+        {
+            sim.Step(new Controls(Throttle: 1.0), Dt);
+        }
+
+        Assert.True(sim.Damage.EngineSeized);
+        Assert.Equal(0.0, sim.EnginePowerWatts);
+        Assert.True(sim.EngineRpm < d.IdleRpm);
+    }
+
+    [Fact]
     public void DamagedEngineMakesLessPowerAndLowerRpm()
     {
         AircraftDefinition d = AircraftDefinition.TrainingAircraft;

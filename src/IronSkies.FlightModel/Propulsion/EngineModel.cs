@@ -39,6 +39,9 @@ public sealed class EngineModel
     /// <summary>Battle-damage power multiplier supplied by the aircraft.</summary>
     public double PowerScale { get; set; } = 1.0;
 
+    /// <summary>A seized engine produces no power and winds down to zero RPM.</summary>
+    public bool Seized { get; set; }
+
     public void Step(in Controls controls, in AtmosphereSample atmosphere, double dt, double fuelKg)
     {
         double ambientC = atmosphere.TemperatureK - 273.15;
@@ -51,6 +54,19 @@ public sealed class EngineModel
         double rpmBlend = _definition.RpmLagSeconds > 0.0
             ? DeterministicMath.Clamp(dt / _definition.RpmLagSeconds, 0.0, 1.0)
             : 1.0;
+        if (Seized)
+        {
+            _rpm += (0.0 - _rpm) * rpmBlend;
+            ManifoldPressureInHg = 0.0;
+            PowerWatts = 0.0;
+            FuelBurnKgPerSecond = 0.0;
+            _coolantC += (0.0 - 0.020 * (_coolantC - ambientC)) * dt;
+            _oilC += (0.0 - 0.010 * (_oilC - ambientC)) * dt;
+            _coolantC = DeterministicMath.Clamp(_coolantC, ambientC, 250.0);
+            _oilC = DeterministicMath.Clamp(_oilC, ambientC, 200.0);
+            return;
+        }
+
         _rpm += (targetRpm - _rpm) * rpmBlend;
 
         ManifoldPressureInHg = 8.0 + throttle * (_definition.MaxManifoldPressureInHg - 8.0);

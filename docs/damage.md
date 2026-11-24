@@ -17,12 +17,15 @@ victim's `DamageModel`; single-player does the same from its damage targets.
 
 ## Effects
 
-- **Engine damage:** reduces available power and target RPM (down to 20% power at 100%).
-- **Control damage:** reduces elevator/aileron/rudder authority (down to 30%).
-- **Fuel damage:** opens a leak of up to 4 kg/s.
+- **Engine damage:** reduces available power and target RPM (down to 20% power at 100%);
+  at 98% the engine **seizes**, producing no power and winding down to zero RPM.
+- **Control damage:** reduces elevator/aileron/rudder authority (down to 30%) and adds a
+  persistent roll bias above 35%, so a damaged wing must be trimmed against.
+- **Fuel damage:** opens a leak of up to 4 kg/s. Above 45% the tanks can **catch fire**,
+  which burns up to 6 kg/s and feeds the smoke/fire effects.
 - **Structural damage:** still degrades all systems, so an aircraft at very low health is
   badly hurt even without specific zone hits.
-- **Smoke/fire:** driven by the combined engine and structural damage.
+- **Smoke/fire:** driven by the combined engine, structural and fire state.
 
 ## Networking
 

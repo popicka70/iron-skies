@@ -8,8 +8,9 @@ Two or more clients can fly together on a dedicated authoritative server:
 - Client sends input frames at 30 Hz; server simulates at 240 Hz and broadcasts
   snapshots at 30 Hz.
 - Server owns damage, health and respawns (5 s). Hit zones drive engine, control and
-  fuel damage; structural health still degrades every system. Component state is synced
-  in snapshots. See [damage.md](damage.md).
+  fuel damage; structural health still degrades every system. Engine seizure, fires and
+  the damaged-wing roll bias are derived deterministically from that state. Component
+  state is synced in snapshots. See [damage.md](damage.md).
 - Client predicts its own aircraft and blends snapshots; remote aircraft are
   interpolated between snapshots.
 - Verified with a headless two-client smoke test in CI.
