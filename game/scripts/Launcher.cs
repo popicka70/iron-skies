@@ -86,7 +86,7 @@ public sealed partial class Launcher : Control
             OffsetBottom = 350.0f,
             Alignment = BoxContainer.AlignmentMode.Center,
         };
-        box.AddThemeConstantOverride("separation", 14);
+        box.AddThemeConstantOverride("separation", 8);
         AddChild(box);
 
         var title = new Label
@@ -94,7 +94,7 @@ public sealed partial class Launcher : Control
             Text = "IRON SKIES",
             HorizontalAlignment = HorizontalAlignment.Center,
         };
-        title.AddThemeFontSizeOverride("font_size", 52);
+        title.AddThemeFontSizeOverride("font_size", 46);
         title.AddThemeColorOverride("font_color", new Color(0.92f, 0.94f, 0.88f));
         box.AddChild(title);
 
@@ -107,14 +107,14 @@ public sealed partial class Launcher : Control
         subtitle.AddThemeColorOverride("font_color", new Color(0.65f, 0.72f, 0.66f));
         box.AddChild(subtitle);
 
-        box.AddChild(new Control { CustomMinimumSize = new Vector2(0.0f, 18.0f) });
+        box.AddChild(new Control { CustomMinimumSize = new Vector2(0.0f, 6.0f) });
 
         Button MakeButton(string text)
         {
             var button = new Button
             {
                 Text = text,
-                CustomMinimumSize = new Vector2(440.0f, 46.0f),
+                CustomMinimumSize = new Vector2(440.0f, 40.0f),
             };
             button.AddThemeFontSizeOverride("font_size", 18);
             box.AddChild(button);
@@ -124,6 +124,13 @@ public sealed partial class Launcher : Control
         MakeButton("Single Player").Pressed += () =>
         {
             LaunchConfig.Reset();
+            GetTree().ChangeSceneToFile("res://scenes/Main.tscn");
+        };
+
+        MakeButton("Strike Mission").Pressed += () =>
+        {
+            LaunchConfig.Reset();
+            LaunchConfig.Mission = "strike";
             GetTree().ChangeSceneToFile("res://scenes/Main.tscn");
         };
 
@@ -138,7 +145,7 @@ public sealed partial class Launcher : Control
         lanLabel.AddThemeColorOverride("font_color", new Color(0.55f, 0.62f, 0.58f));
         box.AddChild(lanLabel);
 
-        _servers = new ItemList { CustomMinimumSize = new Vector2(440.0f, 96.0f) };
+        _servers = new ItemList { CustomMinimumSize = new Vector2(440.0f, 72.0f) };
         _servers.ItemSelected += OnServerSelected;
         box.AddChild(_servers);
 
@@ -149,7 +156,7 @@ public sealed partial class Launcher : Control
         var scanButton = new Button
         {
             Text = "Scan LAN",
-            CustomMinimumSize = new Vector2(140.0f, 34.0f),
+            CustomMinimumSize = new Vector2(140.0f, 30.0f),
         };
         scanButton.AddThemeFontSizeOverride("font_size", 14);
         scanButton.Pressed += StartScan;
@@ -172,7 +179,7 @@ public sealed partial class Launcher : Control
         {
             Text = "127.0.0.1",
             PlaceholderText = "server address",
-            CustomMinimumSize = new Vector2(300.0f, 40.0f),
+            CustomMinimumSize = new Vector2(300.0f, 36.0f),
         };
         row.AddChild(_address);
 
@@ -180,7 +187,7 @@ public sealed partial class Launcher : Control
         {
             Text = LaunchConfig.DefaultPort.ToString(),
             PlaceholderText = "port",
-            CustomMinimumSize = new Vector2(132.0f, 40.0f),
+            CustomMinimumSize = new Vector2(132.0f, 36.0f),
         };
         row.AddChild(_port);
 
@@ -188,7 +195,7 @@ public sealed partial class Launcher : Control
         {
             Secret = true,
             PlaceholderText = "password (only for protected servers)",
-            CustomMinimumSize = new Vector2(440.0f, 36.0f),
+            CustomMinimumSize = new Vector2(440.0f, 34.0f),
         };
         box.AddChild(_password);
 
@@ -203,7 +210,7 @@ public sealed partial class Launcher : Control
         _status.AddThemeColorOverride("font_color", new Color(0.85f, 0.75f, 0.55f));
         box.AddChild(_status);
 
-        box.AddChild(new Control { CustomMinimumSize = new Vector2(0.0f, 10.0f) });
+        box.AddChild(new Control { CustomMinimumSize = new Vector2(0.0f, 6.0f) });
 
         MakeButton("Quit").Pressed += () => GetTree().Quit();
 
