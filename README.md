@@ -12,12 +12,12 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 > M0 already starts the Spitfire on its gear, takes off, flies over a streamed
 > 40 × 40 km Normandy terrain with Sentinel-2 orthophoto/landcover, OSM roads and
 > hedgerows, a low-poly aircraft, cockpit view, engine simulation, procedural audio and
-> four working guns, a Bf 109 bandit with a pursuit AI, progressive battle damage
+> four working guns, up to six Bf 109 bandits with a pursuit AI, progressive battle damage
 > (engine, controls, fuel) and a live cockpit instrument panel. Linux and Windows release packages are configured.
 
 ![Iron Skies launcher](docs/media/m0-launcher.png)
 
-*Launcher: single-player, strike mission, host-and-play, LAN server browser, or direct connect.*
+*Launcher: single-player, strike mission, duel, host-and-play, LAN server browser, or direct connect.*
 
 ![Iron Skies M0: 40 × 40 km Normandy terrain](docs/media/m0-normandy-40km.png)
 
@@ -114,7 +114,7 @@ docs/                       Specification, architecture, ADRs
 | R | Reset sortie |
 
 The demo starts on its gear beside a Normandy hedgerow. Throttle up, keep straight with
-rudder, and ease back at ~100 mph to unstick. A bandit patrols about 1.5 km north; both
+rudder, and ease back at ~100 mph to unstick. Bandits patrol about 1.5 km north (`--bandits 0-6`); both
 aircraft have 1,000 structural points.
 
 ## Quick start (developers)

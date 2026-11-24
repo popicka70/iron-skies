@@ -134,6 +134,13 @@ public sealed partial class Launcher : Control
             GetTree().ChangeSceneToFile("res://scenes/Main.tscn");
         };
 
+        MakeButton("Duel").Pressed += () =>
+        {
+            LaunchConfig.Reset();
+            LaunchConfig.Mission = "duel";
+            GetTree().ChangeSceneToFile("res://scenes/Main.tscn");
+        };
+
         MakeButton("Host & Play").Pressed += OnHostPressed;
 
         var lanLabel = new Label

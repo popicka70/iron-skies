@@ -1,7 +1,10 @@
 # Missions
 
 The first scripted sortie is **Supply Dump Strike**. It starts airborne 250 m over the
-target area with the gear down, three supply trucks below and a Bf 109 patrol nearby.
+target area with the gear down, three supply trucks below and two Bf 109s patrolling.
+
+The launcher's **Duel** button (or `--duel`) starts a head-on 1v1 400 m from a bandit.
+`--bandits 0-6` overrides the number of AI fighters in any single-player mode.
 
 | Objective | Success condition |
 | --- | --- |
