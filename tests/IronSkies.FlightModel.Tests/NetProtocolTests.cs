@@ -9,7 +9,7 @@ public class NetProtocolTests
     [Fact]
     public void InputFrame_RoundTrips()
     {
-        var frame = new NetControlFrame(42u, new Controls(
+        var frame = new NetControlFrame(42u, 77u, new Controls(
             Elevator: 0.4, Aileron: -0.2, Rudder: 0.1, Throttle: 0.8,
             Flaps: 0.5, GearDown: 0.0, Brake: 0.0, Radiator: 0.6,
             TrimElevator: 0.3, Mixture: 0.9, Fire: true));
@@ -18,6 +18,7 @@ public class NetProtocolTests
         Assert.True(NetProtocol.TryDecodeInput(data, out NetControlFrame decoded));
 
         Assert.Equal(42u, decoded.Sequence);
+        Assert.Equal(77u, decoded.AckTick);
         Assert.Equal(0.4, decoded.Controls.Elevator, 1e-6);
         Assert.Equal(-0.2, decoded.Controls.Aileron, 1e-6);
         Assert.Equal(0.8, decoded.Controls.Throttle, 1e-6);
@@ -103,5 +104,71 @@ public class NetProtocolTests
         Assert.False(NetProtocol.TryDecodeInput(Array.Empty<byte>(), out _));
         Assert.False(NetProtocol.TryDecodeInput(new byte[] { 9, 0, 0, 0, 0 }, out _));
         Assert.False(NetProtocol.TryDecodeSnapshot(new byte[] { 3, 0 }, out _));
+    }
+
+    [Fact]
+    public void DeltaSnapshot_RoundTrips()
+    {
+        var baseline = new NetSnapshot
+        {
+            Tick = 10,
+            SelfId = 1,
+            Anchor = new Vec3(0, 0, 1000),
+            Players = new[]
+            {
+                new NetPlayerState
+                {
+                    PlayerId = 1, Health = 1000, Position = new Vec3(0, 0, 1000),
+                    Orientation = Quat.FromHeading(0), Velocity = new Vec3(0, 120, 0),
+                    Rpm = 2300, Gear = 1,
+                },
+                new NetPlayerState
+                {
+                    PlayerId = 2, Health = 800, Position = new Vec3(50, 400, 1100),
+                    Orientation = Quat.FromHeading(DeterministicMath.Pi),
+                    Rpm = 2100, Gear = 1,
+                },
+            },
+        };
+
+        var current = new NetSnapshot
+        {
+            Tick = 11,
+            SelfId = 1,
+            Anchor = new Vec3(0, 0, 1000),
+            Players = new[]
+            {
+                new NetPlayerState
+                {
+                    PlayerId = 1, Health = 960, Position = new Vec3(0, 0, 1000),
+                    Orientation = Quat.FromHeading(0), Velocity = new Vec3(0, 121, 0),
+                    Rpm = 2310, Gear = 1,
+                },
+                new NetPlayerState
+                {
+                    PlayerId = 2, Health = 800, Position = new Vec3(60, 500, 1100),
+                    Orientation = Quat.FromHeading(DeterministicMath.Pi),
+                    Rpm = 2100, Gear = 1,
+                },
+                new NetPlayerState
+                {
+                    PlayerId = 3, Health = 1000, Position = new Vec3(0, 600, 1000),
+                    Orientation = Quat.FromHeading(0), Rpm = 2300, Gear = 1,
+                },
+            },
+        };
+
+        byte[] data = NetProtocol.EncodeSnapshotDelta(current, baseline);
+        Assert.True(NetProtocol.TryReadDeltaBaseline(data, out uint baselineTick));
+        Assert.Equal(10u, baselineTick);
+        Assert.True(NetProtocol.TryDecodeSnapshotDelta(data, baseline, out NetSnapshot decoded));
+
+        Assert.Equal(11u, decoded.Tick);
+        Assert.Equal(3, decoded.Players.Length);
+        Assert.Equal(960.0, decoded.Players[0].Health, 1e-6);
+        Assert.Equal(500.0, decoded.Players[1].Position.Y, 1.0);
+        Assert.Equal(3, decoded.Players[2].PlayerId);
+        Assert.Equal(121.0, decoded.Players[0].Velocity.Y, 0.1);
+        Assert.True(data.Length < 150, $"delta too large: {data.Length} bytes");
     }
 }
