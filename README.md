@@ -39,6 +39,10 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 
 *Battle damage is progressive: engine power, control authority and fuel leaks degrade, and damaged aircraft trail smoke.*
 
+![Clouds over the Normandy coast](docs/media/m0-clouds.png)
+
+*A procedural cumulus field gives the 40 × 40 km theatre a skyline without any texture assets.*
+
 ---
 
 ## Why this project

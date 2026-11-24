@@ -61,7 +61,8 @@ sortie with engine management; deterministic replays reproduce exactly.
 - Detail normals, water shading and 3D vegetation
 - Splat-blended ground, forests via MultiMesh, water, roads
 - Airfield with hangars, revetments, runway markings, static props
-- Physical sky, sun/moon, SDFGI, volumetric fog, cloud layer, weather presets
+- [x] Procedural cumulus cloud layer
+- [ ] Physical sky, sun/moon, SDFGI, volumetric fog, weather presets
 - Scanned PBR material library; aircraft exterior + cockpit at final quality
 - Post-processing stack, quality presets, benchmark scene
 - Damage/impact effects, tracers, smoke,fire, contrails

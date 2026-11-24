@@ -799,6 +799,9 @@ public partial class Main : Node3D
         var osm = new OsmDetail();
         osm.Build(_heightmap, $"{directory}/osm.json");
         AddChild(osm);
+        var clouds = new Cloudscape();
+        clouds.Build();
+        AddChild(clouds);
 
         timer.Stop();
         GD.Print($"Terrain: {_heightmap.Width}×{_heightmap.Height} @ {_heightmap.Spacing:0} m, " +
