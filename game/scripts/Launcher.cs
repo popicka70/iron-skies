@@ -48,8 +48,9 @@ public sealed partial class Launcher : Control
 
         if (!HasFlag("--host")
             && (HasFlag("--screenshot") || HasFlag("--air-start") || HasFlag("--strike")
-                || HasFlag("--hunt") || HasFlag("--duel") || HasFlag("--autofire")
-                || HasFlag("--mission-test") || HasFlag("--hunt-test")
+                || HasFlag("--hunt") || HasFlag("--bombers") || HasFlag("--duel")
+                || HasFlag("--autofire") || HasFlag("--mission-test")
+                || HasFlag("--hunt-test") || HasFlag("--bomber-test")
                 || HasFlag("--damage-test") || ReadOption("--aircraft") is not null))
         {
             GetTree().CallDeferred("change_scene_to_file", "res://scenes/Main.tscn");
@@ -288,6 +289,19 @@ public sealed partial class Launcher : Control
         hunt.Pressed += () => StartMission("hunt");
         content.AddChild(hunt);
 
+        content.AddChild(new Label
+        {
+            Text = "Bomber Intercept — shoot down the bomber formation, then land.",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        });
+        var bomber = new Button
+        {
+            Text = "Start Bomber Intercept",
+            CustomMinimumSize = new Vector2(0.0f, 40.0f),
+        };
+        bomber.Pressed += () => StartMission("bombers");
+        content.AddChild(bomber);
+
         var close = new Button { Text = "Close", CustomMinimumSize = new Vector2(0.0f, 34.0f) };
         close.Pressed += HideMissions;
         content.AddChild(close);
@@ -328,9 +342,9 @@ public sealed partial class Launcher : Control
             AnchorRight = 0.5f,
             AnchorBottom = 0.5f,
             OffsetLeft = -250.0f,
-            OffsetTop = -180.0f,
+            OffsetTop = -210.0f,
             OffsetRight = 250.0f,
-            OffsetBottom = 180.0f,
+            OffsetBottom = 210.0f,
         };
         var style = new StyleBoxFlat
         {

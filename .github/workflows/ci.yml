@@ -71,6 +71,11 @@ jobs:
           output=$(godot --headless --path game scenes/Main.tscn -- --aircraft bf109 --mission-test)
           echo "$output"
           echo "$output" | grep -q "\[mission-test\] complete=True"
+      - name: Bomber intercept test
+        run: |
+          output=$(godot --headless --path game scenes/Main.tscn -- --bomber-test)
+          echo "$output"
+          echo "$output" | grep -q "\[mission-test\] complete=True"
 
       - name: Multiplayer smoke test (server + 2 clients)
         run: ./tools/net_smoke_test.sh

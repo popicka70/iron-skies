@@ -47,6 +47,17 @@ public partial class Main : Node3D
     private Camera3D _camera = null!;
     private Label _hud = null!;
 
+    private sealed class Bomber
+    {
+        public required AircraftSimulator Sim { get; init; }
+        public required DamageTarget Target { get; init; }
+        public required BomberVisual Visual { get; init; }
+        public required DamageSmoke Smoke { get; init; }
+        public required BomberPilot Pilot { get; init; }
+        public Vec3 Waypoint;
+        public bool Down;
+    }
+
     private sealed class Wingman
     {
         public required AircraftSimulator Sim { get; init; }
@@ -58,6 +69,7 @@ public partial class Main : Node3D
 
     private readonly StringBuilder _hudText = new(512);
     private readonly List<Enemy> _enemies = new();
+    private readonly List<Bomber> _bombers = new();
     private readonly List<Wingman> _wingmen = new();
 
     private DamageTarget _playerTarget = null!;
@@ -66,6 +78,8 @@ public partial class Main : Node3D
     private bool _playerDown;
     private int _banditCount = 1;
     private int _wingmanCount;
+    private AircraftDefinition? _bomberDefinition;
+    private bool _bomberStart;
     private double _downTimer;
 
     private double _throttle = 0.75;
@@ -93,6 +107,7 @@ public partial class Main : Node3D
         None,
         Strike,
         Hunt,
+        Bomber,
     }
 
     private enum CameraMode
@@ -136,6 +151,11 @@ public partial class Main : Node3D
         {
             _missionKind = MissionKind.Hunt;
         }
+        else if (HasUserFlag("--bombers") || HasUserFlag("--bomber-test")
+            || LaunchConfig.Mission == "bombers")
+        {
+            _missionKind = MissionKind.Bomber;
+        }
 
         if (HasUserFlag("--hunt-test"))
         {
@@ -145,9 +165,19 @@ public partial class Main : Node3D
         {
             _missionKind = MissionKind.Strike;
         }
+        else if (HasUserFlag("--bomber-test"))
+        {
+            _missionKind = MissionKind.Bomber;
+        }
 
         _strikeStart = _missionKind == MissionKind.Strike;
         _huntStart = _missionKind == MissionKind.Hunt;
+        _bomberStart = _missionKind == MissionKind.Bomber;
+        _missionTest = _missionTest || HasUserFlag("--bomber-test");
+        if (_bomberStart)
+        {
+            _bomberDefinition = LoadAircraft("ju88-a4");
+        }
         _banditCount = int.TryParse(ReadUserOption("--bandits"), out int bandits)
             ? System.Math.Clamp(bandits, 0, 6)
             : _strikeStart || _huntStart ? 2 : 1;
@@ -238,6 +268,12 @@ public partial class Main : Node3D
                 enemy.Target.Orientation = enemy.Sim.State.Orientation;
             }
 
+            foreach (Bomber bomber in _bombers)
+            {
+                bomber.Target.Position = bomber.Sim.State.Position;
+                bomber.Target.Orientation = bomber.Sim.State.Orientation;
+            }
+
             foreach (Enemy enemy in _enemies)
             {
                 enemy.Sim.Damage.SetComponents(
@@ -254,6 +290,34 @@ public partial class Main : Node3D
                     0.0, enemy.Target.MaxHealth);
                 enemy.Sim.Health = enemy.Target.Health;
                 enemy.Target.Position = enemy.Sim.State.Position;
+            }
+
+            foreach (Bomber bomber in _bombers)
+            {
+                bomber.Sim.Damage.SetComponents(
+                    bomber.Target.EngineDamage,
+                    bomber.Target.ControlDamage,
+                    bomber.Target.FuelDamage);
+                Controls bomberControls = bomber.Sim.Destroyed
+                    ? new Controls(GearDown: 0.0, Mixture: 0.9)
+                    : bomber.Pilot.Compute(bomber.Sim.State, bomber.Waypoint, PhysicsDt);
+                bomber.Sim.Step(bomberControls, PhysicsDt);
+                bomber.Target.Health = DeterministicMath.Clamp(
+                    bomber.Target.Health
+                    - bomber.Sim.Damage.StructuralBurnPerSecond * PhysicsDt,
+                    0.0, bomber.Target.MaxHealth);
+                bomber.Sim.Health = bomber.Target.Health;
+                bomber.Target.Position = bomber.Sim.State.Position;
+                bomber.Target.Orientation = bomber.Sim.State.Orientation;
+            }
+
+            foreach (Wingman wingman in _wingmen)
+            {
+                AircraftState target = NearestEnemyState(wingman);
+                Controls wingControls = wingman.Sim.Destroyed
+                    ? new Controls(GearDown: 0.0, Mixture: 0.9)
+                    : wingman.Pilot.Compute(wingman.Sim.State, target, PhysicsDt);
+                wingman.Sim.Step(wingControls, PhysicsDt);
             }
 
             _sim.Damage.SetComponents(
@@ -286,6 +350,22 @@ public partial class Main : Node3D
             if (enemy.Sim.Destroyed)
             {
                 enemy.Down = true;
+            }
+        }
+
+        foreach (Bomber bomber in _bombers)
+        {
+            bomber.Smoke.Update(bomber.Sim.Damage.Smoke, bomber.Sim.Damage.Fire);
+            bomber.Visual.SetExternalTransform(
+                bomber.Sim.State.Position, bomber.Sim.State.Orientation);
+            bomber.Visual.UpdateExternal(
+                bomber.Sim.EngineRpm, bomber.Sim.FlapPosition, bomber.Sim.GearPosition, delta);
+            bomber.Visual.Visible = !bomber.Sim.Destroyed
+                || bomber.Sim.State.Position.Z > _heightmap.HeightAt(
+                    bomber.Sim.State.Position.X, bomber.Sim.State.Position.Y) + 2.0;
+            if (bomber.Sim.Destroyed)
+            {
+                bomber.Down = true;
             }
         }
 
@@ -351,8 +431,9 @@ public partial class Main : Node3D
         _crosshair.Position = new Vector2(viewport.X * 0.5f - 16.0f, viewport.Y * 0.5f - 18.0f);
         _message.Position = new Vector2(viewport.X * 0.5f - 210.0f, viewport.Y * 0.5f + 48.0f);
         bool allBanditsDown = EnemiesDown() == _enemies.Count && _enemies.Count > 0;
+        bool allBombersDown = _bombers.Count > 0 && BombersDown() == _bombers.Count;
         bool missionOver = _mission is { Active: false };
-        _message.Visible = _playerDown || allBanditsDown || missionOver;
+        _message.Visible = _playerDown || allBanditsDown || allBombersDown || missionOver;
         if (_mission is { Failed: true })
         {
             _message.Text = "MISSION FAILED — R TO RETRY";
@@ -367,6 +448,11 @@ public partial class Main : Node3D
         {
             _message.Text = "SHOT DOWN — RESETTING";
             _message.AddThemeColorOverride("font_color", new Color(1.0f, 0.4f, 0.3f));
+        }
+        else if (allBombersDown)
+        {
+            _message.Text = "BOMBERS DOWN";
+            _message.AddThemeColorOverride("font_color", new Color(0.55f, 1.0f, 0.55f));
         }
         else if (allBanditsDown)
         {
@@ -537,6 +623,21 @@ public partial class Main : Node3D
         }
 
         _hudText.Append("   Wingmen ").Append(_wingmen.Count).Append('\n');
+        if (_bombers.Count > 0)
+        {
+            _hudText.Append("Bombers   ").Append(_bombers.Count - BombersDown())
+                .Append('/').Append(_bombers.Count);
+            foreach (Bomber bomber in _bombers)
+            {
+                _hudText.Append(' ')
+                    .Append((bomber.Target.Health
+                        / _bomberDefinition!.StructuralHealth * 100.0).ToString("F0"))
+                    .Append('%');
+            }
+
+            _hudText.Append('\n');
+        }
+
         DamageModel damage = _sim.Damage;
         if (damage.EnginePowerScale < 0.99 || damage.ControlScale < 0.99
             || damage.FuelLeakKgPerSecond > 0.0)
@@ -609,6 +710,11 @@ public partial class Main : Node3D
             {
                 enemy.Target.Health = 0.0;
             }
+
+            foreach (Bomber bomber in _bombers)
+            {
+                bomber.Target.Health = 0.0;
+            }
         }
         else if (_missionTestTick == 90)
         {
@@ -624,7 +730,8 @@ public partial class Main : Node3D
         }
         else if (_missionTestTick >= 600)
         {
-            GD.Print($"[mission-test] complete={_mission?.Complete} " +
+            GD.Print($"[mission-test] bombers={_bombers.Count} " +
+                     $"complete={_mission?.Complete} " +
                      $"failed={_mission?.Failed} " +
                      $"objective0={_mission?.Objectives[0].Progress}/{_mission?.Objectives[0].Required} " +
                      $"landed={_mission?.Objectives[1].Progress} " +
@@ -644,6 +751,17 @@ public partial class Main : Node3D
                 Label = "Destroy the bandits",
                 Required = System.Math.Max(1, _banditCount),
             },
+            new MissionObjective { Label = "Land safely" },
+        },
+    };
+
+    private static MissionState CreateBomberMission() => new()
+    {
+        Name = "Bomber Intercept",
+        Brief = "Shoot down the bomber formation, then land at the airfield.",
+        Objectives = new[]
+        {
+            new MissionObjective { Label = "Destroy the bombers", Required = 3 },
             new MissionObjective { Label = "Land safely" },
         },
     };
@@ -673,6 +791,10 @@ public partial class Main : Node3D
                     progress++;
                 }
             }
+        }
+        else if (_missionKind == MissionKind.Bomber)
+        {
+            progress = BombersDown();
         }
         else
         {
@@ -811,12 +933,12 @@ public partial class Main : Node3D
         double east = _strikeStart ? 900.0 : Airfield.East;
         double north = _strikeStart ? 7000.0 : Airfield.SouthThreshold + 100.0;
         double ground = _ground.HeightAt(east, north);
-        bool airborne = _airStart || _strikeStart || _huntStart || _duel;
+        bool airborne = _airStart || _strikeStart || _huntStart || _bomberStart || _duel;
         AircraftState state = airborne
             ? AircraftState.CreateAirborne(
                 _definition,
                 altitudeMeters: ground + (_strikeStart ? 250.0
-                    : _huntStart || _duel ? 1500.0
+                    : _huntStart || _bomberStart || _duel ? 1500.0
                     : 2000.0),
                 speedMs: _strikeStart ? 90.0 : 120.0,
                 eastMeters: east, northMeters: north)
@@ -829,10 +951,12 @@ public partial class Main : Node3D
         {
             MissionKind.Strike => CreateStrikeMission(),
             MissionKind.Hunt => CreateHuntMission(),
+            MissionKind.Bomber => CreateBomberMission(),
             _ => null,
         };
         AddTargets(_sim);
         CreateEnemies(east, north, _sim.State.Position.Z);
+        CreateBombers(east, north, _sim.State.Position.Z);
         CreateWingmen();
         _throttle = airborne ? 0.75 : 0.0;
         _brake = 0.0;
@@ -846,18 +970,96 @@ public partial class Main : Node3D
         _tick = 0;
         _accumulator = 0.0;
         _terrain.Prewarm(SimBridge.ToGodot(_sim.State.Position));
-        var fighters = new AircraftSimulator[_enemies.Count + _wingmen.Count];
-        for (int i = 0; i < _enemies.Count; i++)
+        var fighters = new AircraftSimulator[
+            _enemies.Count + _bombers.Count + _wingmen.Count];
+        int fighterIndex = 0;
+        foreach (Enemy enemy in _enemies)
         {
-            fighters[i] = _enemies[i].Sim;
+            fighters[fighterIndex++] = enemy.Sim;
         }
 
-        for (int i = 0; i < _wingmen.Count; i++)
+        foreach (Bomber bomber in _bombers)
         {
-            fighters[_enemies.Count + i] = _wingmen[i].Sim;
+            fighters[fighterIndex++] = bomber.Sim;
+        }
+
+        foreach (Wingman wingman in _wingmen)
+        {
+            fighters[fighterIndex++] = wingman.Sim;
         }
 
         _combat.Bind(_sim, fighters);
+    }
+
+    private void CreateBombers(double playerEast, double playerNorth, double playerAltitude)
+    {
+        foreach (Bomber existing in _bombers)
+        {
+            existing.Visual.QueueFree();
+        }
+
+        _bombers.Clear();
+        if (!_bomberStart || _bomberDefinition is null)
+        {
+            return;
+        }
+
+        Vec3 waypoint = _sim.State.Position;
+        for (int i = 0; i < 3; i++)
+        {
+            double lateral = (i - 1) * 280.0;
+            double east = playerEast + lateral;
+            double north = playerNorth + 4200.0 + (i == 1 ? 220.0 : 0.0);
+            AircraftState state = AircraftState.CreateAirborne(
+                _bomberDefinition, playerAltitude + 120.0, 95.0,
+                System.Math.PI, east, north);
+            var sim = new AircraftSimulator(
+                _bomberDefinition, state, _ground,
+                0xB0B0C0DE12345678UL + (ulong)i * 0x9E3779B9UL);
+            var target = new DamageTarget
+            {
+                Position = state.Position,
+                Orientation = state.Orientation,
+                Radius = 10.0,
+                MaxHealth = _bomberDefinition.StructuralHealth,
+                Health = _bomberDefinition.StructuralHealth,
+                Static = false,
+            };
+            sim.AddTarget(target);
+            _sim.AddTarget(target);
+
+            var visual = new BomberVisual();
+            visual.Build(new Color(0.32f, 0.34f, 0.31f));
+            AddChild(visual);
+            var smoke = new DamageSmoke();
+            visual.AddChild(smoke);
+            smoke.Build();
+            visual.SetExternalTransform(state.Position, state.Orientation);
+
+            _bombers.Add(new Bomber
+            {
+                Sim = sim,
+                Target = target,
+                Visual = visual,
+                Smoke = smoke,
+                Pilot = new BomberPilot(),
+                Waypoint = waypoint,
+            });
+        }
+    }
+
+    private int BombersDown()
+    {
+        int down = 0;
+        foreach (Bomber bomber in _bombers)
+        {
+            if (bomber.Down)
+            {
+                down++;
+            }
+        }
+
+        return down;
     }
 
     private void CreateWingmen()
@@ -868,7 +1070,7 @@ public partial class Main : Node3D
         }
 
         _wingmen.Clear();
-        if (_wingmanCount <= 0 || _enemies.Count == 0)
+        if (_wingmanCount <= 0 || (_enemies.Count == 0 && _bombers.Count == 0))
         {
             return;
         }
@@ -899,6 +1101,11 @@ public partial class Main : Node3D
                 sim.AddTarget(enemy.Target);
             }
 
+            foreach (Bomber bomber in _bombers)
+            {
+                sim.AddTarget(bomber.Target);
+            }
+
             var visual = new SpitfireVisual();
             visual.Build(_definition.Id == "bf109-g6"
                 ? new Color(0.42f, 0.44f, 0.42f)
@@ -922,6 +1129,7 @@ public partial class Main : Node3D
     private AircraftState NearestEnemyState(Wingman wingman)
     {
         Enemy? best = null;
+        AircraftState? bestState = null;
         double bestDistance = double.MaxValue;
         foreach (Enemy enemy in _enemies)
         {
@@ -936,6 +1144,26 @@ public partial class Main : Node3D
                 bestDistance = distance;
                 best = enemy;
             }
+        }
+
+        foreach (Bomber bomber in _bombers)
+        {
+            if (bomber.Down)
+            {
+                continue;
+            }
+
+            double distance = (bomber.Sim.State.Position - wingman.Sim.State.Position).Length;
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                bestState = bomber.Sim.State;
+            }
+        }
+
+        if (bestState is not null)
+        {
+            return bestState;
         }
 
         if (best is not null)

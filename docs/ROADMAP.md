@@ -128,7 +128,8 @@ continuous streaming.
 ## M5 — Content and 1.0 (ongoing)
 
 - [x] AI wingmen (0-3) in single-player
-- [ ] Third flyable aircraft and bomber formations
+- [ ] Third flyable aircraft
+- [x] Bomber intercept formation (placeholder Ju 88) and AI wingmen
 - [x] Multiple AI bandits (0-6) with per-aircraft damage and smoke
 - [x] Objective/mission framework with Supply Dump Strike and Free Hunt
 - [ ] Mission editor + 10 scripted missions; lightweight campaign

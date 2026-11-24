@@ -1,12 +1,16 @@
 # Missions
 
-Two scripted sorties are available from the launcher's **Missions** screen.
+Three scripted sorties are available from the launcher's **Missions** screen.
 
 **Supply Dump Strike** starts airborne 250 m over the target area with the gear down,
 three supply trucks below and two Bf 109s patrolling.
 
 **Free Hunt** starts at 1500 m over the home airfield with two Bf 109s 400 m ahead:
 shoot both down, then land back at the strip.
+
+**Bomber Intercept** starts at 1500 m over the airfield with three Ju 88s (placeholder
+twin-engine model) approaching from the north in a V, plus one Bf 109 escort. Shoot down
+the bombers, then land. AI wingmen launch with you.
 
 The launcher's **Duel** button (or `--duel`) starts a head-on 1v1 400 m from a bandit.
 `--bandits 0-6` overrides the number of AI fighters; `--wingmen 0-3` sets the
@@ -18,6 +22,7 @@ Command line:
 godot --path game scenes/Main.tscn -- --strike    # Supply Dump Strike
 godot --path game scenes/Main.tscn -- --hunt      # Free Hunt
 godot --path game scenes/Main.tscn -- --duel      # 1v1
+godot --path game scenes/Main.tscn -- --bombers   # Bomber Intercept
 ```
 
 | Objective | Success condition |
@@ -46,6 +51,6 @@ The home airfield is at east 700 / north 6750 (the free-flight spawn is the sout
 threshold). It is a draped 1000 × 36 m strip with a raised 1 m platform, markings, a
 hangar, a control tower and a windsock.
 
-`--mission-test` and `--hunt-test` run either sortie headless, destroy the objectives
+`--mission-test`, `--hunt-test` and `--bomber-test` run the sorties headless, destroy the objectives
 and land the aircraft programmatically. CI uses both to verify the completion paths
 without a pilot.
