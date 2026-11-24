@@ -2,10 +2,10 @@
 
 > **Implementation status (M0 slice):** a dedicated ENet server and predicted clients
 > exist in `game/scenes/Multiplayer.tscn`; see [../multiplayer.md](../multiplayer.md).
-> Snapshots are uncompressed; interest management is a 15 km radius (self always
-> included). Measured: 16 clients, 0.9 ms/tick, ~520 KB/s server outbound. Delta
-> compression and lag-compensated rewind are the next steps. The design below remains
-> the target.
+> Snapshots are compact (quantised pose, smallest-three quaternion, ~20 B/aircraft);
+> interest management is a 15 km radius (self always included). Measured: 64 clients,
+> 2.45 MB/s outbound, 10.9 ms/tick on a shared 16-core box. Delta compression and
+> lag-compensated rewind are the next steps. The design below remains the target.
 
 ## 1. Model
 

@@ -38,6 +38,8 @@ public sealed class NetPlayerState
 public sealed class NetSnapshot
 {
     public uint Tick;
+    public byte SelfId;
+    public Vec3 Anchor;
     public NetPlayerState[] Players = Array.Empty<NetPlayerState>();
 }
 
@@ -55,6 +57,14 @@ public static class NetProtocol
     private const int InputSize = 1 + 4 + 11 * 4;
     private const int PlayerStateSize = 1 + 4 + 3 * 4 + 4 * 4 + 3 * 4 + 3 * 4 + 3 * 4;
     private const int WelcomeHeader = 1 + 1;
+
+    // Compact snapshot: quantised pose, smallest-three quaternion, scaled health/RPM.
+    private const int SnapshotHeader = 1 + 4 + 1 + 1 + 12;
+    private const int CompactPlayerSize = 1 + 2 + 6 + 7 + 2 + 1 + 1;
+    private const int SelfExtraSize = 6 + 3;
+    private const double PositionScale = 2.0;      // 0.5 m
+    private const double VelocityScale = 20.0;     // 0.05 m/s
+    private const double RateScale = 20.0;         // 0.05 rad/s
 
     public static byte[] EncodeInput(in NetControlFrame frame)
     {
@@ -140,15 +150,42 @@ public static class NetProtocol
             throw new ArgumentException("At most 255 players per snapshot.");
         }
 
-        byte[] data = new byte[6 + snapshot.Players.Length * PlayerStateSize];
+        bool hasSelf = false;
+        foreach (NetPlayerState player in snapshot.Players)
+        {
+            if (player.PlayerId == snapshot.SelfId)
+            {
+                hasSelf = true;
+                break;
+            }
+        }
+
+        int size = SnapshotHeader
+            + snapshot.Players.Length * CompactPlayerSize
+            + (hasSelf ? SelfExtraSize : 0);
+        byte[] data = new byte[size];
         Span<byte> span = data;
         span[0] = TypeSnapshot;
         BinaryPrimitives.WriteUInt32LittleEndian(span.Slice(1), snapshot.Tick);
         span[5] = (byte)snapshot.Players.Length;
-        int offset = 6;
+        span[6] = snapshot.SelfId;
+        WriteFloat(span, 7, (float)snapshot.Anchor.X);
+        WriteFloat(span, 11, (float)snapshot.Anchor.Y);
+        WriteFloat(span, 15, (float)snapshot.Anchor.Z);
+
+        int offset = SnapshotHeader;
         foreach (NetPlayerState player in snapshot.Players)
         {
-            WritePlayerState(span, ref offset, player);
+            WriteCompactPlayer(span, ref offset, player, snapshot.Anchor);
+            if (player.PlayerId == snapshot.SelfId)
+            {
+                WriteShort(span, ref offset, player.Velocity.X, VelocityScale);
+                WriteShort(span, ref offset, player.Velocity.Y, VelocityScale);
+                WriteShort(span, ref offset, player.Velocity.Z, VelocityScale);
+                WriteSByte(span, ref offset, player.AngularVelocity.X, RateScale);
+                WriteSByte(span, ref offset, player.AngularVelocity.Y, RateScale);
+                WriteSByte(span, ref offset, player.AngularVelocity.Z, RateScale);
+            }
         }
 
         return data;
@@ -157,7 +194,7 @@ public static class NetProtocol
     public static bool TryDecodeSnapshot(byte[] data, out NetSnapshot snapshot)
     {
         snapshot = new NetSnapshot();
-        if (data.Length < 6 || data[0] != TypeSnapshot)
+        if (data.Length < SnapshotHeader || data[0] != TypeSnapshot)
         {
             return false;
         }
@@ -165,26 +202,203 @@ public static class NetProtocol
         Span<byte> span = data;
         uint tick = BinaryPrimitives.ReadUInt32LittleEndian(span.Slice(1));
         int count = span[5];
-        if (data.Length < 6 + count * PlayerStateSize)
-        {
-            return false;
-        }
+        byte selfId = span[6];
+        double anchorX = BinaryPrimitives.ReadSingleLittleEndian(span.Slice(7));
+        double anchorY = BinaryPrimitives.ReadSingleLittleEndian(span.Slice(11));
+        double anchorZ = BinaryPrimitives.ReadSingleLittleEndian(span.Slice(15));
+        var anchor = new Vec3(anchorX, anchorY, anchorZ);
 
         var players = new NetPlayerState[count];
-        int offset = 6;
+        int offset = SnapshotHeader;
         for (int i = 0; i < count; i++)
         {
-            var state = new NetPlayerState();
-            if (!TryReadPlayerState(span, ref offset, state))
+            if (!TryReadCompactPlayer(span, ref offset, anchor, out NetPlayerState state))
             {
                 return false;
+            }
+
+            if (state.PlayerId == selfId)
+            {
+                if (offset + SelfExtraSize > span.Length)
+                {
+                    return false;
+                }
+
+                state.Velocity = new Vec3(
+                    ReadShort(span, ref offset, VelocityScale),
+                    ReadShort(span, ref offset, VelocityScale),
+                    ReadShort(span, ref offset, VelocityScale));
+                state.AngularVelocity = new Vec3(
+                    ReadSByte(span, ref offset, RateScale),
+                    ReadSByte(span, ref offset, RateScale),
+                    ReadSByte(span, ref offset, RateScale));
             }
 
             players[i] = state;
         }
 
-        snapshot = new NetSnapshot { Tick = tick, Players = players };
+        snapshot = new NetSnapshot
+        {
+            Tick = tick,
+            SelfId = selfId,
+            Anchor = anchor,
+            Players = players,
+        };
         return true;
+    }
+
+    private static void WriteCompactPlayer(
+        Span<byte> span, ref int offset, NetPlayerState state, Vec3 anchor)
+    {
+        span[offset++] = state.PlayerId;
+        WriteUShort(span, ref offset, state.Health);
+        WriteShort(span, ref offset, state.Position.X - anchor.X, PositionScale);
+        WriteShort(span, ref offset, state.Position.Y - anchor.Y, PositionScale);
+        WriteShort(span, ref offset, state.Position.Z - anchor.Z, PositionScale);
+        WriteQuat(span, ref offset, state.Orientation);
+        WriteUShort(span, ref offset, state.Rpm);
+        span[offset++] = ToByte(state.Flap);
+        span[offset++] = ToByte(state.Gear);
+    }
+
+    private static bool TryReadCompactPlayer(
+        Span<byte> span, ref int offset, Vec3 anchor, out NetPlayerState state)
+    {
+        state = new NetPlayerState();
+        if (offset + CompactPlayerSize > span.Length)
+        {
+            return false;
+        }
+
+        state.PlayerId = span[offset++];
+        state.Health = ReadUShort(span, ref offset);
+        state.Position = new Vec3(
+            anchor.X + ReadShortRaw(span, ref offset) / PositionScale,
+            anchor.Y + ReadShortRaw(span, ref offset) / PositionScale,
+            anchor.Z + ReadShortRaw(span, ref offset) / PositionScale);
+        state.Orientation = ReadQuat(span, ref offset);
+        state.Rpm = ReadUShort(span, ref offset);
+        state.Flap = span[offset++] / 255.0;
+        state.Gear = span[offset++] / 255.0;
+        return true;
+    }
+
+    private static void WriteQuat(Span<byte> span, ref int offset, Quat q)
+    {
+        Quat n = q.Normalized();
+        double ax = System.Math.Abs(n.X), ay = System.Math.Abs(n.Y), az = System.Math.Abs(n.Z), aw = System.Math.Abs(n.W);
+        int largest = 0;
+        double max = ax;
+        if (ay > max) { max = ay; largest = 1; }
+        if (az > max) { max = az; largest = 2; }
+        if (aw > max) { largest = 3; }
+
+        double sign = largest switch
+        {
+            0 => n.X, 1 => n.Y, 2 => n.Z, _ => n.W,
+        } < 0 ? -1.0 : 1.0;
+
+        double[] c = { n.X * sign, n.Y * sign, n.Z * sign, n.W * sign };
+        span[offset++] = (byte)largest;
+        for (int i = 0; i < 4; i++)
+        {
+            if (i == largest)
+            {
+                continue;
+            }
+
+            int v = (int)System.Math.Round(c[i] * 32767.0);
+            v = System.Math.Clamp(v, short.MinValue, short.MaxValue);
+            BinaryPrimitives.WriteInt16LittleEndian(span.Slice(offset), (short)v);
+            offset += 2;
+        }
+    }
+
+    private static Quat ReadQuat(Span<byte> span, ref int offset)
+    {
+        int largest = span[offset++];
+        double[] c = new double[4];
+        for (int i = 0; i < 4; i++)
+        {
+            if (i == largest)
+            {
+                continue;
+            }
+
+            c[i] = BinaryPrimitives.ReadInt16LittleEndian(span.Slice(offset)) / 32767.0;
+            offset += 2;
+        }
+
+        double sum = 0.0;
+        for (int i = 0; i < 4; i++)
+        {
+            if (i != largest)
+            {
+                sum += c[i] * c[i];
+            }
+        }
+
+        c[largest] = System.Math.Sqrt(System.Math.Max(0.0, 1.0 - sum));
+        return new Quat(c[0], c[1], c[2], c[3]).Normalized();
+    }
+
+    private static void WriteFloat(Span<byte> span, int offset, float value) =>
+        BinaryPrimitives.WriteSingleLittleEndian(span.Slice(offset), value);
+
+    private static void WriteUShort(Span<byte> span, ref int offset, double value)
+    {
+        int v = (int)System.Math.Round(value);
+        v = System.Math.Clamp(v, 0, ushort.MaxValue);
+        BinaryPrimitives.WriteUInt16LittleEndian(span.Slice(offset), (ushort)v);
+        offset += 2;
+    }
+
+    private static double ReadUShort(Span<byte> span, ref int offset)
+    {
+        double value = BinaryPrimitives.ReadUInt16LittleEndian(span.Slice(offset));
+        offset += 2;
+        return value;
+    }
+
+    private static void WriteShort(Span<byte> span, ref int offset, double value, double scale)
+    {
+        int v = (int)System.Math.Round(value * scale);
+        v = System.Math.Clamp(v, short.MinValue, short.MaxValue);
+        BinaryPrimitives.WriteInt16LittleEndian(span.Slice(offset), (short)v);
+        offset += 2;
+    }
+
+    private static double ReadShort(Span<byte> span, ref int offset, double scale)
+    {
+        double value = BinaryPrimitives.ReadInt16LittleEndian(span.Slice(offset)) / scale;
+        offset += 2;
+        return value;
+    }
+
+    private static double ReadShortRaw(Span<byte> span, ref int offset)
+    {
+        double value = BinaryPrimitives.ReadInt16LittleEndian(span.Slice(offset));
+        offset += 2;
+        return value;
+    }
+
+    private static void WriteSByte(Span<byte> span, ref int offset, double value, double scale)
+    {
+        int v = (int)System.Math.Round(value * scale);
+        v = System.Math.Clamp(v, sbyte.MinValue, sbyte.MaxValue);
+        span[offset++] = (byte)(sbyte)v;
+    }
+
+    private static double ReadSByte(Span<byte> span, ref int offset, double scale)
+    {
+        double value = (sbyte)span[offset++] / scale;
+        return value;
+    }
+
+    private static byte ToByte(double value)
+    {
+        int v = (int)System.Math.Round(System.Math.Clamp(value, 0.0, 1.0) * 255.0);
+        return (byte)v;
     }
 
     private static void WritePlayerState(Span<byte> span, ref int offset, NetPlayerState state)

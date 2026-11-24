@@ -130,12 +130,12 @@ godot --path game scenes/Multiplayer.tscn -- --connect 127.0.0.1 --port 7777
 ```
 
 30 Hz snapshots, local prediction with snapshot blending, interpolated remote aircraft,
-server-owned damage and 5-second respawns. Up to 16 players; measured at
-**0.9 ms/tick and ~520 KB/s** server outbound with 16 clients.
+server-owned damage and 5-second respawns. Up to **64 players**; measured at
+**2.45 MB/s and ~11 ms/tick** on a shared 16-core machine (worst-case relevance).
 
 ```bash
 ./tools/net_smoke_test.sh        # 2 clients (CI)
-./tools/net_load_test.sh 16      # 16 headless clients
+./tools/net_load_test.sh 64      # 64 headless clients
 ```
 
 See [docs/multiplayer.md](docs/multiplayer.md).
