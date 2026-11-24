@@ -145,6 +145,13 @@ The demo starts on its gear beside a Normandy hedgerow. Throttle up, keep straig
 rudder, and ease back at ~100 mph to unstick. Bandits patrol about 1.5 km north (`--bandits 0-6`); both
 aircraft have 1,000 structural points.
 
+## First takeoff
+
+Free flight starts on the 1.2 km runway. Hold **W** until the throttle reaches 100%,
+keep straight with **A/D**, and ease back at **90–100 mph**; the aircraft will lift off
+well before the end of the strip. A large prompt stays on screen while you are on the
+ground.
+
 ## Quick start (developers)
 
 Prerequisites: .NET SDK 10+, Python 3.11+, Git. Godot 4.7 (.NET build) is needed only

@@ -227,7 +227,8 @@ public sealed partial class OsmDetail : Node3D
                 {
                     double jitterE = east + random.RandfRange(-4.0f, 4.0f);
                     double jitterN = north + random.RandfRange(-4.0f, 4.0f);
-                    if (!PointInPolygon(jitterE, jitterN, polygon))
+                    if (Airfield.IsInClearZone(jitterE, jitterN)
+                        || !PointInPolygon(jitterE, jitterN, polygon))
                     {
                         continue;
                     }

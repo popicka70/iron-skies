@@ -69,7 +69,7 @@ sortie with engine management; deterministic replays reproduce exactly.
 - [x] Animated water normals + fresnel on the sea
 - [ ] Detail normals and 3D vegetation
 - Splat-blended ground, forests via MultiMesh, water, roads
-- [x] Airfield: marked 1 km strip, hangar, tower, windsock
+- [x] Airfield: marked 1.2 km strip, hangar, tower, windsock
 - [ ] Revetments and static props
 - [x] Procedural cumulus cloud layer
 - [ ] Physical sky, sun/moon, SDFGI, volumetric fog, weather presets

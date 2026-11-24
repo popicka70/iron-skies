@@ -78,6 +78,11 @@ jobs:
           echo "$output" | grep -q "\[mission-test\] complete=True"
       - name: Replay smoke test
         run: ./tools/replay_smoke_test.sh
+      - name: Takeoff test
+        run: |
+          output=$(godot --headless --path game scenes/Main.tscn -- --takeoff-test)
+          echo "$output"
+          echo "$output" | grep -q "\[takeoff\] success"
 
       - name: Multiplayer smoke test (server + 2 clients)
         run: ./tools/net_smoke_test.sh

@@ -11,13 +11,26 @@ namespace IronSkies.Game.World;
 public sealed partial class Airfield : Node3D
 {
     public const double East = 700.0;
-    public const double North = 6750.0;
-    public const double LengthMeters = 1000.0;
-    public const double WidthMeters = 36.0;
+    public const double North = 5900.0;
+    public const double LengthMeters = 1200.0;
+    public const double WidthMeters = 44.0;
+    public const double ClearCorridorHalfWidth = 130.0;
+    public const double ClearCorridorEnds = 550.0;
     public const double SouthThreshold = North - LengthMeters * 0.5;
 
     public const double GroundOffset = 1.0;
     private const float SurfaceLift = (float)GroundOffset;
+
+    /// <summary>True inside the runway plus its approach/departure corridor. OSM
+    /// buildings and trees are filtered out here so the strip stays usable.</summary>
+    public static bool IsInClearZone(double east, double north, double margin = 0.0)
+    {
+        double halfWidth = WidthMeters * 0.5 + ClearCorridorHalfWidth + margin;
+        double south = SouthThreshold - ClearCorridorEnds - margin;
+        double northLimit = SouthThreshold + LengthMeters + ClearCorridorEnds + margin;
+        return System.Math.Abs(east - East) <= halfWidth
+            && north >= south && north <= northLimit;
+    }
 
     public void Build(Heightmap map)
     {

@@ -100,6 +100,7 @@ public partial class Main : Node3D
     private bool _duel;
     private bool _missionTest;
     private bool _damageTest;
+    private bool _takeoffTest;
     private int _missionTestTick;
     private double _accumulator;
 
@@ -176,6 +177,7 @@ public partial class Main : Node3D
         _airStart = HasUserFlag("--air-start");
         _missionTest = HasUserFlag("--mission-test") || HasUserFlag("--hunt-test");
         _damageTest = HasUserFlag("--damage-test");
+        _takeoffTest = HasUserFlag("--takeoff-test");
 
         if (HasUserFlag("--strike") || LaunchConfig.Mission == "strike")
         {
@@ -241,6 +243,20 @@ public partial class Main : Node3D
                 ? System.Math.Clamp(wingmen, 0, 3)
                 : _duel ? 0 : 2;
         }
+
+        if (_takeoffTest)
+        {
+            _missionKind = MissionKind.None;
+            _strikeStart = false;
+            _huntStart = false;
+            _bomberStart = false;
+            _missionTest = false;
+            _airStart = false;
+            _duel = false;
+            _banditCount = 0;
+            _wingmanCount = 0;
+        }
+
         string? cameraOption = ReadUserOption("--camera");
         if (cameraOption == "cockpit")
         {
@@ -315,6 +331,21 @@ public partial class Main : Node3D
             TrimElevator: _trimElevator,
             Fire: _fire,
             Extinguish: FlightInput.Pressed(FlightAction.Extinguish));
+
+        if (_takeoffTest)
+        {
+            Vec3 forward = _sim.State.Orientation.Rotate(Vec3.UnitX);
+            double heading = System.Math.Atan2(forward.X, forward.Y);
+            double rudder = System.Math.Clamp(
+                -heading * 0.8 - _sim.State.AngularVelocityBody.Z * 0.3, -0.6, 0.6);
+            playerControls = new Controls(
+                Elevator: _sim.Telemetry.SpeedMs > 45.0 ? 0.10 : 0.0,
+                Rudder: rudder,
+                Throttle: 1.0,
+                GearDown: 1.0,
+                Radiator: 0.5,
+                Mixture: 0.9);
+        }
 
         _accumulator += delta;
         int steps = 0;
@@ -465,6 +496,38 @@ public partial class Main : Node3D
         _terrain.SetFocus(_aircraft.GlobalPosition);
         UpdateCamera(delta);
 
+        if (_takeoffTest)
+        {
+            double agl = _sim.State.Position.Z
+                - _ground.HeightAt(_sim.State.Position.X, _sim.State.Position.Y);
+            int seconds = _tick / 240;
+            if (_tick % 240 == 0)
+            {
+                GD.Print($"[takeoff] t={seconds}s speed={_sim.Telemetry.SpeedMs:F1} " +
+                         $"east={_sim.State.Position.X:F0} north={_sim.State.Position.Y:F0} " +
+                         $"agl={agl:F1} health={_sim.Health:F0} " +
+                         $"ground={_sim.Telemetry.OnGround}");
+            }
+
+            if (!_sim.Telemetry.OnGround && agl > 15.0)
+            {
+                GD.Print($"[takeoff] success at {_sim.State.Position.Y - (Airfield.SouthThreshold + 120.0):F0} m " +
+                         $"({seconds}s, {_sim.Telemetry.SpeedMs:F1} m/s)");
+                GetTree().Quit();
+            }
+            else if (_sim.Telemetry.OnGround
+                && _sim.State.Position.Y > Airfield.SouthThreshold + Airfield.LengthMeters + 150.0)
+            {
+                GD.Print("[takeoff] fail: overran the runway");
+                GetTree().Quit();
+            }
+            else if (seconds > 45)
+            {
+                GD.Print("[takeoff] fail: still on the ground after 45 s");
+                GetTree().Quit();
+            }
+        }
+
         if (_sim.Destroyed && !_playerDown)
         {
             _playerDown = true;
@@ -514,7 +577,9 @@ public partial class Main : Node3D
         bool allBanditsDown = EnemiesDown() == _enemies.Count && _enemies.Count > 0;
         bool allBombersDown = _bombers.Count > 0 && BombersDown() == _bombers.Count;
         bool missionOver = _mission is { Active: false };
-        _message.Visible = _playerDown || allBanditsDown || allBombersDown || missionOver;
+        bool takeoffPrompt = !_replaying && _sim.Telemetry.OnGround && _tick > 30;
+        _message.Visible = _playerDown || allBanditsDown || allBombersDown || missionOver
+            || takeoffPrompt;
         if (_mission is { Failed: true })
         {
             _message.Text = "MISSION FAILED — R TO RETRY";
@@ -524,6 +589,11 @@ public partial class Main : Node3D
         {
             _message.Text = $"MISSION COMPLETE  {_mission.ElapsedText()} — R TO FLY AGAIN";
             _message.AddThemeColorOverride("font_color", new Color(0.55f, 1.0f, 0.55f));
+        }
+        else if (!_replaying && _sim.Telemetry.OnGround && _tick > 30)
+        {
+            _message.Text = "HOLD W — EASE BACK AT 90-100 MPH";
+            _message.AddThemeColorOverride("font_color", new Color(0.95f, 0.86f, 0.55f));
         }
         else if (_playerDown)
         {
@@ -767,6 +837,11 @@ public partial class Main : Node3D
             if (damage.AileronJammed) _hudText.Append("AILERON JAM   ");
             if (damage.ElevatorJammed) _hudText.Append("ELEVATOR JAM");
             _hudText.Append('\n');
+        }
+
+        if (_sim.Telemetry.OnGround && _sim.Telemetry.SpeedMs < 35.0 && !_replaying)
+        {
+            _hudText.Append("Takeoff   hold W for full throttle; ease back at 90-100 mph\n");
         }
 
         _hudText.Append("Camera    ").Append(_cameraMode)
@@ -1096,7 +1171,7 @@ public partial class Main : Node3D
         }
 
         double east = _strikeStart ? 900.0 : Airfield.East;
-        double north = _strikeStart ? 7000.0 : Airfield.SouthThreshold + 100.0;
+        double north = _strikeStart ? 7000.0 : Airfield.SouthThreshold + 120.0;
         double ground = _ground.HeightAt(east, north);
         bool airborne = _airStart || _strikeStart || _huntStart || _bomberStart || _duel;
         AircraftState state = airborne
