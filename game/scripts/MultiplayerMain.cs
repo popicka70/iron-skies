@@ -215,7 +215,7 @@ public sealed partial class MultiplayerMain : Node3D
         _playerVisual.GlobalTransform = SimBridge.ToGodot(
             _localSim.State.Orientation, _localSim.State.Position);
         _playerVisual.UpdateFrom(_localSim, delta);
-        _playerSmoke.Update(_localSim.Damage.Smoke);
+        _playerSmoke.Update(_localSim.Damage.Smoke, _localSim.Damage.Fire);
         _audio.UpdateFrom(_localSim, _throttle);
         _terrain.SetFocus(_playerVisual.GlobalPosition);
         UpdateCamera(delta);
@@ -563,8 +563,11 @@ public sealed partial class MultiplayerMain : Node3D
                 : 1.0;
             double engine = remote.Current.EngineDamage / 255.0;
             double structural = 1.0 - healthFraction;
-            remote.Smoke.Update(Math.Clamp(
-                System.Math.Max(engine * 1.1, structural * 0.8), 0.0, 1.0));
+            double fuel = remote.Current.FuelDamage / 255.0;
+            double fire = DamageModel.ComputeFire(engine, fuel);
+            remote.Smoke.Update(
+                System.Math.Max(System.Math.Max(engine * 1.1, structural * 0.8), fire),
+                fire);
         }
     }
 
@@ -879,6 +882,27 @@ public sealed partial class MultiplayerMain : Node3D
             {
                 _hudText.Append("   Fuel leak ")
                     .Append(damage.FuelLeakKgPerSecond.ToString("F1")).Append(" kg/s");
+            }
+
+            _hudText.Append('\n');
+        }
+
+        if (damage.EngineSeized || damage.Fire > 0.15 || damage.ControlDamage > 0.70)
+        {
+            _hudText.Append("Status    ");
+            if (damage.EngineSeized)
+            {
+                _hudText.Append("ENGINE SEIZED   ");
+            }
+
+            if (damage.Fire > 0.15)
+            {
+                _hudText.Append("FIRE   ");
+            }
+
+            if (damage.ControlDamage > 0.70)
+            {
+                _hudText.Append("CONTROLS JAMMED");
             }
 
             _hudText.Append('\n');

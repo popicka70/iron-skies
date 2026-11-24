@@ -250,10 +250,10 @@ public partial class Main : Node3D
 
         _aircraft.GlobalTransform = SimBridge.ToGodot(_sim.State.Orientation, _sim.State.Position);
         _aircraft.UpdateFrom(_sim, delta);
-        _playerSmoke.Update(_sim.Damage.Smoke);
+        _playerSmoke.Update(_sim.Damage.Smoke, _sim.Damage.Fire);
         foreach (Enemy enemy in _enemies)
         {
-            enemy.Smoke.Update(enemy.Sim.Damage.Smoke);
+            enemy.Smoke.Update(enemy.Sim.Damage.Smoke, enemy.Sim.Damage.Fire);
             enemy.Visual.GlobalTransform = SimBridge.ToGodot(
                 enemy.Sim.State.Orientation, enemy.Sim.State.Position);
             enemy.Visual.UpdateFrom(enemy.Sim, delta);
@@ -515,6 +515,27 @@ public partial class Main : Node3D
             {
                 _hudText.Append("   Fuel leak ")
                     .Append(damage.FuelLeakKgPerSecond.ToString("F1")).Append(" kg/s");
+            }
+
+            _hudText.Append('\n');
+        }
+
+        if (damage.EngineSeized || damage.Fire > 0.15 || damage.ControlDamage > 0.70)
+        {
+            _hudText.Append("Status    ");
+            if (damage.EngineSeized)
+            {
+                _hudText.Append("ENGINE SEIZED   ");
+            }
+
+            if (damage.Fire > 0.15)
+            {
+                _hudText.Append("FIRE   ");
+            }
+
+            if (damage.ControlDamage > 0.70)
+            {
+                _hudText.Append("CONTROLS JAMMED");
             }
 
             _hudText.Append('\n');

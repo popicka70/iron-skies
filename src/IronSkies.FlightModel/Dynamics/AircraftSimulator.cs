@@ -91,6 +91,7 @@ public sealed class AircraftSimulator
         AircraftDefinition d = Definition;
         Damage.Update(Health, d.StructuralHealth);
         _engine.PowerScale = Damage.EnginePowerScale;
+        _engine.Seized = Damage.EngineSeized;
 
         _flapPosition = MoveToward(_flapPosition, c.Flaps, dt, d.FlapTravelSeconds);
         _gearPosition = MoveToward(_gearPosition, c.GearDown, dt, d.GearTravelSeconds);
@@ -99,7 +100,8 @@ public sealed class AircraftSimulator
         double elevator = DeterministicMath.Clamp(
             (c.Elevator + c.TrimElevator * d.TrimElevatorAuthority) * authority, -1.0, 1.0);
         double aileron = DeterministicMath.Clamp(
-            (c.Aileron + c.TrimAileron * d.TrimAileronAuthority) * authority, -1.0, 1.0);
+            (c.Aileron + c.TrimAileron * d.TrimAileronAuthority) * authority
+            + Damage.RollBias, -1.0, 1.0);
         double rudder = DeterministicMath.Clamp(
             (c.Rudder + c.TrimRudder * d.TrimRudderAuthority) * authority, -1.0, 1.0);
 
