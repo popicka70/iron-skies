@@ -22,7 +22,7 @@ retrospective in `docs/retro/`. The playable M0 slice is written up in
 - [x] Sentinel-2 orthophoto (10 m) + landcover masks draped on the terrain
 - [x] OSM roads/hedgerows + woods/buildings draped around the demo spawn
 - [x] Golden-replay determinism unit test (cross-platform CI replay pending)
-- [x] Joystick/HOTAS input (single-player and multiplayer)
+- [x] Multi-device HOTAS configuration: axes, buttons, calibration, deadzone, inversion
 - [ ] Basic HUD (speed, altitude, RPM) — done, expand with engine gauges
 
 **Acceptance:** the test aircraft takes off, climbs, stalls, and lands without NaNs;

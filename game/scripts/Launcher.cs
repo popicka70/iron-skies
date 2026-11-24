@@ -29,6 +29,22 @@ public sealed partial class Launcher : Control
     private readonly Dictionary<FlightAction, Button> _keyButtons = new();
     private FlightAction? _rebindAction;
     private Button? _rebindButton;
+
+    private Control _hotasOverlay = null!;
+    private Label _hotasDevices = null!;
+    private Label _hotasStatus = null!;
+    private HSlider _hotasDeadzone = null!;
+    private readonly Dictionary<HotasAxis, Button> _hotasAxisButtons = new();
+    private readonly Dictionary<HotasAxis, CheckButton> _hotasInvertChecks = new();
+    private readonly Dictionary<HotasAxis, Button> _hotasCalibrateButtons = new();
+    private readonly Dictionary<HotasButton, Button> _hotasButtonButtons = new();
+    private HotasAxis? _awaitingHotasAxis;
+    private HotasButton? _awaitingHotasButton;
+    private Button? _hotasBindingButton;
+    private HotasAxis? _calibratingAxis;
+    private Button? _calibratingButton;
+    private double _calibrationMin;
+    private double _calibrationMax;
     private ServerProcessManager? _serverProcess;
 
     private PacketPeerUdp? _browserSocket;
@@ -89,6 +105,10 @@ public sealed partial class Launcher : Control
         else if (HasFlag("--open-keys"))
         {
             ShowKeys();
+        }
+        else if (HasFlag("--open-hotas"))
+        {
+            ShowHotas();
         }
 
         string? launcherShot = ReadOption("--launcher-shot");
@@ -266,6 +286,329 @@ public sealed partial class Launcher : Control
         BuildSettingsOverlay();
         BuildMissionsOverlay();
         BuildKeysOverlay();
+        BuildHotasOverlay();
+    }
+
+    private void BuildHotasOverlay()
+    {
+        _hotasOverlay = BuildOverlay();
+        var panel = (PanelContainer)_hotasOverlay.GetChild(1);
+        panel.OffsetLeft = -350.0f;
+        panel.OffsetRight = 350.0f;
+        panel.OffsetTop = -340.0f;
+        panel.OffsetBottom = 340.0f;
+        var content = (VBoxContainer)panel.GetChild(0);
+        content.AddThemeConstantOverride("separation", 8);
+
+        var title = new Label
+        {
+            Text = "JOYSTICK / HOTAS",
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        title.AddThemeFontSizeOverride("font_size", 22);
+        content.AddChild(title);
+
+        _hotasDevices = new Label
+        {
+            Text = "",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            CustomMinimumSize = new Vector2(0.0f, 34.0f),
+        };
+        _hotasDevices.AddThemeFontSizeOverride("font_size", 12);
+        content.AddChild(_hotasDevices);
+
+        var deviceRow = new HBoxContainer();
+        deviceRow.AddThemeConstantOverride("separation", 8);
+        content.AddChild(deviceRow);
+        var refresh = new Button
+        {
+            Text = "Refresh devices",
+            CustomMinimumSize = new Vector2(160.0f, 28.0f),
+        };
+        refresh.Pressed += RefreshHotas;
+        deviceRow.AddChild(refresh);
+
+        var deadzoneLabel = new Label { Text = "Deadzone" };
+        deadzoneLabel.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+        deviceRow.AddChild(deadzoneLabel);
+        _hotasDeadzone = new HSlider
+        {
+            MinValue = 0.02,
+            MaxValue = 0.30,
+            Step = 0.01,
+            Value = GameSettings.HotasDeadzone,
+            CustomMinimumSize = new Vector2(180.0f, 22.0f),
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+        };
+        _hotasDeadzone.ValueChanged += value =>
+        {
+            GameSettings.HotasDeadzone = (float)value;
+            GameSettings.Save();
+        };
+        deviceRow.AddChild(_hotasDeadzone);
+
+        var scroll = new ScrollContainer
+        {
+            CustomMinimumSize = new Vector2(0.0f, 300.0f),
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+        };
+        content.AddChild(scroll);
+        var rows = new VBoxContainer();
+        rows.AddThemeConstantOverride("separation", 4);
+        scroll.AddChild(rows);
+
+        rows.AddChild(new Label { Text = "CONTINUOUS AXES" });
+        foreach (HotasAxis action in Enum.GetValues<HotasAxis>())
+        {
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 6);
+            var label = new Label
+            {
+                Text = HotasInput.AxisLabel(action),
+                CustomMinimumSize = new Vector2(96.0f, 0.0f),
+                SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+            };
+            row.AddChild(label);
+
+            var bind = new Button
+            {
+                Text = HotasInput.AxisBindingLabel(action),
+                CustomMinimumSize = new Vector2(230.0f, 26.0f),
+            };
+            HotasAxis captured = action;
+            bind.Pressed += () => BeginHotasAxisBind(captured, bind);
+            _hotasAxisButtons[action] = bind;
+            row.AddChild(bind);
+
+            var invert = new CheckButton
+            {
+                Text = "Invert",
+                ButtonPressed = HotasInput.AxisBindings[action].Invert,
+            };
+            invert.Toggled += pressed =>
+            {
+                HotasInput.AxisBindings[action].Invert = pressed;
+                GameSettings.Save();
+            };
+            _hotasInvertChecks[action] = invert;
+            row.AddChild(invert);
+
+            var calibrate = new Button
+            {
+                Text = "Calibrate",
+                CustomMinimumSize = new Vector2(80.0f, 26.0f),
+            };
+            calibrate.Pressed += () => ToggleCalibration(action, calibrate);
+            _hotasCalibrateButtons[action] = calibrate;
+            row.AddChild(calibrate);
+
+            var clear = new Button
+            {
+                Text = "Clear",
+                CustomMinimumSize = new Vector2(56.0f, 26.0f),
+            };
+            clear.Pressed += () =>
+            {
+                HotasInput.ClearAxis(action);
+                GameSettings.Save();
+                RefreshHotas();
+            };
+            row.AddChild(clear);
+            rows.AddChild(row);
+        }
+
+        rows.AddChild(new Label { Text = "BUTTONS" });
+        foreach (HotasButton action in Enum.GetValues<HotasButton>())
+        {
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 6);
+            var label = new Label
+            {
+                Text = HotasInput.ButtonLabel(action),
+                CustomMinimumSize = new Vector2(96.0f, 0.0f),
+                SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+            };
+            row.AddChild(label);
+
+            var bind = new Button
+            {
+                Text = HotasInput.ButtonBindingLabel(action),
+                CustomMinimumSize = new Vector2(230.0f, 26.0f),
+            };
+            HotasButton captured = action;
+            bind.Pressed += () => BeginHotasButtonBind(captured, bind);
+            _hotasButtonButtons[action] = bind;
+            row.AddChild(bind);
+
+            var clear = new Button
+            {
+                Text = "Clear",
+                CustomMinimumSize = new Vector2(56.0f, 26.0f),
+            };
+            clear.Pressed += () =>
+            {
+                HotasInput.ClearButton(action);
+                GameSettings.Save();
+                RefreshHotas();
+            };
+            row.AddChild(clear);
+            rows.AddChild(row);
+        }
+
+        _hotasStatus = new Label
+        {
+            Text = "Bind an action, then move an axis or press a button.",
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        _hotasStatus.AddThemeFontSizeOverride("font_size", 12);
+        _hotasStatus.AddThemeColorOverride("font_color", new Color(0.85f, 0.75f, 0.55f));
+        content.AddChild(_hotasStatus);
+
+        var bottom = new HBoxContainer();
+        bottom.AddThemeConstantOverride("separation", 8);
+        content.AddChild(bottom);
+        var reset = new Button
+        {
+            Text = "Reset HOTAS",
+            CustomMinimumSize = new Vector2(150.0f, 30.0f),
+        };
+        reset.Pressed += () =>
+        {
+            HotasInput.ResetAll();
+            GameSettings.Save();
+            RefreshHotas();
+        };
+        bottom.AddChild(reset);
+        var close = new Button
+        {
+            Text = "Close",
+            CustomMinimumSize = new Vector2(0.0f, 30.0f),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        close.Pressed += HideHotas;
+        bottom.AddChild(close);
+        RefreshHotas();
+    }
+
+    private void RefreshHotas()
+    {
+        if (_hotasDevices is null)
+        {
+            return;
+        }
+
+        var devices = HotasInput.Devices();
+        if (devices.Count == 0)
+        {
+            _hotasDevices.Text = "No joystick/HOTAS detected. Connect a device and press Refresh.";
+        }
+        else
+        {
+            var lines = new System.Collections.Generic.List<string>();
+            foreach (HotasDevice device in devices)
+            {
+                lines.Add($"Device {device.Index}: {device.Name}");
+            }
+
+            _hotasDevices.Text = string.Join("   ·   ", lines);
+        }
+
+        foreach ((HotasAxis action, Button button) in _hotasAxisButtons)
+        {
+            button.Text = HotasInput.AxisBindingLabel(action);
+            _hotasInvertChecks[action].ButtonPressed =
+                HotasInput.AxisBindings[action].Invert;
+            _hotasCalibrateButtons[action].Text =
+                _calibratingAxis == action ? "Stop" : "Calibrate";
+        }
+
+        foreach ((HotasButton action, Button button) in _hotasButtonButtons)
+        {
+            button.Text = HotasInput.ButtonBindingLabel(action);
+        }
+    }
+
+    private void BeginHotasAxisBind(HotasAxis action, Button button)
+    {
+        CancelHotasCapture();
+        HideKeys();
+        _awaitingHotasAxis = action;
+        _hotasBindingButton = button;
+        button.Text = "Move an axis...";
+        _hotasStatus!.Text = $"Move an axis for {HotasInput.AxisLabel(action)} (Esc cancels)";
+    }
+
+    private void BeginHotasButtonBind(HotasButton action, Button button)
+    {
+        CancelHotasCapture();
+        HideKeys();
+        _awaitingHotasButton = action;
+        _hotasBindingButton = button;
+        button.Text = "Press a button...";
+        _hotasStatus!.Text = $"Press a button for {HotasInput.ButtonLabel(action)} (Esc cancels)";
+    }
+
+    private void CancelHotasCapture()
+    {
+        _awaitingHotasAxis = null;
+        _awaitingHotasButton = null;
+        _hotasBindingButton = null;
+        RefreshHotas();
+    }
+
+    private void ToggleCalibration(HotasAxis action, Button button)
+    {
+        if (_calibratingAxis == action)
+        {
+            if (_calibrationMax - _calibrationMin > 0.1)
+            {
+                HotasInput.AxisBindings[action].Min = _calibrationMin;
+                HotasInput.AxisBindings[action].Max = _calibrationMax;
+                GameSettings.Save();
+                _hotasStatus!.Text = $"Calibrated {HotasInput.AxisLabel(action)}: " +
+                    $"{_calibrationMin:F2} … {_calibrationMax:F2}";
+            }
+            else
+            {
+                _hotasStatus!.Text = "Calibration cancelled: axis range too small.";
+            }
+
+            _calibratingAxis = null;
+            _calibratingButton = null;
+            RefreshHotas();
+            return;
+        }
+
+        if (!HotasInput.AxisBindings[action].Bound)
+        {
+            _hotasStatus!.Text = "Bind an axis first.";
+            return;
+        }
+
+        _calibratingAxis = action;
+        _calibratingButton = button;
+        _calibrationMin = double.MaxValue;
+        _calibrationMax = double.MinValue;
+        button.Text = "Stop";
+        _hotasStatus!.Text = $"Move {HotasInput.AxisLabel(action)} through its full range, then press Stop.";
+    }
+
+    private void ShowHotas()
+    {
+        HideSettings();
+        HideMissions();
+        HideKeys();
+        CancelHotasCapture();
+        RefreshHotas();
+        _hotasOverlay.Visible = true;
+    }
+
+    private void HideHotas()
+    {
+        CancelHotasCapture();
+        _calibratingAxis = null;
+        _calibratingButton = null;
+        _hotasOverlay.Visible = false;
     }
 
     private void BuildKeysOverlay()
@@ -355,6 +698,7 @@ public sealed partial class Launcher : Control
     {
         HideSettings();
         HideMissions();
+        HideHotas();
         foreach ((FlightAction action, Button button) in _keyButtons)
         {
             button.Text = FlightInput.KeyName(action);
@@ -375,6 +719,60 @@ public sealed partial class Launcher : Control
 
     public override void _Input(InputEvent @event)
     {
+        if (_awaitingHotasAxis is not null)
+        {
+            if (@event is InputEventKey escape && escape.Pressed
+                && (escape.Keycode == Key.Escape || escape.PhysicalKeycode == Key.Escape))
+            {
+                CancelHotasCapture();
+                GetViewport().SetInputAsHandled();
+                return;
+            }
+
+            if (@event is InputEventJoypadMotion motion
+                && System.Math.Abs(motion.AxisValue) > 0.35f)
+            {
+                HotasInput.BindAxis(_awaitingHotasAxis.Value, motion.Device, motion.Axis);
+                GameSettings.Save();
+                string label = HotasInput.AxisBindingLabel(_awaitingHotasAxis.Value);
+                _hotasStatus!.Text = $"Bound {label}. Move it through its range and press Calibrate.";
+                _awaitingHotasAxis = null;
+                _hotasBindingButton = null;
+                RefreshHotas();
+                GetViewport().SetInputAsHandled();
+                return;
+            }
+
+            return;
+        }
+
+        if (_awaitingHotasButton is not null)
+        {
+            if (@event is InputEventKey escape && escape.Pressed
+                && (escape.Keycode == Key.Escape || escape.PhysicalKeycode == Key.Escape))
+            {
+                CancelHotasCapture();
+                GetViewport().SetInputAsHandled();
+                return;
+            }
+
+            if (@event is InputEventJoypadButton button && button.Pressed)
+            {
+                HotasInput.BindButton(_awaitingHotasButton.Value, button.Device,
+                    button.ButtonIndex);
+                GameSettings.Save();
+                _hotasStatus!.Text =
+                    $"Bound {HotasInput.ButtonBindingLabel(_awaitingHotasButton.Value)}";
+                _awaitingHotasButton = null;
+                _hotasBindingButton = null;
+                RefreshHotas();
+                GetViewport().SetInputAsHandled();
+                return;
+            }
+
+            return;
+        }
+
         if (_rebindAction is null || @event is not InputEventKey key || !key.Pressed
             || key.Echo)
         {
@@ -486,6 +884,7 @@ public sealed partial class Launcher : Control
     {
         HideSettings();
         HideKeys();
+        HideHotas();
         _missionsOverlay.Visible = true;
     }
 
@@ -511,9 +910,9 @@ public sealed partial class Launcher : Control
             AnchorRight = 0.5f,
             AnchorBottom = 0.5f,
             OffsetLeft = -250.0f,
-            OffsetTop = -250.0f,
+            OffsetTop = -280.0f,
             OffsetRight = 250.0f,
-            OffsetBottom = 250.0f,
+            OffsetBottom = 280.0f,
         };
         var style = new StyleBoxFlat
         {
@@ -659,6 +1058,14 @@ public sealed partial class Launcher : Control
         };
         content.AddChild(_invertPitchCheck);
 
+        var hotasButton = new Button
+        {
+            Text = "Joystick / HOTAS",
+            CustomMinimumSize = new Vector2(0.0f, 34.0f),
+        };
+        hotasButton.Pressed += ShowHotas;
+        content.AddChild(hotasButton);
+
         var keysButton = new Button
         {
             Text = "Key bindings",
@@ -678,6 +1085,7 @@ public sealed partial class Launcher : Control
     {
         HideMissions();
         HideKeys();
+        HideHotas();
         _settingsOverlay.Visible = true;
         _volumeSlider.Value = GameSettings.MasterVolume;
         _fullscreenCheck.ButtonPressed = GameSettings.Fullscreen;
@@ -733,6 +1141,19 @@ public sealed partial class Launcher : Control
 
     public override void _Process(double delta)
     {
+        if (_calibratingAxis is not null
+            && HotasInput.ReadRawAxis(_calibratingAxis.Value, out double raw))
+        {
+            _calibrationMin = System.Math.Min(_calibrationMin, raw);
+            _calibrationMax = System.Math.Max(_calibrationMax, raw);
+            if (_hotasStatus is not null)
+            {
+                _hotasStatus.Text =
+                    $"Axis {HotasInput.AxisBindings[_calibratingAxis.Value].AxisIndex + 1}: " +
+                    $"{raw:F2}   range {_calibrationMin:F2} … {_calibrationMax:F2} — Stop when done";
+            }
+        }
+
         if (_browserSocket is null)
         {
             return;

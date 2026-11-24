@@ -187,7 +187,7 @@ hitboxes occupy.
 - Lag compensation is validated by the load test (clients run ≈1.2-1.4 ticks behind);
   hit-registration quality against a manoeuvring target is not covered by an automated
   test yet.
-- Keyboard and joystick input in both scenes; the first connected pad is used.
+- Keyboard and multi-device HOTAS input in both scenes; bindings are configured in Settings.
 - The host-and-play server exits if it has no players for 8 seconds; the host's process
   manager also attempts an immediate shutdown.
 - The launcher is the exported main scene; `--server`, `--connect` and the single-player

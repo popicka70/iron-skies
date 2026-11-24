@@ -60,8 +60,8 @@ key bindings, or direct connect.*
 
 ![Iron Skies settings](docs/media/m0-settings.png)
 
-*Settings persist volume, fullscreen, player aircraft, HUD scale and invert pitch in
-`user://settings.cfg`.*
+*Settings persist volume, fullscreen, player aircraft, HUD scale, invert pitch and the
+full keyboard/HOTAS bindings in `user://settings.cfg`.*
 
 ![Iron Skies key bindings](docs/media/m0-keys.png)
 
@@ -151,6 +151,27 @@ Free flight starts on the 1.2 km runway. Hold **W** until the throttle reaches 1
 keep straight with **A/D**, and ease back at **90–100 mph**; the aircraft will lift off
 well before the end of the strip. A large prompt stays on screen while you are on the
 ground.
+
+## Joystick / HOTAS
+
+Open **Settings → Joystick / HOTAS**. Connected devices are listed at the top; press
+**Refresh devices** after plugging one in.
+
+For each action, click its binding button and then move an axis or press a button. You can
+bind axes and buttons from **different devices** simultaneously:
+
+- axes: pitch, roll, yaw, throttle, radiator, pitch trim, mixture, brake;
+- buttons: fire, brakes, flaps, gear, camera, throttle/radiator/trim increments, fire
+  extinguisher, reset.
+
+Each axis has an **Invert** toggle and a **Calibrate** button. Calibrate moves the axis
+through its physical range so throttle levers, sliders and asymmetric sticks map cleanly;
+**Deadzone** applies to the centered axes. Key bindings remain available as a fallback.
+
+![Iron Skies joystick/HOTAS configuration](docs/media/m0-hotas.png)
+
+*The HOTAS dialog: any axis or button on any connected device can be bound; calibration
+and deadzone are per-axis/global.*
 
 ## Quick start (developers)
 
