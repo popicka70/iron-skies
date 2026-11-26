@@ -100,3 +100,6 @@ game/assets/terrain/iceland-1944/
 # Generated Europe-wide detail layers (built locally, not committed)
 game/assets/terrain/europe-500m-1944/
 game/assets/terrain/europe-250m-1944/
+
+# Generated streamed 90 m height tiles (built locally, not committed)
+game/assets/terrain/europe-90m-tiles-1944/

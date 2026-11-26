@@ -17,6 +17,7 @@ public static class TheatreCatalog
     public const string EuropeId = "europe-1944";
     public const string DetailId = "europe-500m-1944";
     public const string Detail250Id = "europe-250m-1944";
+    public const string Tiles90Id = "europe-90m-tiles-1944";
     public const string AlpsId = "alps-1944";
     public const string PyreneesId = "pyrenees-1944";
 
@@ -78,6 +79,9 @@ public static class TheatreCatalog
 
     public static bool IsInstalled(string id) =>
         FileAccess.FileExists($"res://assets/terrain/{id}/meta.json");
+
+    public static bool AreHeightTilesInstalled(string id) =>
+        FileAccess.FileExists($"res://assets/terrain/{id}/catalog.json");
 
     public static string Resolve(string? requested)
     {
@@ -162,6 +166,12 @@ public static class TheatreCatalog
             ITerrainSource baseTerrain = details.Count == 0
                 ? baseMap
                 : new CompositeTerrain(baseMap, details.ToArray());
+            if (AreHeightTilesInstalled(Tiles90Id))
+            {
+                baseTerrain = new TiledDetailTerrain(
+                    baseTerrain, Directory(Tiles90Id));
+            }
+
             osmPath = ResolveOsmPath(directory, id);
             return MountainPatchManager.CreateForEurope(baseTerrain);
         }
@@ -181,6 +191,8 @@ public static class TheatreCatalog
     /// <summary>
     /// Loads every installed mountain patch up front. Used by the authoritative
     /// multiplayer server, which must answer ground queries for any player position.
+    /// The 90 m tile source is wrapped in full mode so any queried tile is loaded
+    /// lazily and retained, but the 50 m mountain patches still win on top.
     /// </summary>
     public static ITerrainSource LoadTerrainFull(string id, out string directory, out string osmPath)
     {
@@ -203,27 +215,40 @@ public static class TheatreCatalog
             details.Add(Heightmap.Load(Directory(LargeId)));
         }
 
-        if (id == EuropeId)
-        {
-            foreach (StartLocation patch in MountainPatches)
-            {
-                if (IsInstalled(patch.LayerId))
-                {
-                    details.Add(Heightmap.Load(Directory(patch.LayerId)));
-                }
-            }
-        }
-
         if (id != DefaultId && IsInstalled(DefaultId))
         {
             details.Add(Heightmap.Load(Directory(DefaultId)));
         }
 
         LogDetails(details);
-        osmPath = ResolveOsmPath(directory, id);
-        return details.Count == 0
+        ITerrainSource composed = details.Count == 0
             ? baseMap
             : new CompositeTerrain(baseMap, details.ToArray());
+
+        if (id == EuropeId && AreHeightTilesInstalled(Tiles90Id))
+        {
+            composed = new TiledDetailTerrain(
+                composed, Directory(Tiles90Id), full: true);
+        }
+
+        // Patches are separate from the composed base so they keep winning over
+        // the 90 m tiles, matching the streamed client exactly.
+        var patches = new List<Heightmap>();
+        if (id == EuropeId)
+        {
+            foreach (StartLocation patch in MountainPatches)
+            {
+                if (IsInstalled(patch.LayerId))
+                {
+                    patches.Add(Heightmap.Load(Directory(patch.LayerId)));
+                }
+            }
+        }
+
+        osmPath = ResolveOsmPath(directory, id);
+        return patches.Count == 0
+            ? composed
+            : new CompositeTerrain(composed, patches.ToArray());
     }
 
     private static void LogDetails(List<Heightmap> details)

@@ -10,37 +10,48 @@ namespace IronSkies.Game.World;
 /// </summary>
 public sealed class CompositeTerrain : ITerrainSource
 {
-    private readonly Heightmap _base;
+    private readonly ITerrainSource _base;
     private readonly TerrainLayer[] _layers;
     private readonly TerrainLayer[] _details;
 
     public CompositeTerrain(Heightmap baseMap, params Heightmap[] details)
+        : this((ITerrainSource)baseMap, details)
     {
-        _base = baseMap;
-        var all = new List<TerrainLayer>(details.Length + 1)
-        {
-            new(baseMap, 0.0, 0.0),
-        };
+    }
+
+    /// <summary>
+    /// Composes finer detail heightmaps over any base source (a heightmap, a
+    /// composite, or the streamed 90 m tile source). Details are applied
+    /// coarse-to-fine, so the last one wins.
+    /// </summary>
+    public CompositeTerrain(ITerrainSource baseTerrain, params Heightmap[] details)
+    {
+        _base = baseTerrain;
+        var detailLayers = new List<TerrainLayer>(details.Length);
         foreach (Heightmap detail in details)
         {
-            if (detail is null || detail == baseMap)
+            if (detail is null || ReferenceEquals(detail, baseTerrain))
             {
                 continue;
             }
 
-            all.Add(new TerrainLayer(
+            detailLayers.Add(new TerrainLayer(
                 detail,
-                detail.Meta.Origin.Easting - baseMap.Meta.Origin.Easting,
-                detail.Meta.Origin.Northing - baseMap.Meta.Origin.Northing));
+                detail.Meta.Origin.Easting - baseTerrain.Meta.Origin.Easting,
+                detail.Meta.Origin.Northing - baseTerrain.Meta.Origin.Northing));
         }
 
         // Coarse to fine. Extent is the primary key; for layers with the same extent
         // (the 500 m and 250 m continental details) the coarser spacing is applied
         // first so the finer one wins the blend deterministically.
-        all.Sort(CompareCoarseFirst);
+        detailLayers.Sort(CompareCoarseFirst);
+        _details = detailLayers.ToArray();
+
+        var all = new List<TerrainLayer>(
+            baseTerrain.Layers.Count + _details.Length);
+        all.AddRange(baseTerrain.Layers);
+        all.AddRange(_details);
         _layers = all.ToArray();
-        var coarseFirst = new List<TerrainLayer>(_layers);
-        _details = coarseFirst.FindAll(layer => layer.Map != baseMap).ToArray();
     }
 
     public IReadOnlyList<TerrainLayer> Layers => _layers;
