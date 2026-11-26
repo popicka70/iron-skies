@@ -20,11 +20,12 @@ public sealed partial class Launcher : Control
     private Label _scanStatus = null!;
     private Control _settingsOverlay = null!;
     private Control _missionsOverlay = null!;
+    private Control _singleOverlay = null!;
+    private Label _singleStatus = null!;
     private HSlider _volumeSlider = null!;
     private CheckButton _fullscreenCheck = null!;
     private OptionButton _aircraftOption = null!;
     private OptionButton _theatreOption = null!;
-    private OptionButton _startOption = null!;
     private Label _theatreStatus = null!;
     private HSlider _hudScaleSlider = null!;
     private CheckButton _invertPitchCheck = null!;
@@ -115,6 +116,10 @@ public sealed partial class Launcher : Control
         {
             ShowHotas();
         }
+        else if (HasFlag("--open-singleplayer"))
+        {
+            ShowSinglePlayer();
+        }
 
         string? launcherShot = ReadOption("--launcher-shot");
         if (launcherShot is not null)
@@ -182,11 +187,7 @@ public sealed partial class Launcher : Control
             return button;
         }
 
-        MakeButton("Single Player").Pressed += () =>
-        {
-            LaunchConfig.Reset();
-            GetTree().ChangeSceneToFile("res://scenes/Main.tscn");
-        };
+        MakeButton("Single Player").Pressed += ShowSinglePlayer;
 
         MakeButton("Missions").Pressed += ShowMissions;
 
@@ -290,9 +291,111 @@ public sealed partial class Launcher : Control
 
         BuildSettingsOverlay();
         BuildMissionsOverlay();
+        BuildSinglePlayerOverlay();
         BuildKeysOverlay();
         BuildHotasOverlay();
     }
+
+    private void BuildSinglePlayerOverlay()
+    {
+        _singleOverlay = BuildOverlay();
+        var panel = (PanelContainer)_singleOverlay.GetChild(1);
+        panel.OffsetLeft = -290.0f;
+        panel.OffsetRight = 290.0f;
+        panel.OffsetTop = -175.0f;
+        panel.OffsetBottom = 175.0f;
+        var content = (VBoxContainer)panel.GetChild(0);
+
+        var title = new Label
+        {
+            Text = "SINGLE PLAYER",
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        title.AddThemeFontSizeOverride("font_size", 24);
+        content.AddChild(title);
+
+        _singleStatus = new Label
+        {
+            Text = "",
+            HorizontalAlignment = HorizontalAlignment.Center,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        };
+        _singleStatus.AddThemeFontSizeOverride("font_size", 12);
+        _singleStatus.AddThemeColorOverride("font_color", new Color(0.62f, 0.72f, 0.64f));
+        content.AddChild(_singleStatus);
+
+        var airfield = new Button
+        {
+            Text = "Airfield — take off from the runway",
+            CustomMinimumSize = new Vector2(0.0f, 44.0f),
+        };
+        airfield.Pressed += () => StartSinglePlayer("airfield");
+        content.AddChild(airfield);
+
+        bool alpsInstalled = TheatreCatalog.IsInstalled(TheatreCatalog.AlpsId);
+        var alps = new Button
+        {
+            Text = alpsInstalled
+                ? "Alps — start airborne over the range"
+                : "Alps — not installed",
+            Disabled = !alpsInstalled,
+            CustomMinimumSize = new Vector2(0.0f, 44.0f),
+        };
+        alps.Pressed += () => StartSinglePlayer("alps");
+        content.AddChild(alps);
+
+        var note = new Label
+        {
+            Text = "The Alps start switches to the Europe theatre. "
+                + "The theatre itself is chosen in Settings.",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        };
+        note.AddThemeFontSizeOverride("font_size", 12);
+        note.AddThemeColorOverride("font_color", new Color(0.72f, 0.76f, 0.70f));
+        content.AddChild(note);
+
+        var back = new Button
+        {
+            Text = "Back",
+            CustomMinimumSize = new Vector2(0.0f, 34.0f),
+        };
+        back.Pressed += HideSinglePlayer;
+        content.AddChild(back);
+    }
+
+    private void StartSinglePlayer(string location)
+    {
+        if (location == "alps")
+        {
+            if (!TheatreCatalog.IsInstalled(TheatreCatalog.EuropeId)
+                || !TheatreCatalog.IsInstalled(TheatreCatalog.AlpsId))
+            {
+                _singleStatus.Text = "The Alps layer is not installed.";
+                return;
+            }
+
+            GameSettings.Theatre = TheatreCatalog.EuropeId;
+        }
+
+        GameSettings.StartLocation = location;
+        GameSettings.Save();
+        LaunchConfig.Reset();
+        LaunchConfig.StartLocation = location;
+        HideSinglePlayer();
+        GetTree().ChangeSceneToFile("res://scenes/Main.tscn");
+    }
+
+    private void ShowSinglePlayer()
+    {
+        HideSettings();
+        HideMissions();
+        HideKeys();
+        HideHotas();
+        _singleStatus.Text = $"Theatre: {TheatreCatalog.Name(GameSettings.Theatre)}";
+        _singleOverlay.Visible = true;
+    }
+
+    private void HideSinglePlayer() => _singleOverlay.Visible = false;
 
     private void BuildHotasOverlay()
     {
@@ -603,6 +706,7 @@ public sealed partial class Launcher : Control
         HideSettings();
         HideMissions();
         HideKeys();
+        HideSinglePlayer();
         CancelHotasCapture();
         RefreshHotas();
         _hotasOverlay.Visible = true;
@@ -704,6 +808,7 @@ public sealed partial class Launcher : Control
         HideSettings();
         HideMissions();
         HideHotas();
+        HideSinglePlayer();
         foreach ((FlightAction action, Button button) in _keyButtons)
         {
             button.Text = FlightInput.KeyName(action);
@@ -890,6 +995,7 @@ public sealed partial class Launcher : Control
         HideSettings();
         HideKeys();
         HideHotas();
+        HideSinglePlayer();
         _missionsOverlay.Visible = true;
     }
 
@@ -958,9 +1064,9 @@ public sealed partial class Launcher : Control
             AnchorRight = 0.5f,
             AnchorBottom = 0.5f,
             OffsetLeft = -240.0f,
-            OffsetTop = -270.0f,
+            OffsetTop = -240.0f,
             OffsetRight = 250.0f,
-            OffsetBottom = 270.0f,
+            OffsetBottom = 240.0f,
         };
         var style = new StyleBoxFlat
         {
@@ -1066,24 +1172,6 @@ public sealed partial class Launcher : Control
         content.AddChild(_theatreStatus);
         RefreshTheatreStatus();
 
-        content.AddChild(new Label { Text = "Start location" });
-        _startOption = new OptionButton();
-        _startOption.AddItem("Airfield (Normandy)");
-        _startOption.SetItemMetadata(0, "airfield");
-        _startOption.AddItem(
-            TheatreCatalog.IsInstalled(TheatreCatalog.AlpsId)
-                ? "Alps — airborne"
-                : "Alps — not installed");
-        _startOption.SetItemMetadata(1, "alps");
-        _startOption.Selected = GameSettings.StartLocation == "alps" ? 1 : 0;
-        _startOption.ItemSelected += index =>
-        {
-            GameSettings.StartLocation =
-                _startOption.GetItemMetadata((int)index).AsString();
-            GameSettings.Save();
-        };
-        content.AddChild(_startOption);
-
         content.AddChild(new Label { Text = "HUD scale" });
         _hudScaleSlider = new HSlider
         {
@@ -1140,6 +1228,7 @@ public sealed partial class Launcher : Control
         HideMissions();
         HideKeys();
         HideHotas();
+        HideSinglePlayer();
         _settingsOverlay.Visible = true;
         _volumeSlider.Value = GameSettings.MasterVolume;
         _fullscreenCheck.ButtonPressed = GameSettings.Fullscreen;
@@ -1155,7 +1244,6 @@ public sealed partial class Launcher : Control
             }
         }
 
-        _startOption.Selected = GameSettings.StartLocation == "alps" ? 1 : 0;
         RefreshTheatreStatus();
     }
 

@@ -1236,7 +1236,7 @@ public partial class Main : Node3D
         }
 
         TerrainLayer alpsLayer = default;
-        bool alpsStart = GameSettings.StartLocation == "alps"
+        bool alpsStart = LaunchConfig.CurrentStartLocation == "alps"
             && !_spawnSet
             && _missionKind == MissionKind.None
             && !_strikeStart && !_huntStart && !_bomberStart && !_duel

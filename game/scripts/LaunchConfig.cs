@@ -12,6 +12,11 @@ public static class LaunchConfig
     public static string Theatre { get; set; } = "";
     public static string CurrentTheatre =>
         string.IsNullOrEmpty(Theatre) ? GameSettings.Theatre : Theatre;
+    public static string StartLocation { get; set; } = "";
+    public static string CurrentStartLocation =>
+        string.IsNullOrEmpty(StartLocation)
+            ? GameSettings.StartLocation
+            : StartLocation;
 
     public static void Reset()
     {
@@ -20,5 +25,6 @@ public static class LaunchConfig
         Password = "";
         Mission = "";
         Theatre = GameSettings.Theatre;
+        StartLocation = GameSettings.StartLocation;
     }
 }

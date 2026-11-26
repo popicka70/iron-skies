@@ -75,8 +75,8 @@ python3 tools/mapgen/mapgen.py --theatre alps-1944 \
     --resolution 50 --ortho-size 4096 --no-osm
 ```
 
-It is loaded over Europe when installed; **Settings → Start location → Alps** spawns
-airborne over Innsbruck/Stelvio. The generated 123 MB heightmap stays git-ignored.
+It is loaded over Europe when installed; **Single Player → Alps** spawns airborne over
+Innsbruck/Stelvio. The generated 123 MB heightmap stays git-ignored.
 
 Then choose **Settings → Theatre**. The runtime composes up to three levels that share
 the Normandy origin:
@@ -91,6 +91,11 @@ For any point it uses the finest layer containing that point, and the shader ble
 ortho insets with feathered edges. Chunk meshes within 10 km stream as before; the base
 mesh covers the continent. If a selected layer is not installed, the runtime falls back
 to the layers it has.
+
+![Single Player start location dialog](docs/media/m0-singleplayer.png)
+
+*Single Player now asks for a start location — the runway, or an airborne Alpine start.
+The start location no longer lives in Settings; the theatre is still chosen there.*
 
 ![Alps 400 km high-resolution layer](docs/media/m0-alps.jpg)
 

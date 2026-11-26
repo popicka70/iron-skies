@@ -41,6 +41,19 @@ public static class TheatreCatalog
 
     public static string Directory(string id) => $"res://assets/terrain/{id}";
 
+    public static string Name(string id)
+    {
+        foreach (Entry entry in All)
+        {
+            if (entry.Id == id)
+            {
+                return entry.Name;
+            }
+        }
+
+        return id;
+    }
+
     public static bool TryGetLayer(
         ITerrainSource source, string id, out TerrainLayer layer)
     {

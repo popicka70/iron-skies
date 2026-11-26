@@ -104,6 +104,7 @@ the small ones later.
    `river.gdshader` in both scenes.
 5. **Local waterways** — next: OSM `waterway=river/stream/canal` for the detailed
    regions, plus river-channel carving for the terrain.
+6. **Single Player start dialog** — done: Airfield / Alps selection moved out of Settings.
 6. **Polish** — screenshots, README/architecture/roadmap updates, tests, CI, export.
 
 ## Acceptance criteria
