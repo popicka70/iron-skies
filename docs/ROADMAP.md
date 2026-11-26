@@ -62,7 +62,8 @@ simulation runs at 240 Hz with a stable 60 FPS render; CI is green on both OSes.
 - [x] Major European rivers as flowing water surfaces (Natural Earth 1:10m + river shader)
 - [x] Local OSM waterway patch and carved river channels (airfield clear zone excluded)
 - [x] Streamed 90 m GLO-90 height near-field (3×3 tiles, ~9 MB)
-- [ ] 30 m height tiles, imagery tiles and floating-origin rebasing for full-resolution Europe
+- [x] Streamed 30 m compressed GLO-30 height tiles (~78 MB ring)
+- [ ] Imagery tiles and floating-origin rebasing for full-resolution Europe
 - [ ] In-engine telemetry graphs
 - Audio: procedural engine/prop sound driven by RPM and load; wind and gunfire
 

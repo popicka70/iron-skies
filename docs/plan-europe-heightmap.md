@@ -1,7 +1,7 @@
 # Europe-wide height detail — plan
 
-**Status:** height detail complete through the streamed 90 m near-field (steps 1–5).
-Steps 6–7 (30 m/imagery tiles, floating origin, OSM) remain future work.
+**Status:** height detail complete through the streamed 30 m near-field (steps 1–6).
+Steps 7–8 (imagery tiles, floating origin, OSM) remain future work.
 Each numbered implementation step is its own commit/push.
 **Goal:** high-quality relief across the whole continent, not only the mountain ranges.
 
@@ -85,7 +85,7 @@ mountain patches without a 2 GB continental grid.
   the far mesh is rebuilt once. Tile changes happen roughly every 64 km of flight.
 - **No new ortho:** tiles are height-only and reuse the 500 m Blue Marble inset.
 
-### Phase D2a — 30 m continental tiles *(in progress)*
+### Phase D2a — 30 m continental tiles *(done)*
 
 The same catalog/runtime format at 30 m from Copernicus GLO-30, so the streamed ring
 matches the resolution of the regional mountain patches without a giant resident grid.
@@ -121,7 +121,7 @@ matches the resolution of the regional mountain patches without a giant resident
 5. **Tiled 90 m near-field** — 64 km GLO-90 tiles around the player, height-only.
    *(done)*
 6. **Tiled 30 m near-field** — zlib-compressed GLO-30 tiles, runtime picks 30 m over
-   90 m when installed. *(in progress)*
+   90 m when installed. *(done)*
 7. **Floating origin + imagery tiles** — full-resolution detail (Phase D2b).
 8. **Ortho/OSM pass** — Sentinel-2 ranges/lowlands, OSM/EU-Hydro waterways and roads.
 
