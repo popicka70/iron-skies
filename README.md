@@ -124,7 +124,8 @@ the Rhine–Frankfurt lowland (tile 39,27).
 ![Sentinel-2 ortho tile](docs/media/m0-europe-ortho.jpg)
 
 *One 64 km Sentinel-2 tile at 30 m: the Rhine, Frankfurt and the surrounding
-fields/forest, streamed under the 10 m airfield inset.*
+fields/forest, streamed under the 10 m airfield inset. Contains modified Copernicus
+Sentinel data 2024–2025.*
 
 A **streamed near-field** adds lowland relief around the aircraft: 2,035 land tiles of
 64 km, kept in a 3×3 ring, with the outer ring fading back to the continental layer.
