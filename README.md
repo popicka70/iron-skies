@@ -117,7 +117,14 @@ python3 tools/mapgen/mapgen.py --theatre europe-250m-1944 \
 A **streamed Sentinel-2 imagery layer** can overlay the lowlands: `tools/build_ortho_tiles.py`
 renders 64 km tiles on the same grid, and the runtime stitches the centre 3×3 into a
 192 km detail inset (~118 MB) under the 10 m airfield. Missing tiles fall back to Blue
-Marble. Generate a region with `--around-east/--around-north --radius`.
+Marble. Generate a region with `--around-east/--around-north --radius`; a 3×3 tile set
+takes roughly 40–50 minutes and ≈25 MB. The current local build has a 3×3 set around
+the Rhine–Frankfurt lowland (tile 39,27).
+
+![Sentinel-2 ortho tile](docs/media/m0-europe-ortho.jpg)
+
+*One 64 km Sentinel-2 tile at 30 m: the Rhine, Frankfurt and the surrounding
+fields/forest, streamed under the 10 m airfield inset.*
 
 A **streamed near-field** adds lowland relief around the aircraft: 2,035 land tiles of
 64 km, kept in a 3×3 ring, with the outer ring fading back to the continental layer.
