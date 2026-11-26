@@ -106,7 +106,8 @@ python3 tools/mapgen/mapgen.py --theatre europe-500m-1944 \
 That layer is 8,001² (128 MB) and is loaded over the 2 km base; mountain patches still
 win locally. **Mountain patches are streamed:** at most three 400 km ranges stay resident
 around the aircraft (load at half extent + 75 km, unload past +125 km), so the 17 ranges
-no longer sit in memory at once. An optional 250 m layer doubles the lowland detail:
+no longer sit in memory at once. An optional 250 m layer (16,001², 512 MB) doubles the
+lowland detail and reuses the 500 m imagery:
 
 ```bash
 python3 tools/mapgen/mapgen.py --theatre europe-250m-1944 \

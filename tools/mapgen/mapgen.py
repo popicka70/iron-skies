@@ -823,16 +823,7 @@ def build_ortho(theatre: dict, out_dir: Path, meta: dict, size: int) -> dict:
     )
     (out_dir / "meta.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
 
-    attribution = "\n".join(
-        f"- {source.get('id')}: {source.get('attribution', '')} [{source.get('licence')}]"
-        for source in theatre.get("sources", [])
-    )
-    (out_dir / "LICENSE-DATA.txt").write_text(
-        "Map data attribution for this bundle:\n\n"
-        + attribution
-        + f"\n\nSentinel-2 scenes: {', '.join(scene_ids)} ({', '.join(dates)})\n",
-        encoding="utf-8",
-    )
+    write_data_license(theatre, out_dir, scene_ids, dates)
 
     print(f"ortho:    {size}×{size} @ {resolution:.2f} m -> ortho.jpg")
     print(f"landcover: {lc_size}×{lc_size} -> landcover.png")
@@ -959,6 +950,26 @@ def build_osm(theatre: dict, out_dir: Path, meta: dict, radius_m: float, refresh
 # ------------------------------------------------------------------------- main
 
 
+def write_data_license(
+    theatre: dict,
+    out_dir: Path,
+    scene_ids: tuple[str, ...] | list[str] = (),
+    dates: tuple[str, ...] | list[str] = (),
+) -> None:
+    """Write the bundle's data-attribution sidecar (also for height-only layers)."""
+    attribution = "\n".join(
+        f"- {source.get('id')}: {source.get('attribution', '')} [{source.get('licence')}]"
+        for source in theatre.get("sources", [])
+    )
+    extra = ""
+    if scene_ids:
+        extra = f"\n\nSentinel-2 scenes: {', '.join(scene_ids)} ({', '.join(dates)})"
+    (out_dir / "LICENSE-DATA.txt").write_text(
+        "Map data attribution for this bundle:\n\n" + attribution + extra + "\n",
+        encoding="utf-8",
+    )
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Build an Iron Skies terrain bundle.")
     parser.add_argument("--theatre", required=True)
@@ -981,6 +992,8 @@ def main(argv: list[str]) -> int:
     meta = build_heightmap(theatre, out_dir, args.resolution)
     if not args.no_ortho:
         meta = build_ortho(theatre, out_dir, meta, args.ortho_size)
+    else:
+        write_data_license(theatre, out_dir)
     if not args.no_osm:
         build_osm(theatre, out_dir, meta, args.osm_radius, args.refresh_osm)
     return 0

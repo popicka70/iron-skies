@@ -158,6 +158,7 @@ public static class TheatreCatalog
                 details.Add(Heightmap.Load(Directory(DefaultId)));
             }
 
+            LogDetails(details);
             ITerrainSource baseTerrain = details.Count == 0
                 ? baseMap
                 : new CompositeTerrain(baseMap, details.ToArray());
@@ -218,10 +219,27 @@ public static class TheatreCatalog
             details.Add(Heightmap.Load(Directory(DefaultId)));
         }
 
+        LogDetails(details);
         osmPath = ResolveOsmPath(directory, id);
         return details.Count == 0
             ? baseMap
             : new CompositeTerrain(baseMap, details.ToArray());
+    }
+
+    private static void LogDetails(List<Heightmap> details)
+    {
+        if (details.Count == 0)
+        {
+            return;
+        }
+
+        var ids = new List<string>(details.Count);
+        foreach (Heightmap detail in details)
+        {
+            ids.Add(detail.Meta.Id);
+        }
+
+        GD.Print($"Terrain detail layers: {string.Join(", ", ids)}");
     }
 
     private static string ResolveOsmPath(string directory, string id)

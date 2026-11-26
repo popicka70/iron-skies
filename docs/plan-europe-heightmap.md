@@ -80,7 +80,7 @@ queries; clients stream them.
 3. **Patch manager** — dynamic range load/unload and memory budget. *(done)*
 4. **250 m Europe layer** — 512 MB source loaded over the 500 m layer; the finer
    spacing wins the composite tie at equal extent. Built with `--no-ortho` so it reuses
-   the 500 m ortho and adds no GPU texture memory. *(in progress)*
+   the 500 m ortho and adds no GPU texture memory. *(done)*
 5. **Tiled GLO-30/GLO-90 source + floating origin** — full continental detail.
 6. **Ortho/OSM pass** — Sentinel-2 ranges/lowlands, OSM/EU-Hydro waterways and roads.
 
