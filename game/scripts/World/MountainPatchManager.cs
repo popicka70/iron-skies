@@ -59,6 +59,7 @@ public sealed class MountainPatchManager : ITerrainSource
     }
 
     private readonly ITerrainSource _base;
+    private readonly TiledDetailTerrain? _detail;
     private readonly MountainPatch[] _catalog;
     private readonly Dictionary<string, MountainPatch> _byId = new();
     private readonly Dictionary<string, LoadedPatch> _loaded = new();
@@ -74,6 +75,7 @@ public sealed class MountainPatchManager : ITerrainSource
     public MountainPatchManager(ITerrainSource baseTerrain, IEnumerable<MountainPatch> patches)
     {
         _base = baseTerrain;
+        _detail = baseTerrain as TiledDetailTerrain;
         var catalog = new List<MountainPatch>();
         foreach (MountainPatch patch in patches)
         {
@@ -144,6 +146,16 @@ public sealed class MountainPatchManager : ITerrainSource
     /// <summary>Changes produced by the most recent <see cref="SetFocus"/> call.</summary>
     public IReadOnlyList<PatchChange> Changes => _changes;
 
+    /// <summary>True when the streamed 90 m tile set changed on the last focus update.</summary>
+    public bool DetailChanged => _detail is not null && _detail.ChangesCount > 0;
+
+    /// <summary>True when the 90 m centre tile (and therefore the fade ring) moved.</summary>
+    public bool DetailFocusChanged => _detail?.FocusTileChanged ?? false;
+
+    public int ResidentDetailTileCount => _detail?.ResidentTileCount ?? 0;
+    public double ResidentDetailMegabytes => _detail?.ResidentMegabytes ?? 0.0;
+    public TiledDetailTerrain? Detail => _detail;
+
     public bool TryGetPatch(string id, out MountainPatch? patch) =>
         _byId.TryGetValue(id, out patch);
 
@@ -184,6 +196,9 @@ public sealed class MountainPatchManager : ITerrainSource
         _desiredIds.Clear();
         _unloadIds.Clear();
         _newCandidates.Clear();
+
+        bool detailChanged = _detail is not null
+            && _detail.SetFocus(eastMeters, northMeters, immediate);
 
         foreach (MountainPatch patch in _catalog)
         {
@@ -269,7 +284,7 @@ public sealed class MountainPatchManager : ITerrainSource
             RebuildLayers();
         }
 
-        return _changes.Count > 0;
+        return _changes.Count > 0 || detailChanged;
     }
 
     private void Load(MountainPatch patch)

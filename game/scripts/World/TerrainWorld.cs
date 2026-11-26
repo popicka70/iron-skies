@@ -19,6 +19,7 @@ public sealed partial class TerrainWorld : Node3D
 {
     private const int ChunkSizeMeters = 1_000;
     private const int NearRadiusMeters = 10_000;
+    private const double DetailInvalidateRadiusMeters = 20_000.0;
     private const int MinBaseStepMeters = 200;
     private const int MaxBaseQuads = 200;
     private const float ChunkLiftMeters = 0.35f;
@@ -101,7 +102,7 @@ public sealed partial class TerrainWorld : Node3D
             return;
         }
 
-        SetFocus(focus);
+        SetFocus(focus, immediatePatches: true);
         ComputeDesired();
         foreach ((Vector2I key, int lod) in _desired)
         {
@@ -126,7 +127,7 @@ public sealed partial class TerrainWorld : Node3D
                 focus.X, -focus.Z, immediatePatches);
             if (changed)
             {
-                OnPatchSetChanged();
+                OnTerrainSetChanged();
             }
         }
 
@@ -134,26 +135,76 @@ public sealed partial class TerrainWorld : Node3D
     }
 
     /// <summary>
-    /// Re-syncs inset textures and rebuilds the far mesh after the resident patch set
-    /// changed. Called only on a load/unload, never per frame.
+    /// Re-syncs inset textures, rebuilds the far mesh and invalidates affected near
+    /// chunks after the resident patch set or the 90 m tile ring changed. Called
+    /// only on an actual load/unload, never per frame.
     /// </summary>
-    private void OnPatchSetChanged()
+    private void OnTerrainSetChanged()
     {
         if (_patchManager is null)
         {
             return;
         }
 
-        foreach (PatchChange change in _patchManager.Changes)
+        bool patchesChanged = _patchManager.Changes.Count > 0;
+        bool detailChanged = _patchManager.DetailChanged;
+        bool detailFocusChanged = _patchManager.DetailFocusChanged;
+
+        if (patchesChanged)
         {
-            InvalidatePatchArea(change.Patch);
+            foreach (PatchChange change in _patchManager.Changes)
+            {
+                InvalidatePatchArea(change.Patch);
+            }
+
+            SyncInsets();
         }
 
-        SyncInsets();
-        RebuildBaseMesh();
-        GD.Print($"Terrain: resident patches {_patchManager.ResidentPatchCount}/"
-                 + $"{MountainPatchManager.MaxResidentPatches}, "
-                 + $"{_patchManager.ResidentHeightmapMegabytes:0.0} MB heightmaps");
+        if (detailFocusChanged || detailChanged)
+        {
+            // Only the 20 km neighbourhood depends on the new fade ring / newly
+            // resident tiles; the rest of the (already coarse) theatre is left alone.
+            MarkChunksStale(_focus.X, -_focus.Z, DetailInvalidateRadiusMeters);
+        }
+
+        if (patchesChanged || detailFocusChanged)
+        {
+            RebuildBaseMesh();
+        }
+
+        if (patchesChanged)
+        {
+            GD.Print($"Terrain: resident patches {_patchManager.ResidentPatchCount}/"
+                     + $"{MountainPatchManager.MaxResidentPatches}, "
+                     + $"{_patchManager.ResidentHeightmapMegabytes:0.0} MB heightmaps");
+        }
+
+        if (detailChanged)
+        {
+            GD.Print($"Terrain: 90 m tiles resident "
+                     + $"{_patchManager.ResidentDetailTileCount}/"
+                     + $"{TiledDetailTerrain.MaxResidentTiles}, "
+                     + $"{_patchManager.ResidentDetailMegabytes:0.0} MB");
+        }
+    }
+
+    /// <summary>
+    /// Marks nearby near-mesh chunks for a rebuild without removing their nodes.
+    /// The old mesh stays visible until the rebuild budget replaces it, so a
+    /// 90 m focus-tile change never leaves a hole in the near field.
+    /// </summary>
+    private void MarkChunksStale(double east, double north, double radius)
+    {
+        foreach ((Vector2I key, Chunk chunk) in _chunks)
+        {
+            double chunkEast = -_mapHalfMeters + (key.X + 0.5) * ChunkSizeMeters;
+            double chunkNorth = -_mapHalfMeters + (key.Y + 0.5) * ChunkSizeMeters;
+            if (Math.Abs(chunkEast - east) <= radius
+                && Math.Abs(chunkNorth - north) <= radius)
+            {
+                chunk.Lod = -1;
+            }
+        }
     }
 
     /// <summary>
