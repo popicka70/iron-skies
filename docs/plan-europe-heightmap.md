@@ -64,10 +64,29 @@ queries; clients stream them.
   patches still win locally. A tiled near-field replaces the monolithic layer in
   Phase D if memory or load time becomes a problem.
 
-### Phase D — full tiled source
+### Phase D1 — tiled 90 m near-field *(next)*
 
-- Copernicus GLO-30/GLO-90 height tiles (64 km, 90 m/30 m) streamed around the aircraft.
-- Sentinel-2/Blue Marble imagery tiles + virtual-texture page table.
+A 3 × 3 ring of 64 km GLO-90 tiles (90 m) is streamed around the aircraft while the
+500 m/250 m layers remain the far field. This gives lowland detail comparable to the
+mountain patches without a 2 GB continental grid.
+
+- **Grid:** same UTM 30N origin as Europe; spacing 90 m; tile stride 712 px
+  (64,080 m); each tile is 713 × 713 px with a one-pixel overlap so bilinear samples
+  are continuous across tile edges. 63 × 63 possible tiles; all-ocean tiles skipped.
+- **Bundle:** `europe-90m-tiles-1944/tiles/{x}_{y}.r16` plus `catalog.json`
+  (origin, spacing, stride, tile size, list of land tiles). Built locally and ignored.
+- **Runtime:** `TiledDetailTerrain` keeps the 3 × 3 block around the player (max nine
+  ~1 MB tiles). The centre tile has weight 1; the outer ring feathers back to the
+  500 m/250 m layer, so the seam is ≥64 km away and outside the 10 km near mesh.
+- **Priority:** 50 m mountain patches → 90 m tiles → 250 m → 500 m → 2 km base.
+- **Invalidation:** when the centre tile changes, rebuild only chunks within ~20 km;
+  the far mesh is rebuilt once. Tile changes happen roughly every 64 km of flight.
+- **No new ortho:** tiles are height-only and reuse the 500 m Blue Marble inset.
+
+### Phase D2 — full tiled source
+
+- Copernicus GLO-30 (30 m) height tiles and Sentinel-2/Blue Marble imagery tiles with a
+  virtual-texture page table.
 - Floating-origin rebasing (ADR-0006) for clean precision across 4,000 km.
 - OSM/EU-Hydro vector detail.
 
@@ -81,8 +100,9 @@ queries; clients stream them.
 4. **250 m Europe layer** — 512 MB source loaded over the 500 m layer; the finer
    spacing wins the composite tie at equal extent. Built with `--no-ortho` so it reuses
    the 500 m ortho and adds no GPU texture memory. *(done)*
-5. **Tiled GLO-30/GLO-90 source + floating origin** — full continental detail.
-6. **Ortho/OSM pass** — Sentinel-2 ranges/lowlands, OSM/EU-Hydro waterways and roads.
+5. **Tiled 90 m near-field** — 64 km GLO-90 tiles around the player, height-only.
+6. **Floating origin + 30 m/imagery tiles** — full-resolution detail (Phase D2).
+7. **Ortho/OSM pass** — Sentinel-2 ranges/lowlands, OSM/EU-Hydro waterways and roads.
 
 ## Build commands
 
