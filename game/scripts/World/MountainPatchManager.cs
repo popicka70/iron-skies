@@ -146,10 +146,10 @@ public sealed class MountainPatchManager : ITerrainSource
     /// <summary>Changes produced by the most recent <see cref="SetFocus"/> call.</summary>
     public IReadOnlyList<PatchChange> Changes => _changes;
 
-    /// <summary>True when the streamed 90 m tile set changed on the last focus update.</summary>
+    /// <summary>True when the streamed detail tile set changed on the last focus update.</summary>
     public bool DetailChanged => _detail is not null && _detail.ChangesCount > 0;
 
-    /// <summary>True when the 90 m centre tile (and therefore the fade ring) moved.</summary>
+    /// <summary>True when the streamed detail centre tile (and therefore the fade ring) moved.</summary>
     public bool DetailFocusChanged => _detail?.FocusTileChanged ?? false;
 
     public int ResidentDetailTileCount => _detail?.ResidentTileCount ?? 0;

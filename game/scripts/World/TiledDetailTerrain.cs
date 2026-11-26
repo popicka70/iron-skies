@@ -37,7 +37,8 @@ public sealed class HeightTileCatalog
 public readonly record struct DetailTileChange(int X, int Y, bool Loaded);
 
 /// <summary>
-/// Streams 90 m Copernicus GLO-90 height tiles over a base terrain source. The
+/// Streams Copernicus height tiles (90 m GLO-90 or 30 m GLO-30) over a base terrain
+/// source. The
 /// client keeps a 3×3 ring around the focus (at most nine 713² int16 tiles,
 /// ≈0.97 MB each) and fades the outer ring back to the base, so the 90 m/base
 /// seam stays far outside the 10 km near mesh.
@@ -45,16 +46,18 @@ public readonly record struct DetailTileChange(int X, int Y, bool Loaded);
 /// Tile priority is below the streamed 50 m mountain patches
 /// (<see cref="MountainPatchManager"/> wraps this source) and above the 250 m /
 /// 500 m / 2 km continental layers. The 40 km Normandy and 400 km France layers
-/// are finer than 90 m and keep winning where they cover the point, which keeps
+/// are finer than the streamed tiles and keep winning where they cover the point,
+/// which keeps
 /// the airfield and its 25 m ground.
 ///
 /// In <c>full</c> mode (authoritative multiplayer server) a queried tile is
-/// loaded lazily and retained without a bound, so ground queries match the
-/// client's centre-tile sample. Clients are never unbounded.
+/// loaded lazily into a bounded 128-tile LRU, so ground queries match the client's
+/// centre-tile sample without unbounded growth as players spread out.
 /// </summary>
 public sealed class TiledDetailTerrain : ITerrainSource
 {
     public const int MaxResidentTiles = 9;
+    public const int MaxResidentTilesFull = 128;
 
     private static readonly JsonSerializerOptions Options = new()
     {
@@ -142,8 +145,9 @@ public sealed class TiledDetailTerrain : ITerrainSource
         GD.Print($"{_catalog.Spacing:0} m detail: {_catalog.Id}, "
                  + $"{_catalogByKey.Count} land tiles, "
                  + $"{_catalog.TileSize}² @ {_catalog.Spacing:0} m, "
-                 + $"max {MaxResidentTiles} resident, "
-                 + (_full ? "full mode (unbounded)" : "streamed 3×3"));
+                 + (_full
+                     ? $"full mode (max {MaxResidentTilesFull} cached tiles)"
+                     : $"max {MaxResidentTiles} resident, streamed 3×3"));
     }
 
     public int ChangesCount => _changes.Count;
@@ -215,6 +219,13 @@ public sealed class TiledDetailTerrain : ITerrainSource
             {
                 return baseHeight;
             }
+
+            EvictFull();
+        }
+
+        if (_full)
+        {
+            tile.LastUsed = ++_clock;
         }
 
         double tileHeight = SampleTile(tile, tileX, tileY, eastMeters, northMeters);
@@ -300,6 +311,34 @@ public sealed class TiledDetailTerrain : ITerrainSource
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Bounds the server's lazy cache so player spread cannot grow it without limit.
+    /// The least-recently-used tile is reloaded on demand if a query returns to it.
+    /// </summary>
+    private void EvictFull()
+    {
+        while (_tiles.Count > MaxResidentTilesFull)
+        {
+            int victim = -1;
+            long oldest = long.MaxValue;
+            foreach ((int key, Tile resident) in _tiles)
+            {
+                if (resident.LastUsed < oldest)
+                {
+                    oldest = resident.LastUsed;
+                    victim = key;
+                }
+            }
+
+            if (victim < 0)
+            {
+                return;
+            }
+
+            _tiles.Remove(victim);
+        }
     }
 
     private void RebuildDesired()
@@ -403,7 +442,8 @@ public sealed class TiledDetailTerrain : ITerrainSource
         catch (Exception error)
         {
             _failed.Add(Key(entry.X, entry.Y));
-            GD.PushError($"Could not load 90 m tile {entry.X},{entry.Y}: {error.Message}");
+            GD.PushError($"Could not load {_catalog.Spacing:0} m tile "
+                         + $"{entry.X},{entry.Y}: {error.Message}");
             return null;
         }
     }

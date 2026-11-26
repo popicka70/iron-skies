@@ -136,7 +136,7 @@ public sealed partial class TerrainWorld : Node3D
 
     /// <summary>
     /// Re-syncs inset textures, rebuilds the far mesh and invalidates affected near
-    /// chunks after the resident patch set or the 90 m tile ring changed. Called
+    /// chunks after the resident patch set or the detail tile ring changed. Called
     /// only on an actual load/unload, never per frame.
     /// </summary>
     private void OnTerrainSetChanged()
@@ -191,7 +191,7 @@ public sealed partial class TerrainWorld : Node3D
     /// <summary>
     /// Marks nearby near-mesh chunks for a rebuild without removing their nodes.
     /// The old mesh stays visible until the rebuild budget replaces it, so a
-    /// 90 m focus-tile change never leaves a hole in the near field.
+    /// detail focus-tile change never leaves a hole in the near field.
     /// </summary>
     private void MarkChunksStale(double east, double north, double radius)
     {
