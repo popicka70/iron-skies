@@ -181,7 +181,7 @@ public sealed partial class TerrainWorld : Node3D
 
         if (detailChanged)
         {
-            GD.Print($"Terrain: 90 m tiles resident "
+            GD.Print($"Terrain: detail tiles resident "
                      + $"{_patchManager.ResidentDetailTileCount}/"
                      + $"{TiledDetailTerrain.MaxResidentTiles}, "
                      + $"{_patchManager.ResidentDetailMegabytes:0.0} MB");

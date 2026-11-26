@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO.Compression;
 using System.Text.Json;
 using Godot;
 
@@ -11,6 +12,7 @@ public sealed class HeightTileEntry
     public int X { get; set; }
     public int Y { get; set; }
     public string File { get; set; } = "";
+    public bool Compressed { get; set; }
     public int MinHeight { get; set; }
     public int MaxHeight { get; set; }
 }
@@ -137,7 +139,8 @@ public sealed class TiledDetailTerrain : ITerrainSource
         }
 
         _finestBaseLayers = finest.ToArray();
-        GD.Print($"90 m detail: {_catalog.Id}, {_catalogByKey.Count} land tiles, "
+        GD.Print($"{_catalog.Spacing:0} m detail: {_catalog.Id}, "
+                 + $"{_catalogByKey.Count} land tiles, "
                  + $"{_catalog.TileSize}² @ {_catalog.Spacing:0} m, "
                  + $"max {MaxResidentTiles} resident, "
                  + (_full ? "full mode (unbounded)" : "streamed 3×3"));
@@ -278,7 +281,8 @@ public sealed class TiledDetailTerrain : ITerrainSource
 
         if (_changes.Count > 0)
         {
-            GD.Print($"90 m tiles: resident {_tiles.Count}/{MaxResidentTiles}, "
+            GD.Print($"{_catalog.Spacing:0} m tiles: resident "
+                     + $"{_tiles.Count}/{MaxResidentTiles}, "
                      + $"{ResidentMegabytes:0.0} MB");
         }
 
@@ -363,6 +367,15 @@ public sealed class TiledDetailTerrain : ITerrainSource
         {
             byte[] bytes = FileAccess.GetFileAsBytes(path);
             int expected = _catalog.TileSize * _catalog.TileSize * sizeof(short);
+            if (entry.Compressed)
+            {
+                using var input = new System.IO.MemoryStream(bytes, writable: false);
+                using var zlib = new ZLibStream(input, CompressionMode.Decompress);
+                using var output = new System.IO.MemoryStream(expected);
+                zlib.CopyTo(output);
+                bytes = output.ToArray();
+            }
+
             if (bytes.Length != expected)
             {
                 throw new InvalidOperationException(
@@ -381,7 +394,7 @@ public sealed class TiledDetailTerrain : ITerrainSource
             _changes.Add(new DetailTileChange(entry.X, entry.Y, true));
             if (_full && (_tiles.Count == 1 || _tiles.Count % 64 == 0))
             {
-                GD.Print($"90 m tiles (full): resident {_tiles.Count}, "
+                GD.Print($"{_catalog.Spacing:0} m tiles (full): resident {_tiles.Count}, "
                          + $"{ResidentMegabytes:0.0} MB");
             }
 

@@ -85,10 +85,25 @@ mountain patches without a 2 GB continental grid.
   the far mesh is rebuilt once. Tile changes happen roughly every 64 km of flight.
 - **No new ortho:** tiles are height-only and reuse the 500 m Blue Marble inset.
 
-### Phase D2 — full tiled source
+### Phase D2a — 30 m continental tiles *(in progress)*
 
-- Copernicus GLO-30 (30 m) height tiles and Sentinel-2/Blue Marble imagery tiles with a
-  virtual-texture page table.
+The same catalog/runtime format at 30 m from Copernicus GLO-30, so the streamed ring
+matches the resolution of the regional mountain patches without a giant resident grid.
+
+- **Grid:** 2,136 px stride (64,080 m), 2,137 × 2,137 px tiles, 63 × 63 grid with the
+  same one-pixel overlap and origin as the 90 m layer.
+- **Bundle:** `europe-30m-tiles-1944`; tiles are zlib-compressed (≈42% of raw), so the
+  full land set is ≈7 GB instead of ≈17 GB. `TiledDetailTerrain` decodes them with
+  `ZLibStream`; the catalog marks each tile `compressed`.
+- **Runtime:** the 3 × 3 ring is ≈82 MB at 30 m. The 90 m bundle remains the fallback
+  for lower-memory installs; the runtime picks 30 m when both are installed.
+- **Priority:** 50 m patches → 30 m tiles → 25/50 m local layers → 250 m → 500 m → 2 km.
+- **Exports:** the 30 m bundle is optional and much larger than the 90 m one; the
+  default export keeps the 90 m layer unless the 30 m filter is added deliberately.
+
+### Phase D2b — imagery and floating origin
+
+- Sentinel-2/Blue Marble imagery tiles with a virtual-texture page table.
 - Floating-origin rebasing (ADR-0006) for clean precision across 4,000 km.
 - OSM/EU-Hydro vector detail.
 
@@ -103,8 +118,11 @@ mountain patches without a 2 GB continental grid.
    spacing wins the composite tie at equal extent. Built with `--no-ortho` so it reuses
    the 500 m ortho and adds no GPU texture memory. *(done)*
 5. **Tiled 90 m near-field** — 64 km GLO-90 tiles around the player, height-only.
-6. **Floating origin + 30 m/imagery tiles** — full-resolution detail (Phase D2).
-7. **Ortho/OSM pass** — Sentinel-2 ranges/lowlands, OSM/EU-Hydro waterways and roads.
+   *(done)*
+6. **Tiled 30 m near-field** — zlib-compressed GLO-30 tiles, runtime picks 30 m over
+   90 m when installed. *(in progress)*
+7. **Floating origin + imagery tiles** — full-resolution detail (Phase D2b).
+8. **Ortho/OSM pass** — Sentinel-2 ranges/lowlands, OSM/EU-Hydro waterways and roads.
 
 ## Build commands
 
@@ -122,8 +140,12 @@ done
 # Streamed 90 m near-field (2035 land tiles, ≈2 GB, ~2 min with 8 workers)
 python3 tools/build_height_tiles.py --theatre europe-90m-tiles-1944 --workers 8
 
-# Validate tile edges and lowland roughness
-python3 tools/check_height_tiles.py
+# 30 m near-field (zlib-compressed, ≈7 GB, optional)
+python3 tools/build_height_tiles.py --theatre europe-30m-tiles-1944 --workers 8
+
+# Validate tile edges and lowland roughness (raw or compressed)
+python3 tools/check_height_tiles.py \
+    game/assets/terrain/europe-30m-tiles-1944/catalog.json
 ```
 
 ## Budgets and acceptance
@@ -134,6 +156,6 @@ python3 tools/check_height_tiles.py
 - The mountain patches still win at 50 m; the 40 km airfield layer still wins locally.
 - The patch manager keeps at most three range patches resident (~366 MB); with the
   500 m and 250 m layers, total height memory is ≈1 GB. The 90 m near-field adds only
-  ≈9 MB for the client's 3×3 ring and grows lazily on the server.
+  ≈9 MB for the client's 3×3 ring and grows lazily on the server; 30 m raises the ring to ≈82 MB and the local bundle to ≈7 GB compressed.
 - Existing takeoff, mission, net and range-start tests stay green.
 - Every step is committed and pushed.

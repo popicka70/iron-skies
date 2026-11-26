@@ -105,7 +105,10 @@ fetch → clip/reproject → heightmap LOD pyramid → derivatives (normals, slo
   90 m relief covers the lowlands without a multi-gigabyte resident grid. The 50 m
   mountain patches still win on top, and the 25 m airfield/50 m France layers keep
   their finer ground. The authoritative server uses an unbounded lazy-load mode so
-  any queried ground point matches the client's centre tile.
+  any queried ground point matches the client's centre tile. The optional
+  `europe-30m-tiles-1944` bundle uses the same catalog at 30 m, with zlib-compressed
+  tiles decoded by `ZLibStream`; the runtime prefers 30 m when it is installed and
+  falls back to 90 m otherwise.
 - **OSM detail:** roads and hedgerows are draped as ribbon/fence meshes for the 7 km
   patch around the spawn. Woods and buildings are the next OSM layer.
 - **Geomorphing** (vertex position blending) over the last 15% of each LOD range removes

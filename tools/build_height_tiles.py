@@ -39,6 +39,7 @@ import math
 import sys
 import threading
 import time
+import zlib
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -55,8 +56,13 @@ DEFAULT_ORIGIN_META = TERRAIN_ROOT / "europe-1944" / "meta.json"
 DEFAULT_SPACING = 90.0
 DEFAULT_TILE_STRIDE = 712
 DEFAULT_TILES_PER_AXIS = 63
-TILE_SIZE = DEFAULT_TILE_STRIDE + 1
-SOURCE_PRODUCT = "copernicus-glo90"
+DEFAULT_SOURCE_PRODUCT = "copernicus-glo90"
+# Copernicus GLO-30 is a 1" grid; GLO-90 is 3". The in-memory per-tile mosaic
+# is built on the product's native grid so adjacent tiles share exact samples.
+MOSAIC_STEP = {
+    "copernicus-glo30": 1.0 / 3600.0,
+    "copernicus-glo90": 1.0 / 1200.0,
+}
 
 
 def read_base_geometry(meta_path: Path) -> tuple[float, float, float]:
@@ -117,10 +123,11 @@ def geographic_bbox(
             max(lons) + margin, max(lats) + margin)
 
 
-def intersecting_dem_names(bbox: tuple[float, float, float, float]) -> set[str]:
+def intersecting_dem_names(
+    bbox: tuple[float, float, float, float], product: str) -> set[str]:
     west, south, east, north = bbox
     return {
-        mapgen.dem_tile_name(lat, lon, SOURCE_PRODUCT)
+        mapgen.dem_tile_name(lat, lon, product)
         for lat in range(math.floor(south), math.ceil(north))
         for lon in range(math.floor(west), math.ceil(east))
     }
@@ -157,13 +164,14 @@ def fill_mosaic_seams(mosaic: np.ndarray) -> None:
             np.flatnonzero(col_nan), valid, mosaic[valid, col])
 
 
-def prefetch_dem_tiles(names: set[str], workers: int) -> dict[str, Path]:
+def prefetch_dem_tiles(
+    names: set[str], workers: int, product: str) -> dict[str, Path]:
     """Fetch/cache the 1° tiles needed by the candidate tiles, concurrently."""
-    print(f"DEM cache: checking {len(names)} {SOURCE_PRODUCT} tiles", flush=True)
+    print(f"DEM cache: checking {len(names)} {product} tiles", flush=True)
     available: dict[str, Path] = {}
     with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
         futures = {
-            pool.submit(mapgen.fetch_tile, name, SOURCE_PRODUCT): name
+            pool.submit(mapgen.fetch_tile, name, product): name
             for name in names
         }
         for future in as_completed(futures):
@@ -184,9 +192,11 @@ def build_tile(
     half: float,
     spacing: float,
     stride: int,
+    product: str,
+    compressed: bool,
     available: dict[str, Path],
 ) -> dict | None:
-    """Build one 713² tile. Returns its catalog entry, or None for all-ocean."""
+    """Build one tile. Returns its catalog entry, or None for all-ocean."""
     import rasterio
     from rasterio.crs import CRS
     from rasterio.transform import from_origin
@@ -197,7 +207,7 @@ def build_tile(
     east0 = tile_origin(x, half, extent)
     north0 = tile_north_origin(y, half, extent)
 
-    names = intersecting_dem_names(bbox)
+    names = intersecting_dem_names(bbox, product)
     paths = [available[name] for name in sorted(names) if name in available]
     if not paths:
         return None  # No Copernicus coverage at all: open ocean.
@@ -208,7 +218,7 @@ def build_tile(
     # the source at slightly different sub-pixel positions. Build a small
     # in-memory mosaic on the finest global grid instead, then warp that to the
     # tile: every tile evaluates identical source values on its shared edge.
-    step = 1.0 / 1200.0
+    step = MOSAIC_STEP.get(product, MOSAIC_STEP["copernicus-glo90"])
     mosaic_west = (math.floor(bbox[0] / step - 0.5) + 0.5) * step
     mosaic_south = (math.floor(bbox[1] / step - 0.5) + 0.5) * step
     mosaic_east = (math.ceil(bbox[2] / step - 0.5) + 0.5) * step
@@ -294,7 +304,8 @@ def build_tile(
         origin_east + east0 - spacing * 0.5,
         origin_north + north0 + spacing * 0.5,
         spacing, spacing)
-    destination = np.full((TILE_SIZE, TILE_SIZE), -100.0, dtype=np.float32)
+    tile_size = stride + 1
+    destination = np.full((tile_size, tile_size), -100.0, dtype=np.float32)
     reproject(
         source=mosaic,
         destination=destination,
@@ -313,12 +324,17 @@ def build_tile(
 
     tiles_dir = out_dir / "tiles"
     tiles_dir.mkdir(parents=True, exist_ok=True)
-    filename = f"tiles/tile_{x:02d}_{y:02d}.r16"
-    heights.tofile(out_dir / filename)
+    suffix = ".r16z" if compressed else ".r16"
+    filename = f"tiles/tile_{x:02d}_{y:02d}{suffix}"
+    if compressed:
+        (out_dir / filename).write_bytes(zlib.compress(heights.tobytes(), 6))
+    else:
+        heights.tofile(out_dir / filename)
     return {
         "x": x,
         "y": y,
         "file": filename,
+        "compressed": compressed,
         "minHeight": int(heights.min()),
         "maxHeight": int(heights.max()),
     }
@@ -333,6 +349,7 @@ def write_catalog(
     spacing: float,
     stride: int,
     tiles_per_axis: int,
+    product: str,
     tiles: list[dict],
 ) -> None:
     heights = [tile["minHeight"] for tile in tiles] + [
@@ -348,12 +365,13 @@ def write_catalog(
         },
         "spacing": spacing,
         "halfExtent": half,
-        "tileSize": TILE_SIZE,
+        "tileSize": stride + 1,
         "tileStride": stride,
         "tilesPerAxis": tiles_per_axis,
         "tileExtentMeters": stride * spacing,
-        "source": ["Copernicus DEM GLO-90"],
-        "demSource": SOURCE_PRODUCT,
+        "source": [mapgen.DEM_PRODUCTS.get(
+            product, mapgen.DEM_PRODUCTS["copernicus-glo30"])[2]],
+        "demSource": product,
         "waterMask": "NOAA/NCEI ETOPO1",
         "generatedBy": "tools/build_height_tiles.py",
         "heightRangeMeters": [min(heights), max(heights)] if heights else [0, 0],
@@ -369,6 +387,9 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--theatre", default="europe-90m-tiles-1944")
     parser.add_argument("--out", type=Path, default=None)
     parser.add_argument("--workers", type=int, default=8)
+    parser.add_argument(
+        "--compress", action="store_true",
+        help="zlib-compress each tile (catalog marks it compressed)")
     parser.add_argument(
         "--origin-meta", type=Path, default=DEFAULT_ORIGIN_META,
         help="continental meta.json that pins origin and half extent")
@@ -395,7 +416,14 @@ def main(argv: list[str]) -> int:
     print(f"Bundle:  {out_dir}")
     print(f"Grid:    origin {origin_east:.3f}, {origin_north:.3f}, "
           f"half {half:.0f} m, spacing {spacing:g} m")
-    print(f"Tiles:   {tiles_per_axis}×{tiles_per_axis}, {TILE_SIZE}² samples, "
+    product = terrain.get("dem_source", DEFAULT_SOURCE_PRODUCT)
+    if product not in mapgen.DEM_PRODUCTS:
+        raise SystemExit(f"unsupported dem_source: {product}")
+    compressed = bool(
+        args.compress or terrain.get("tile_compression") == "zlib")
+    print(f"DEM:     {product} ({mapgen.DEM_PRODUCTS[product][2]})")
+    print(f"Storage: {'zlib-compressed' if compressed else 'raw int16'}")
+    print(f"Tiles:   {tiles_per_axis}×{tiles_per_axis}, {stride + 1}² samples, "
           f"stride {stride} ({extent:.0f} m)")
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -430,11 +458,11 @@ def main(argv: list[str]) -> int:
             tile_north_origin(y, half, extent),
             extent, origin_east, origin_north)
         prepared.append((x, y, bbox))
-        needed.update(intersecting_dem_names(bbox))
+        needed.update(intersecting_dem_names(bbox, product))
 
     print(f"Building {len(prepared)} candidate tiles with "
           f"{max(1, args.workers)} workers", flush=True)
-    available = prefetch_dem_tiles(needed, args.workers)
+    available = prefetch_dem_tiles(needed, args.workers, product)
 
     tiles: list[dict] = []
     completed = 0
@@ -444,7 +472,7 @@ def main(argv: list[str]) -> int:
     def work(item: tuple[int, int, tuple[float, float, float, float]]) -> dict | None:
         return build_tile(
             item[0], item[1], item[2], out_dir, origin_east, origin_north, half,
-            spacing, stride, available)
+            spacing, stride, product, compressed, available)
 
     with ThreadPoolExecutor(max_workers=max(1, args.workers)) as pool:
         futures = {pool.submit(work, item): item for item in prepared}
@@ -471,7 +499,7 @@ def main(argv: list[str]) -> int:
 
     write_catalog(
         out_dir, theatre, origin_east, origin_north, half, spacing, stride,
-        tiles_per_axis, tiles)
+        tiles_per_axis, product, tiles)
     mapgen.write_data_license(theatre, out_dir)
 
     total_bytes = sum((out_dir / tile["file"]).stat().st_size for tile in tiles)

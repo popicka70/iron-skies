@@ -103,3 +103,6 @@ game/assets/terrain/europe-250m-1944/
 
 # Generated streamed 90 m height tiles (built locally, not committed)
 game/assets/terrain/europe-90m-tiles-1944/
+
+# Generated 30 m height tiles (built locally, not committed)
+game/assets/terrain/europe-30m-tiles-1944/

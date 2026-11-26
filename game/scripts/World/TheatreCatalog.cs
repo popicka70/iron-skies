@@ -18,6 +18,7 @@ public static class TheatreCatalog
     public const string DetailId = "europe-500m-1944";
     public const string Detail250Id = "europe-250m-1944";
     public const string Tiles90Id = "europe-90m-tiles-1944";
+    public const string Tiles30Id = "europe-30m-tiles-1944";
     public const string AlpsId = "alps-1944";
     public const string PyreneesId = "pyrenees-1944";
 
@@ -82,6 +83,17 @@ public static class TheatreCatalog
 
     public static bool AreHeightTilesInstalled(string id) =>
         FileAccess.FileExists($"res://assets/terrain/{id}/catalog.json");
+
+    /// <summary>Finer streamed height tiles win when more than one bundle is installed.</summary>
+    public static string? PreferredHeightTiles()
+    {
+        if (AreHeightTilesInstalled(Tiles30Id))
+        {
+            return Tiles30Id;
+        }
+
+        return AreHeightTilesInstalled(Tiles90Id) ? Tiles90Id : null;
+    }
 
     public static string Resolve(string? requested)
     {
@@ -166,10 +178,11 @@ public static class TheatreCatalog
             ITerrainSource baseTerrain = details.Count == 0
                 ? baseMap
                 : new CompositeTerrain(baseMap, details.ToArray());
-            if (AreHeightTilesInstalled(Tiles90Id))
+            string? tilesId = PreferredHeightTiles();
+            if (tilesId is not null)
             {
                 baseTerrain = new TiledDetailTerrain(
-                    baseTerrain, Directory(Tiles90Id));
+                    baseTerrain, Directory(tilesId));
             }
 
             osmPath = ResolveOsmPath(directory, id);
@@ -225,10 +238,11 @@ public static class TheatreCatalog
             ? baseMap
             : new CompositeTerrain(baseMap, details.ToArray());
 
-        if (id == EuropeId && AreHeightTilesInstalled(Tiles90Id))
+        string? tilesId = id == EuropeId ? PreferredHeightTiles() : null;
+        if (tilesId is not null)
         {
             composed = new TiledDetailTerrain(
-                composed, Directory(Tiles90Id), full: true);
+                composed, Directory(tilesId), full: true);
         }
 
         // Patches are separate from the composed base so they keep winning over

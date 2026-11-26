@@ -114,14 +114,18 @@ python3 tools/mapgen/mapgen.py --theatre europe-250m-1944 \
     --resolution 250 --no-ortho --no-osm
 ```
 
-A **streamed 90 m near-field** adds lowland relief around the aircraft: 2,035 land tiles
-of 64 km, kept in a 3×3 ring (≤9 tiles, ≈9 MB), with the outer ring fading back to the
-continental layer. The 50 m mountain patches still win on top, and the 25 m airfield /
-50 m France layers keep their finer ground.
+A **streamed near-field** adds lowland relief around the aircraft: 2,035 land tiles of
+64 km, kept in a 3×3 ring, with the outer ring fading back to the continental layer.
+The 90 m GLO-90 bundle uses ≈9 MB; the optional 30 m GLO-30 bundle uses ≈82 MB and is
+zlib-compressed on disk (≈7 GB). The runtime picks 30 m when installed, otherwise 90 m.
+The 50 m mountain patches still win on top, and the 25 m airfield / 50 m France layers
+keep their finer ground.
 
 ```bash
 python3 tools/build_height_tiles.py --theatre europe-90m-tiles-1944 --workers 8
-python3 tools/check_height_tiles.py
+python3 tools/build_height_tiles.py --theatre europe-30m-tiles-1944 --workers 8
+python3 tools/check_height_tiles.py \
+    game/assets/terrain/europe-30m-tiles-1944/catalog.json
 ```
 
 See [docs/plan-europe-heightmap.md](docs/plan-europe-heightmap.md) for the continental
@@ -140,13 +144,14 @@ Europe/Normandy origin:
 | Europe 500 m detail | 500 m | Blue Marble 488 m/px | 4,000 km |
 | Europe 250 m detail | 250 m | Blue Marble 488 m/px | 4,000 km |
 | Europe 90 m tiles (streamed 3×3) | 90 m | (reuses 500 m) | 64 km each |
+| Europe 30 m tiles (optional, streamed) | 30 m | (reuses 500 m) | 64 km each |
 | Mountain patches (17, streamed) | 50 m | Blue Marble 98 m/px | 400 km each |
 | North-west France | 50 m | Sentinel-2 98 m/px | 400 km |
 | Normandy | 25 m | Sentinel-2 10 m/px | 40 km |
 
 For any point it uses the finest layer containing that point, and the shader blends the
 ortho insets with feathered edges. Chunk meshes within 10 km stream as before; the base
-mesh covers the continent. The 90 m ring only reloads when the centre 64 km tile
+mesh covers the continent. The tile ring only reloads when the centre 64 km tile
 changes, invalidating chunks within 20 km. If a layer is not installed, the runtime
 falls back to the layers it has.
 

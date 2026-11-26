@@ -3,8 +3,9 @@
 
 Checks:
   * adjacent tiles agree on their shared one-pixel overlap edge (max |Δ| m);
-  * a lowland point is actually sampled from the 90 m tile and differs from
-    the 250 m continental layer, with more local roughness than 250 m.
+  * a lowland point is actually sampled from the streamed tile and differs
+    from the 250 m continental layer, with more local roughness than 250 m.
+  * tiles may be raw int16 or zlib-compressed (`compressed: true`).
 
 Usage:
     python3 tools/check_height_tiles.py \
@@ -16,6 +17,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import zlib
 from functools import lru_cache
 from pathlib import Path
 
@@ -34,7 +36,10 @@ def load_catalog(path: Path) -> dict:
 
 
 def tile_array(bundle: Path, entry: dict, size: int) -> np.ndarray:
-    return np.fromfile(bundle / entry["file"], dtype="<i2").reshape(size, size)
+    payload = (bundle / entry["file"]).read_bytes()
+    if entry.get("compressed"):
+        payload = zlib.decompress(payload)
+    return np.frombuffer(payload, dtype="<i2").reshape(size, size)
 
 
 def edge_check(bundle: Path, catalog: dict) -> tuple[int, float, tuple | None]:
@@ -125,16 +130,16 @@ def lowland_check(bundle: Path, catalog: dict,
         raise SystemExit(f"lowland point {east},{north} is in skipped/ocean tile {x},{y}")
 
     samples = tile_array(bundle, entries[(x, y)], int(catalog["tileSize"]))
-    height_90 = bilinear_tile(catalog, samples, east, north, x, y)
+    height_tile = bilinear_tile(catalog, samples, east, north, x, y)
     height_250 = continental_height(
         TERRAIN_ROOT / "europe-250m-1944", east, north)
     height_500 = continental_height(
         TERRAIN_ROOT / "europe-500m-1944", east, north)
 
-    # Local roughness over a 4 km east-west transect sampled at the same 90 m
-    # step from both sources: the 250 m layer is bilinearly smoother, so its
+    # Local roughness over a 4 km east-west transect sampled at the tile
+    # spacing from both sources: the 250 m layer is bilinearly smoother, so its
     # mean step-to-step change is lower.
-    transect_90 = np.array([
+    transect_tile = np.array([
         bilinear_tile(catalog, samples, east + i * spacing, north, x, y)
         for i in range(-22, 23)])
     transect_250 = np.array([
@@ -143,10 +148,10 @@ def lowland_check(bundle: Path, catalog: dict,
         for i in range(-22, 23)])
 
     print(f"Lowland point {east:.0f},{north:.0f} (tile {x},{y}):")
-    print(f"  90 m tile: {height_90:8.1f} m")
-    print(f"  250 m:     {height_250:8.1f} m  (Δ {height_90 - height_250:+.1f} m)")
-    print(f"  500 m:     {height_500:8.1f} m  (Δ {height_90 - height_500:+.1f} m)")
-    print(f"  4 km roughness: 90 m {roughness(transect_90):.2f} m, "
+    print(f"  {spacing:g} m tile: {height_tile:8.1f} m")
+    print(f"  250 m:       {height_250:8.1f} m  (Δ {height_tile - height_250:+.1f} m)")
+    print(f"  500 m:       {height_500:8.1f} m  (Δ {height_tile - height_500:+.1f} m)")
+    print(f"  4 km roughness: {spacing:g} m {roughness(transect_tile):.2f} m, "
           f"250 m {roughness(transect_250):.2f} m")
 
 

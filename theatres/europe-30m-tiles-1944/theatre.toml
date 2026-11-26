@@ -1,0 +1,44 @@
+# Streamed 30 m Copernicus GLO-30 height tiles over the 4,000 km Europe grid.
+# Same catalog/runtime format as the 90 m tiles; tile stride is 2,136 samples
+# (64,080 m) with a one-pixel overlap, so a 3×3 ring is ~82 MB at 30 m.
+id = "europe-30m-tiles-1944"
+name = "Europe 30 m height tiles"
+description = "Copernicus GLO-30 30 m height tiles (64 km) for the streamed near field."
+generator_version = "0.2"
+seed = 19440606
+
+[geodesy]
+crs = "EPSG:32630"
+origin = { lat = 49.2200, lon = -0.3700 }
+bounds = { north = 68.0, south = 29.0, west = -40.0, east = 40.0 }
+vertical_datum = "EGM2008"
+
+[terrain]
+size_meters = 4000000
+chunk_size_m = 1000
+lod_levels = 5
+tile_spacing_m = 30
+tile_stride = 2136
+tiles_per_axis = 63
+heightmap_bits = 16
+dem_source = "copernicus-glo30"
+tile_compression = "zlib"
+
+[runtime]
+default_weather = "broken"
+time_of_day = "09:30"
+
+[[sources]]
+id = "copernicus-glo30"
+kind = "elevation"
+licence = "Copernicus DEM licence (free, attribution)"
+attribution = "© DLR e.V. 2010-2014 and © Airbus DS GmbH 2017-2021"
+resolution_m = 30
+
+[[sources]]
+id = "noaa-etopo1"
+kind = "elevation-water-mask"
+licence = "Public domain (U.S. Government)"
+attribution = "NOAA/NCEI ETOPO1 Global Relief Model"
+resolution_m = 1852
+notes = "Used only to mask Copernicus no-data/coastal sea pixels below the water plane"
