@@ -48,3 +48,6 @@ game/assets/terrain/france-northwest-1944/
 
 # Generated Alpine high-resolution layer (built locally, not committed)
 game/assets/terrain/alps-1944/
+
+# Generated Pyrenees high-resolution layer (built locally, not committed)
+game/assets/terrain/pyrenees-1944/

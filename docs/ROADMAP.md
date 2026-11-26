@@ -54,6 +54,7 @@ simulation runs at 240 Hz with a stable 60 FPS render; CI is green on both OSes.
 - [x] 400 km regional theatre with data-driven extents, multi-date imagery and a 40 km high-res inset
 - [x] 4,000 km Europe continental base (ETOPO1 + NASA Blue Marble) with composite 400/40 km detail
 - [x] Offset Alpine layer from Copernicus GLO-30 at 50 m with an Alps start location
+- [x] Pyrenees 400 km GLO-30 layer and general mountain start-location catalog
 - [x] Major European rivers as flowing water surfaces (Natural Earth 1:10m + river shader)
 - [x] Local OSM waterway patch and carved river channels (airfield clear zone excluded)
 - [ ] Source-tiled height/imagery streaming and floating-origin rebasing for full-resolution Europe

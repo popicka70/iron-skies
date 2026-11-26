@@ -16,6 +16,7 @@ public static class TheatreCatalog
     public const string LargeId = "france-northwest-1944";
     public const string EuropeId = "europe-1944";
     public const string AlpsId = "alps-1944";
+    public const string PyreneesId = "pyrenees-1944";
 
     public static readonly Entry[] All =
     {
@@ -23,6 +24,29 @@ public static class TheatreCatalog
         new(LargeId, "North-west France — 400 km"),
         new(DefaultId, "Normandy — 40 km detail"),
     };
+
+    public sealed record StartLocation(
+        string Id, string Label, string LayerId);
+
+    public static readonly StartLocation[] StartLocations =
+    {
+        new("airfield", "Airfield — take off from the runway", ""),
+        new("alps", "Alps — start airborne over the range", AlpsId),
+        new("pyrenees", "Pyrenees — start airborne over the range", PyreneesId),
+    };
+
+    public static StartLocation? FindStartLocation(string id)
+    {
+        foreach (StartLocation location in StartLocations)
+        {
+            if (location.Id == id)
+            {
+                return location;
+            }
+        }
+
+        return null;
+    }
 
     public static bool IsInstalled(string id) =>
         FileAccess.FileExists($"res://assets/terrain/{id}/meta.json");
@@ -89,6 +113,11 @@ public static class TheatreCatalog
         if (id == EuropeId && IsInstalled(AlpsId))
         {
             details.Add(Heightmap.Load(Directory(AlpsId)));
+        }
+
+        if (id == EuropeId && IsInstalled(PyreneesId))
+        {
+            details.Add(Heightmap.Load(Directory(PyreneesId)));
         }
 
         if (id != DefaultId && IsInstalled(DefaultId))

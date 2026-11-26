@@ -79,8 +79,8 @@ The long-term answer remains a tiled source:
 ## Implementation steps
 
 1. **Plan** — this document. *(done)*
-2. **Pyrenees + general start-location catalog** — first new range; prove the catalog and
-   the per-range start.
+2. **Pyrenees + general start-location catalog** — done: 400 km GLO-30 patch,
+   Europe layer loading, Airfield/Alps/Pyrenees start dialog.
 3. **Patch manager** — dynamic load/unload and memory budget; validate with 3–4 ranges.
 4. **Scandes** — two patches.
 5. **Carpathians** — two patches.
