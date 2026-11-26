@@ -38,6 +38,7 @@ public partial class Main : Node3D
     private ITerrainSource _heightmap = null!;
     private IGroundSurface _ground = null!;
     private TerrainWorld _terrain = null!;
+    private MountainPatchManager? _patchManager;
     private SpitfireVisual _aircraft = null!;
     private DamageSmoke _playerSmoke = null!;
     private EngineAudio _audio = null!;
@@ -1239,22 +1240,29 @@ public partial class Main : Node3D
         }
 
         TheatreCatalog.StartLocation? startLocation =
-            TheatreCatalog.FindStartLocation(LaunchConfig.CurrentStartLocation);
-        TerrainLayer startLayer = default;
+            TheatreCatalog.FindStartLocation(
+                ReadUserOption("--start-location") ?? LaunchConfig.CurrentStartLocation);
+        MountainPatch? startPatch = null;
         bool mountainStart = startLocation is not null
             && startLocation.LayerId.Length > 0
             && !_spawnSet
             && _missionKind == MissionKind.None
             && !_takeoffTest && !_missionTest && !_damageTest
             && !_strikeStart && !_huntStart && !_bomberStart && !_duel
-            && TheatreCatalog.TryGetLayer(
-                _heightmap, startLocation.LayerId, out startLayer);
+            && _patchManager is not null
+            && _patchManager.TryGetPatch(startLocation.LayerId, out startPatch);
         double east = _spawnSet ? _spawnEast
-            : mountainStart ? startLayer.OffsetEast
+            : mountainStart ? startPatch!.OffsetEast
             : _strikeStart ? 900.0 : Airfield.East;
         double north = _spawnSet ? _spawnNorth
-            : mountainStart ? startLayer.OffsetNorth
+            : mountainStart ? startPatch!.OffsetNorth
             : _strikeStart ? 7000.0 : Airfield.SouthThreshold + 120.0;
+
+        // Load the patch under the spawn before sampling the ground and before
+        // Prewarm builds the nearby chunk meshes.
+        _terrain.SetFocus(
+            new Vector3((float)east, 0.0f, (float)-north), immediatePatches: true);
+
         double ground = _ground.HeightAt(east, north);
         bool airborne = _airStart || mountainStart
             || _strikeStart || _huntStart || _bomberStart || _duel;
@@ -1276,6 +1284,9 @@ public partial class Main : Node3D
         {
             _sim.SetGearAndFlaps(0.0, 0.0);
         }
+
+        GD.Print($"[start] {startLocation?.Id ?? "custom"} east={east:0} north={north:0} "
+                 + $"airborne={airborne} gear={_sim.GearPosition:0.00}");
 
         _cockpitPanel.Bind(_sim);
         _missionTargets.Clear();
@@ -1689,6 +1700,7 @@ public partial class Main : Node3D
         string osmPath;
         _heightmap = TheatreCatalog.LoadTerrain(
             theatreId, out string directory, out osmPath);
+        _patchManager = _heightmap as MountainPatchManager;
         RiverData riverData = RiverData.Load(
             "res://assets/water/europe-rivers.json", osmPath);
         if (riverData.Lines.Count > 0)
@@ -1701,7 +1713,7 @@ public partial class Main : Node3D
         var timer = Stopwatch.StartNew();
         _ground = new AirfieldSurface(_heightmap);
         _terrain = new TerrainWorld();
-        _terrain.Build(_heightmap, directory);
+        _terrain.Build(_heightmap, directory, _patchManager);
         AddChild(_terrain);
 
         var osm = new OsmDetail();

@@ -32,7 +32,7 @@ public sealed partial class TerrainWorld : Node3D
 
     private sealed class Inset
     {
-        public required TerrainLayer Layer { get; init; }
+        public required TerrainLayer Layer { get; set; }
         public required Texture2D Texture { get; init; }
     }
 
@@ -40,9 +40,13 @@ public sealed partial class TerrainWorld : Node3D
     private readonly Dictionary<Vector2I, int> _desired = new(512);
     private readonly List<Vector2I> _removals = new(64);
     private readonly List<Inset> _insets = new();
+    private readonly Dictionary<string, Inset> _insetCache = new();
 
     private ITerrainSource _map = null!;
     private ShaderMaterial _material = null!;
+    private MeshInstance3D _baseNode = null!;
+    private MountainPatchManager? _patchManager;
+    private string _textureDirectory = "";
     private Vector3 _focus;
     private double _updateTimer;
     private bool _ready;
@@ -52,9 +56,13 @@ public sealed partial class TerrainWorld : Node3D
     private int _baseStepMeters = 200;
     private string _insetKey = "";
 
-    public void Build(ITerrainSource map, string textureDirectory)
+    public void Build(
+        ITerrainSource map, string textureDirectory,
+        MountainPatchManager? patchManager = null)
     {
         _map = map;
+        _textureDirectory = textureDirectory.TrimEnd('/');
+        _patchManager = patchManager;
         _mapSizeMeters = (int)Math.Round(2.0 * map.HalfExtent);
         _mapHalfMeters = map.HalfExtent;
         _chunksPerAxis = Math.Max(1, (int)Math.Ceiling(
@@ -62,12 +70,12 @@ public sealed partial class TerrainWorld : Node3D
         // Keep the far-field mesh at roughly 200 × 200 quads regardless of map size.
         _baseStepMeters = Math.Max(
             MinBaseStepMeters, (_mapSizeMeters + MaxBaseQuads - 1) / MaxBaseQuads);
-        _material = CreateMaterial(map, textureDirectory);
-        ConfigureInsets(map, textureDirectory);
+        _material = CreateMaterial(map, _textureDirectory);
+        ConfigureInsets();
         GD.Print($"Terrain: {_mapSizeMeters / 1000} km, {_chunksPerAxis}×{_chunksPerAxis} "
                  + $"chunks, base step {_baseStepMeters} m, {_insets.Count} inset(s)");
 
-        var baseNode = new MeshInstance3D
+        _baseNode = new MeshInstance3D
         {
             Name = "TerrainBase",
             Mesh = BuildGridMesh(
@@ -79,7 +87,7 @@ public sealed partial class TerrainWorld : Node3D
             Position = new Vector3(
                 0.0f, _mapSizeMeters > 100_000 ? -50.0f : -20.0f, 0.0f),
         };
-        AddChild(baseNode);
+        AddChild(_baseNode);
 
         AddWaterPlane();
         _ready = true;
@@ -108,10 +116,94 @@ public sealed partial class TerrainWorld : Node3D
 
     public int ResidentChunks => _chunks.Count;
 
-    public void SetFocus(Vector3 focus)
+    public void SetFocus(Vector3 focus, bool immediatePatches = false)
     {
         _focus = focus;
+
+        if (_patchManager is not null)
+        {
+            bool changed = _patchManager.SetFocus(
+                focus.X, -focus.Z, immediatePatches);
+            if (changed)
+            {
+                OnPatchSetChanged();
+            }
+        }
+
         UpdateInsets();
+    }
+
+    /// <summary>
+    /// Re-syncs inset textures and rebuilds the far mesh after the resident patch set
+    /// changed. Called only on a load/unload, never per frame.
+    /// </summary>
+    private void OnPatchSetChanged()
+    {
+        if (_patchManager is null)
+        {
+            return;
+        }
+
+        foreach (PatchChange change in _patchManager.Changes)
+        {
+            InvalidatePatchArea(change.Patch);
+        }
+
+        SyncInsets();
+        RebuildBaseMesh();
+        GD.Print($"Terrain: resident patches {_patchManager.ResidentPatchCount}/"
+                 + $"{MountainPatchManager.MaxResidentPatches}, "
+                 + $"{_patchManager.ResidentHeightmapMegabytes:0.0} MB heightmaps");
+    }
+
+    /// <summary>
+    /// Drops nearby chunks whose mesh overlaps a patch that just loaded or unloaded.
+    /// Chunks are rebuilt on the next update (or immediately by <see cref="Prewarm"/>),
+    /// which prevents stale heights without re-meshing the whole theatre.
+    /// </summary>
+    private void InvalidatePatchArea(MountainPatch patch)
+    {
+        if (_chunks.Count == 0)
+        {
+            return;
+        }
+
+        double minEast = patch.OffsetEast - patch.HalfExtent - ChunkSizeMeters;
+        double maxEast = patch.OffsetEast + patch.HalfExtent + ChunkSizeMeters;
+        double minNorth = patch.OffsetNorth - patch.HalfExtent - ChunkSizeMeters;
+        double maxNorth = patch.OffsetNorth + patch.HalfExtent + ChunkSizeMeters;
+
+        _removals.Clear();
+        foreach (Vector2I key in _chunks.Keys)
+        {
+            double east = -_mapHalfMeters + (key.X + 0.5) * ChunkSizeMeters;
+            double north = -_mapHalfMeters + (key.Y + 0.5) * ChunkSizeMeters;
+            if (east < minEast || east > maxEast || north < minNorth || north > maxNorth)
+            {
+                continue;
+            }
+
+            _removals.Add(key);
+        }
+
+        foreach (Vector2I key in _removals)
+        {
+            Chunk chunk = _chunks[key];
+            RemoveChild(chunk.Node);
+            chunk.Node.QueueFree();
+            _chunks.Remove(key);
+        }
+    }
+
+    private void RebuildBaseMesh()
+    {
+        if (_baseNode is null)
+        {
+            return;
+        }
+
+        _baseNode.Mesh = BuildGridMesh(
+            -_mapHalfMeters, -_mapHalfMeters, _mapSizeMeters, _baseStepMeters);
     }
 
     public override void _Process(double delta)
@@ -337,13 +429,37 @@ public sealed partial class TerrainWorld : Node3D
         return material;
     }
 
-    private void ConfigureInsets(ITerrainSource map, string directory)
+    private void ConfigureInsets()
     {
+        _insetCache.Clear();
         _insets.Clear();
-        foreach (TerrainLayer layer in map.Layers)
+        SyncInsets();
+    }
+
+    /// <summary>
+    /// Loads textures for newly resident layers and drops textures for unloaded ones,
+    /// reusing already decoded textures. Called at build and when patches change.
+    /// </summary>
+    private void SyncInsets()
+    {
+        if (_material is null)
         {
-            if (layer.Map.SourceDirectory == directory)
+            return;
+        }
+
+        var wanted = new HashSet<string>();
+        foreach (TerrainLayer layer in _map.Layers)
+        {
+            if (layer.Map.SourceDirectory == _textureDirectory)
             {
+                continue;
+            }
+
+            string id = layer.Map.Meta.Id;
+            wanted.Add(id);
+            if (_insetCache.TryGetValue(id, out Inset? cached))
+            {
+                cached.Layer = layer;
                 continue;
             }
 
@@ -359,9 +475,25 @@ public sealed partial class TerrainWorld : Node3D
                 continue;
             }
 
-            _insets.Add(new Inset { Layer = layer, Texture = texture });
+            _insetCache[id] = new Inset { Layer = layer, Texture = texture };
         }
 
+        var stale = new List<string>();
+        foreach (string id in _insetCache.Keys)
+        {
+            if (!wanted.Contains(id))
+            {
+                stale.Add(id);
+            }
+        }
+
+        foreach (string id in stale)
+        {
+            _insetCache.Remove(id);
+        }
+
+        _insets.Clear();
+        _insets.AddRange(_insetCache.Values);
         _insetKey = "";
         UpdateInsets();
     }
@@ -389,12 +521,12 @@ public sealed partial class TerrainWorld : Node3D
 
             if (half <= 50_000.0)
             {
-                if (local is null || half < local.Layer.Map.HalfExtent)
+                if (IsBetterInset(local, inset, east, north))
                 {
                     local = inset;
                 }
             }
-            else if (mid is null || half < mid.Layer.Map.HalfExtent)
+            else if (IsBetterInset(mid, inset, east, north))
             {
                 mid = inset;
             }
@@ -409,6 +541,38 @@ public sealed partial class TerrainWorld : Node3D
         _insetKey = key;
         ApplyInset("mid", mid);
         ApplyInset("local", local);
+    }
+
+    /// <summary>
+    /// Prefer the finest layer covering the focus. At equal extent (the 400 km regional
+    /// and 400 km mountain layers) prefer the one whose centre is nearest, so a resident
+    /// mountain patch wins over the regional background inside its coverage.
+    /// </summary>
+    private static bool IsBetterInset(
+        Inset? current, Inset candidate, double east, double north)
+    {
+        if (current is null)
+        {
+            return true;
+        }
+
+        double half = candidate.Layer.Map.HalfExtent;
+        double currentHalf = current.Layer.Map.HalfExtent;
+        if (half < currentHalf)
+        {
+            return true;
+        }
+
+        if (half > currentHalf)
+        {
+            return false;
+        }
+
+        double dx = east - candidate.Layer.OffsetEast;
+        double dn = north - candidate.Layer.OffsetNorth;
+        double cdx = east - current.Layer.OffsetEast;
+        double cdn = north - current.Layer.OffsetNorth;
+        return dx * dx + dn * dn < cdx * cdx + cdn * cdn;
     }
 
     private void ApplyInset(string prefix, Inset? inset)

@@ -124,8 +124,52 @@ public static class TheatreCatalog
     /// Loads a theatre plus any available finer layers: the 40 km Normandy field always
     /// sits under the 400 km/Europe maps, and the generated 400 km field sits under
     /// Europe when it is installed.
+    ///
+    /// On the Europe theatre the 17 mountain patches are streamed by
+    /// <see cref="MountainPatchManager"/> instead of being loaded up front.
     /// </summary>
     public static ITerrainSource LoadTerrain(string id, out string directory, out string osmPath)
+    {
+        directory = Directory(id);
+        Heightmap baseMap = Heightmap.Load(directory);
+
+        if (id == EuropeId)
+        {
+            var details = new List<Heightmap>();
+            if (IsInstalled(LargeId))
+            {
+                details.Add(Heightmap.Load(Directory(LargeId)));
+            }
+
+            if (IsInstalled(DefaultId))
+            {
+                details.Add(Heightmap.Load(Directory(DefaultId)));
+            }
+
+            ITerrainSource baseTerrain = details.Count == 0
+                ? baseMap
+                : new CompositeTerrain(baseMap, details.ToArray());
+            osmPath = ResolveOsmPath(directory, id);
+            return MountainPatchManager.CreateForEurope(baseTerrain);
+        }
+
+        var extra = new List<Heightmap>();
+        if (id != DefaultId && IsInstalled(DefaultId))
+        {
+            extra.Add(Heightmap.Load(Directory(DefaultId)));
+        }
+
+        osmPath = ResolveOsmPath(directory, id);
+        return extra.Count == 0
+            ? baseMap
+            : new CompositeTerrain(baseMap, extra.ToArray());
+    }
+
+    /// <summary>
+    /// Loads every installed mountain patch up front. Used by the authoritative
+    /// multiplayer server, which must answer ground queries for any player position.
+    /// </summary>
+    public static ITerrainSource LoadTerrainFull(string id, out string directory, out string osmPath)
     {
         directory = Directory(id);
         Heightmap baseMap = Heightmap.Load(directory);
@@ -152,11 +196,15 @@ public static class TheatreCatalog
             details.Add(Heightmap.Load(Directory(DefaultId)));
         }
 
-        ITerrainSource source = details.Count == 0
+        osmPath = ResolveOsmPath(directory, id);
+        return details.Count == 0
             ? baseMap
             : new CompositeTerrain(baseMap, details.ToArray());
+    }
 
-        osmPath = $"{directory}/osm.json";
+    private static string ResolveOsmPath(string directory, string id)
+    {
+        string osmPath = $"{directory}/osm.json";
         if (!FileAccess.FileExists(osmPath) && id != DefaultId)
         {
             string fallback = $"{Directory(DefaultId)}/osm.json";
@@ -166,6 +214,6 @@ public static class TheatreCatalog
             }
         }
 
-        return source;
+        return osmPath;
     }
 }

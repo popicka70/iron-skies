@@ -75,13 +75,12 @@ public sealed class Heightmap : ITerrainSource
         SourceDirectory = sourceDirectory;
     }
 
-    public static Heightmap Load(string directory)
+    /// <summary>
+    /// Reads only <c>meta.json</c>, without allocating the height samples. Used by the
+    /// patch manager to build its catalog without loading every patch.
+    /// </summary>
+    public static TerrainMeta ReadMeta(string directory)
     {
-        if (!BitConverter.IsLittleEndian)
-        {
-            throw new PlatformNotSupportedException("The heightmap loader assumes a little-endian host.");
-        }
-
         string metaPath = $"{directory.TrimEnd('/')}/meta.json";
         string metaText = FileAccess.GetFileAsString(metaPath);
         if (string.IsNullOrEmpty(metaText))
@@ -97,6 +96,17 @@ public sealed class Heightmap : ITerrainSource
             throw new NotSupportedException($"Unsupported row order: {meta.RowOrder}");
         }
 
+        return meta;
+    }
+
+    public static Heightmap Load(string directory)
+    {
+        if (!BitConverter.IsLittleEndian)
+        {
+            throw new PlatformNotSupportedException("The heightmap loader assumes a little-endian host.");
+        }
+
+        TerrainMeta meta = ReadMeta(directory);
         string normalized = directory.TrimEnd('/');
         string rawPath = $"{normalized}/{meta.HeightmapFile}";
         byte[] bytes = FileAccess.GetFileAsBytes(rawPath);
