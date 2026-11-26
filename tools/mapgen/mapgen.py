@@ -377,6 +377,7 @@ def item_bbox(item: dict) -> tuple[float, float, float, float]:
 
 def choose_scenes(
     items: list[dict], bounds: dict, max_scenes: int | None = None,
+    hard_limit: bool = False,
 ) -> tuple[list[str], list[dict]]:
     """Pick a low-cloud set of scenes that collectively covers the whole theatre.
 
@@ -437,6 +438,8 @@ def choose_scenes(
             continue
         chosen.append(item)
         covered.update(new_cells)
+        if max_scenes is not None and hard_limit and len(chosen) >= max_scenes:
+            break
         if covered >= all_cells and (
             max_scenes is None or len(chosen) >= max_scenes
         ):
@@ -544,7 +547,8 @@ def load_scenes(theatre: dict, bounds: dict) -> tuple[list[str], list[dict]]:
 
     return choose_scenes(
         stac_search(bounds), bounds,
-        max_scenes=theatre.get("sentinel2_max_scenes"))
+        max_scenes=theatre.get("sentinel2_max_scenes"),
+        hard_limit=bool(theatre.get("sentinel2_hard_scene_limit", False)))
 
 
 def build_blue_marble_ortho(

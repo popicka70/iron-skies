@@ -115,10 +115,16 @@ writes `ortho/tile_XX_YY.jpg` into the 30 m bundle.
   6,409² (192 km) texture (~118 MB) and applied as a third shader inset between the
   regional and local orthos. The player is always in the centre tile, so the seam is
   ≥64 km away; the 10 m airfield still wins.
-- **Coverage:** generating every European tile is a long batch (≈5–8 min/tile); generate
-  regions with `--around-east/--around-north --radius` or one tile at a time. Missing
-  tiles fall back to Blue Marble / regional imagery. The local build has a 3×3 set
-  (9 tiles, ≈25 MB) around the Rhine–Frankfurt lowland at tile 39,27.
+- **120 m fallback:** `--resolution 120` renders 535² tiles on the same grid. Four
+  scenes per 120 m tile take ≈4 min; two scenes are much faster but leave visible
+  gaps, so regional rings use four. The runtime stitches mixed 30 m/120 m rings,
+  upscaling the coarser neighbours to the finest tile present. A 5×5 ring around the
+  30 m demo area (≈16 extra tiles) gives a 320 km fallback at 4× the Blue Marble
+  resolution.
+- **Coverage:** generating every European 30 m tile is a multi-day batch; 120 m is
+  still hours. The generator is resumable and works per tile/region. Missing tiles
+  fall back to Blue Marble / regional imagery. The local build has a 3×3 30 m set
+  (9 tiles, ≈25 MB) around the Rhine–Frankfurt lowland plus a 5×5 120 m ring.
 - **Exports:** generated `ortho/*.jpg` files are included when present; they are small
   enough to add a region without resizing the package much.
 

@@ -328,12 +328,11 @@ public sealed class TiledDetailTerrain : ITerrainSource
     private void UpdateOrtho(int tileX, int tileY)
     {
         DetailOrthoChanged = true;
-        int tileSize = _catalog.TileSize;
-        int stride = _catalog.TileStride;
-        int size = stride * 2 + tileSize;
+        var images = new Image[9];
+        int target = 0;
 
-        // Check first: allocating a 6,409² image on every tile move would be
-        // wasteful in regions where no ortho tiles were generated.
+        // Check/decode first: allocating a 6,409² image on every tile move would
+        // be wasteful in regions where no ortho tiles were generated.
         for (int oy = -1; oy <= 1; oy++)
         {
             for (int ox = -1; ox <= 1; ox++)
@@ -345,33 +344,44 @@ public sealed class TiledDetailTerrain : ITerrainSource
                     DetailOrthoTexture = null;
                     return;
                 }
-            }
-        }
 
-        var stitched = Image.CreateEmpty(size, size, false, Image.Format.Rgb8);
-        stitched.Fill(new Color(0.18f, 0.22f, 0.14f));
-        for (int oy = -1; oy <= 1; oy++)
-        {
-            for (int ox = -1; ox <= 1; ox++)
-            {
-                string path = $"{_directory}/ortho/tile_{tileX + ox:00}_"
-                    + $"{tileY + oy:00}.jpg.bin";
                 byte[] bytes = FileAccess.GetFileAsBytes(path);
                 var tile = new Image();
                 if (bytes.Length == 0
                     || tile.LoadJpgFromBuffer(bytes) != Error.Ok
-                    || tile.GetWidth() != tileSize
-                    || tile.GetHeight() != tileSize)
+                    || tile.GetWidth() != tile.GetHeight())
                 {
                     GD.PushWarning($"Could not decode ortho tile: {path}");
                     DetailOrthoTexture = null;
                     return;
                 }
 
-                stitched.BlitRect(
-                    tile, new Rect2I(0, 0, tileSize, tileSize),
-                    new Vector2I((ox + 1) * stride, (oy + 1) * stride));
+                int index = (oy + 1) * 3 + ox + 1;
+                images[index] = tile;
+                target = Math.Max(target, tile.GetWidth());
             }
+        }
+
+        // 30 m regional tiles and 120 m continental tiles can meet in one ring.
+        // Stitch at the finest resolution present; coarser neighbours are
+        // upscaled and sit 64 km from the player.
+        int stride = target - 1;
+        int size = stride * 2 + target;
+        var stitched = Image.CreateEmpty(size, size, false, Image.Format.Rgb8);
+        stitched.Fill(new Color(0.18f, 0.22f, 0.14f));
+        for (int i = 0; i < images.Length; i++)
+        {
+            Image tile = images[i];
+            if (tile.GetWidth() != target)
+            {
+                tile.Resize(target, target, Image.Interpolation.Bilinear);
+            }
+
+            int ox = i % 3;
+            int oy = i / 3;
+            stitched.BlitRect(
+                tile, new Rect2I(0, 0, target, target),
+                new Vector2I(ox * stride, oy * stride));
         }
 
         stitched.GenerateMipmaps();
@@ -381,12 +391,12 @@ public sealed class TiledDetailTerrain : ITerrainSource
             + _strideMeters * 0.5;
         double centerNorth = _catalog.HalfExtent - tileY * _strideMeters
             - _strideMeters * 0.5;
-        float half = (float)((size - 1) * _catalog.Spacing * 0.5);
+        float half = (float)(_strideMeters * 1.5);
         DetailOrthoRect = new Vector4(
             (float)centerEast - half, (float)(-centerNorth) - half,
             half * 2.0f, half * 2.0f);
-        GD.Print($"{_catalog.Spacing:0} m ortho 3×3: {tileX},{tileY} "
-                 + $"({size}², {size * (double)size * 3.0 / (1024.0 * 1024.0):0.0} MB)");
+        GD.Print($"ortho 3×3: {tileX},{tileY} ({target} px/tile, {size}², "
+                 + $"{size * (double)size * 3.0 / (1024.0 * 1024.0):0.0} MB)");
     }
 
     /// <summary>

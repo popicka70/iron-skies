@@ -116,10 +116,11 @@ python3 tools/mapgen/mapgen.py --theatre europe-250m-1944 \
 
 A **streamed Sentinel-2 imagery layer** can overlay the lowlands: `tools/build_ortho_tiles.py`
 renders 64 km tiles on the same grid, and the runtime stitches the centre 3×3 into a
-192 km detail inset (~118 MB) under the 10 m airfield. Missing tiles fall back to Blue
-Marble. Generate a region with `--around-east/--around-north --radius`; a 3×3 tile set
-takes roughly 40–50 minutes and ≈25 MB. The current local build has a 3×3 set around
-the Rhine–Frankfurt lowland (tile 39,27).
+192 km detail inset under the 10 m airfield. Missing tiles fall back to Blue Marble.
+30 m tiles take 5–8 minutes each; a 120 m fallback (`--resolution 120 --scenes 4`)
+takes ~4 minutes and produces a 1,603² stitched texture, four times sharper than Blue
+Marble. The current local build has a 3×3 30 m set (tile 39,27, Rhine–Frankfurt) plus a
+5×5 120 m ring around it. Generate more with `--around-east/--around-north --radius`.
 
 ![Sentinel-2 ortho tile](docs/media/m0-europe-ortho.jpg)
 
@@ -140,8 +141,12 @@ python3 tools/build_height_tiles.py --theatre europe-90m-tiles-1944 --workers 8
 python3 tools/build_height_tiles.py --theatre europe-30m-tiles-1944 --workers 8
 python3 tools/check_height_tiles.py \
     game/assets/terrain/europe-30m-tiles-1944/catalog.json
+# 30 m regional set and a 120 m fallback ring
 python3 tools/build_ortho_tiles.py \
     --around-east 500000 --around-north 250000 --radius 1
+python3 tools/build_ortho_tiles.py \
+    --around-east 500000 --around-north 250000 --radius 2 \
+    --resolution 120 --scenes 4
 ```
 
 See [docs/plan-europe-heightmap.md](docs/plan-europe-heightmap.md) for the continental
@@ -161,6 +166,7 @@ Europe/Normandy origin:
 | Europe 250 m detail | 250 m | Blue Marble 488 m/px | 4,000 km |
 | Europe 90 m tiles (streamed 3×3) | 90 m | (reuses 500 m) | 64 km each |
 | Europe 30 m tiles (streamed 3×3) | 30 m | Sentinel-2 30 m tiles when generated | 64 km each |
+| Europe 120 m ortho (fallback ring) | 120 m | Sentinel-2 120 m tiles when generated | 64 km each |
 | Mountain patches (17, streamed) | 50 m | Blue Marble 98 m/px | 400 km each |
 | North-west France | 50 m | Sentinel-2 98 m/px | 400 km |
 | Normandy | 25 m | Sentinel-2 10 m/px | 40 km |

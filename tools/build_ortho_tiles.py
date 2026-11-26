@@ -86,6 +86,7 @@ def render_tile(
     stride: int,
     spacing: float,
     size: int,
+    scenes: int | None,
     refresh: bool,
 ) -> bool:
     output = bundle / "ortho" / f"tile_{x:02d}_{y:02d}.jpg"
@@ -110,9 +111,12 @@ def render_tile(
     }
     local["terrain"] = dict(theatre.get("terrain", {}))
     local["terrain"]["ortho_source"] = "sentinel-2"
-    # A 64 km tile is small enough that a few overlapping dates can fill the
-    # cloud/no-data holes the greedy two-scene mosaic leaves behind.
-    local["sentinel2_max_scenes"] = 4
+    # 30 m regional tiles use four overlapping scenes to fill cloud holes. The
+    # 120 m continental fallback is small enough that two scenes are enough and
+    # keeps a full-Europe batch tractable.
+    coarse = (extent / size) >= 100.0
+    local["sentinel2_max_scenes"] = scenes if scenes else (2 if coarse else 4)
+    local["sentinel2_hard_scene_limit"] = coarse and scenes is None
     sources = list(theatre.get("sources", []))
     if not any(source.get("id") == SENTINEL2_SOURCE["id"] for source in sources):
         sources.append(dict(SENTINEL2_SOURCE))
@@ -175,15 +179,26 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--all", action="store_true",
                         help="all land tiles in the height catalog (long)")
     parser.add_argument("--refresh", action="store_true")
+    parser.add_argument(
+        "--resolution", type=float, default=None,
+        help="ortho pixel size in metres (default: height tile spacing, 30 m)")
+    parser.add_argument(
+        "--scenes", type=int, default=None,
+        help="max Sentinel-2 scenes per tile (default 4 for 30 m, 2 for 120 m)")
+    parser.add_argument(
+        "--no-license", action="store_true",
+        help="skip the shared LICENSE-DATA update (safe for parallel batches)")
     parser.add_argument("--out", type=Path, default=None)
     args = parser.parse_args(argv)
 
     theatre, spacing, stride, per_axis, half, origin_e, origin_n = (
         load_geometry(args.theatre))
     bundle = args.out or (TERRAIN_ROOT / args.theatre)
-    size = stride + 1
-    print(f"Ortho tiles: {bundle}, {size}² @ {spacing:g} m, "
-          f"{per_axis}×{per_axis} grid")
+    extent = stride * spacing
+    resolution = float(args.resolution or spacing)
+    size = int(round(extent / resolution)) + 1
+    print(f"Ortho tiles: {bundle}, {size}² @ {extent / size:.2f} m "
+          f"({resolution:g} m target), {per_axis}×{per_axis} grid")
 
     candidates: list[tuple[int, int]] = []
     if args.tile:
@@ -210,10 +225,11 @@ def main(argv: list[str]) -> int:
         print(f"[{index}/{len(candidates)}] tile {x},{y}")
         if render_tile(
             theatre, x, y, bundle, half, origin_e, origin_n, stride, spacing,
-            size, args.refresh
+            size, args.scenes, args.refresh
         ):
             built += 1
-    append_license(bundle)
+    if not args.no_license:
+        append_license(bundle)
     total = sum(
         (bundle / "ortho" / f"tile_{x:02d}_{y:02d}.jpg.bin").stat().st_size
         for x, y in candidates

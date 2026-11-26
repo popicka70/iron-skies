@@ -112,7 +112,8 @@ fetch → clip/reproject → heightmap LOD pyramid → derivatives (normals, slo
   falls back to 90 m otherwise. Release exports include both levels. Optional
   Sentinel-2 ortho tiles on the same 64 km grid are stitched into a 192 km detail
   inset (three shader insets: regional, Sentinel-2, local) with the 10 m airfield
-  winning at the bottom.
+  winning at the bottom. Mixed 30 m and 120 m tiles are stitched at the finest
+  resolution present, so a 120 m fallback ring blends into the 30 m regional set.
 - **OSM detail:** roads and hedgerows are draped as ribbon/fence meshes for the 7 km
   patch around the spawn. Woods and buildings are the next OSM layer.
 - **Geomorphing** (vertex position blending) over the last 15% of each LOD range removes
