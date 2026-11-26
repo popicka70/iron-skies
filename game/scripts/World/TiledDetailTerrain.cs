@@ -348,7 +348,7 @@ public sealed class TiledDetailTerrain : ITerrainSource
             }
         }
 
-        var stitched = Image.Create(size, size, false, Image.Format.Rgb8);
+        var stitched = Image.CreateEmpty(size, size, false, Image.Format.Rgb8);
         stitched.Fill(new Color(0.18f, 0.22f, 0.14f));
         for (int oy = -1; oy <= 1; oy++)
         {
