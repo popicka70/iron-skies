@@ -68,15 +68,19 @@ python3 tools/mapgen/mapgen.py --theatre europe-1944 \
     --resolution 2000 --ortho-size 4096 --no-osm
 ```
 
-The **Alps** layer is generated locally from Copernicus GLO-30:
+The **Alps** and **Pyrenees** layers are generated locally from Copernicus GLO-30:
 
 ```bash
 python3 tools/mapgen/mapgen.py --theatre alps-1944 \
     --resolution 50 --ortho-size 4096 --no-osm
+python3 tools/mapgen/mapgen.py --theatre pyrenees-1944 \
+    --resolution 50 --ortho-size 4096 --no-osm
 ```
 
-It is loaded over Europe when installed; **Single Player → Alps** spawns airborne over
-Innsbruck/Stelvio. The generated 123 MB heightmap stays git-ignored.
+They are loaded over Europe when installed; **Single Player** lists each installed range
+and spawns airborne over it. The generated 123 MB heightmaps stay git-ignored. The full
+range inventory and the path to all of Europe are in
+[docs/plan-europe-mountains.md](docs/plan-europe-mountains.md).
 
 Then choose **Settings → Theatre**. The runtime composes up to three levels that share
 the Normandy origin:
@@ -96,6 +100,11 @@ to the layers it has.
 
 *Single Player now asks for a start location — the runway, or an airborne Alpine start.
 The start location no longer lives in Settings; the theatre is still chosen there.*
+
+![Pyrenees 400 km high-resolution layer](docs/media/m0-pyrenees.jpg)
+
+*The generated 400 km Pyrenees layer: GLO-30 height at 50 m over the Europe base, with
+Blue Marble imagery.*
 
 ![Alps 400 km high-resolution layer](docs/media/m0-alps.jpg)
 

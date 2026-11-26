@@ -324,29 +324,24 @@ public sealed partial class Launcher : Control
         _singleStatus.AddThemeColorOverride("font_color", new Color(0.62f, 0.72f, 0.64f));
         content.AddChild(_singleStatus);
 
-        var airfield = new Button
+        foreach (TheatreCatalog.StartLocation start in TheatreCatalog.StartLocations)
         {
-            Text = "Airfield — take off from the runway",
-            CustomMinimumSize = new Vector2(0.0f, 44.0f),
-        };
-        airfield.Pressed += () => StartSinglePlayer("airfield");
-        content.AddChild(airfield);
-
-        bool alpsInstalled = TheatreCatalog.IsInstalled(TheatreCatalog.AlpsId);
-        var alps = new Button
-        {
-            Text = alpsInstalled
-                ? "Alps — start airborne over the range"
-                : "Alps — not installed",
-            Disabled = !alpsInstalled,
-            CustomMinimumSize = new Vector2(0.0f, 44.0f),
-        };
-        alps.Pressed += () => StartSinglePlayer("alps");
-        content.AddChild(alps);
+            bool installed = start.LayerId.Length == 0
+                || TheatreCatalog.IsInstalled(start.LayerId);
+            var button = new Button
+            {
+                Text = installed ? start.Label : $"{start.Label} (not installed)",
+                Disabled = !installed,
+                CustomMinimumSize = new Vector2(0.0f, 44.0f),
+            };
+            string id = start.Id;
+            button.Pressed += () => StartSinglePlayer(id);
+            content.AddChild(button);
+        }
 
         var note = new Label
         {
-            Text = "The Alps start switches to the Europe theatre. "
+            Text = "Mountain starts switch to the Europe theatre. "
                 + "The theatre itself is chosen in Settings.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
         };
@@ -363,24 +358,31 @@ public sealed partial class Launcher : Control
         content.AddChild(back);
     }
 
-    private void StartSinglePlayer(string location)
+    private void StartSinglePlayer(string locationId)
     {
-        if (location == "alps")
+        TheatreCatalog.StartLocation? location =
+            TheatreCatalog.FindStartLocation(locationId);
+        if (location is null)
+        {
+            return;
+        }
+
+        if (location.LayerId.Length > 0)
         {
             if (!TheatreCatalog.IsInstalled(TheatreCatalog.EuropeId)
-                || !TheatreCatalog.IsInstalled(TheatreCatalog.AlpsId))
+                || !TheatreCatalog.IsInstalled(location.LayerId))
             {
-                _singleStatus.Text = "The Alps layer is not installed.";
+                _singleStatus.Text = $"The {location.Label} layer is not installed.";
                 return;
             }
 
             GameSettings.Theatre = TheatreCatalog.EuropeId;
         }
 
-        GameSettings.StartLocation = location;
+        GameSettings.StartLocation = location.Id;
         GameSettings.Save();
         LaunchConfig.Reset();
-        LaunchConfig.StartLocation = location;
+        LaunchConfig.StartLocation = location.Id;
         HideSinglePlayer();
         GetTree().ChangeSceneToFile("res://scenes/Main.tscn");
     }

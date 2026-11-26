@@ -1235,28 +1235,32 @@ public partial class Main : Node3D
             return;
         }
 
-        TerrainLayer alpsLayer = default;
-        bool alpsStart = LaunchConfig.CurrentStartLocation == "alps"
+        TheatreCatalog.StartLocation? startLocation =
+            TheatreCatalog.FindStartLocation(LaunchConfig.CurrentStartLocation);
+        TerrainLayer startLayer = default;
+        bool mountainStart = startLocation is not null
+            && startLocation.LayerId.Length > 0
             && !_spawnSet
             && _missionKind == MissionKind.None
+            && !_takeoffTest && !_missionTest && !_damageTest
             && !_strikeStart && !_huntStart && !_bomberStart && !_duel
             && TheatreCatalog.TryGetLayer(
-                _heightmap, TheatreCatalog.AlpsId, out alpsLayer);
+                _heightmap, startLocation.LayerId, out startLayer);
         double east = _spawnSet ? _spawnEast
-            : alpsStart ? alpsLayer.OffsetEast
+            : mountainStart ? startLayer.OffsetEast
             : _strikeStart ? 900.0 : Airfield.East;
         double north = _spawnSet ? _spawnNorth
-            : alpsStart ? alpsLayer.OffsetNorth
+            : mountainStart ? startLayer.OffsetNorth
             : _strikeStart ? 7000.0 : Airfield.SouthThreshold + 120.0;
         double ground = _ground.HeightAt(east, north);
-        bool airborne = _airStart || alpsStart
+        bool airborne = _airStart || mountainStart
             || _strikeStart || _huntStart || _bomberStart || _duel;
         AircraftState state = airborne
             ? AircraftState.CreateAirborne(
                 _definition,
                 altitudeMeters: _spawnAltitude > 0.0
                     ? _spawnAltitude
-                    : ground + (alpsStart ? 2500.0
+                    : ground + (mountainStart ? 2500.0
                         : _strikeStart ? 250.0
                         : _huntStart || _bomberStart || _duel ? 1500.0
                         : 2000.0),
