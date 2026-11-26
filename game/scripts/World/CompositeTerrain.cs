@@ -4,36 +4,44 @@ using System.Collections.Generic;
 namespace IronSkies.Game.World;
 
 /// <summary>
-/// A continental base heightmap with finer regional/fine patches on top. All layers must
-/// share the same local origin (the theatre's ENU origin); that lets the runtime switch
-/// from the coarse base to the 400 km regional or 40 km Normandy field by position alone.
+/// A continental base heightmap with finer regional/fine patches on top. Layers may be
+/// centred anywhere in the base coordinate system; each layer's UTM origin is converted
+/// to a local offset. Height boundaries are feathered to avoid cliffs.
 /// </summary>
 public sealed class CompositeTerrain : ITerrainSource
 {
     private readonly Heightmap _base;
-    private readonly Heightmap[] _details;
+    private readonly TerrainLayer[] _layers;
+    private readonly TerrainLayer[] _details;
 
     public CompositeTerrain(Heightmap baseMap, params Heightmap[] details)
     {
         _base = baseMap;
-        var byHalfExtent = new List<Heightmap>(details.Length + 1) { baseMap };
+        var all = new List<TerrainLayer>(details.Length + 1)
+        {
+            new(baseMap, 0.0, 0.0),
+        };
         foreach (Heightmap detail in details)
         {
-            if (detail is not null && detail != baseMap)
+            if (detail is null || detail == baseMap)
             {
-                byHalfExtent.Add(detail);
+                continue;
             }
+
+            all.Add(new TerrainLayer(
+                detail,
+                detail.Meta.Origin.Easting - baseMap.Meta.Origin.Easting,
+                detail.Meta.Origin.Northing - baseMap.Meta.Origin.Northing));
         }
 
-        byHalfExtent.Sort((a, b) => b.HalfExtent.CompareTo(a.HalfExtent));
-        Layers = byHalfExtent;
-
-        var sorted = new List<Heightmap>(Layers);
-        sorted.Sort((a, b) => a.HalfExtent.CompareTo(b.HalfExtent));
-        _details = sorted.FindAll(layer => layer != baseMap).ToArray();
+        all.Sort((a, b) => b.Map.HalfExtent.CompareTo(a.Map.HalfExtent));
+        _layers = all.ToArray();
+        var fineFirst = new List<TerrainLayer>(_layers);
+        fineFirst.Sort((a, b) => a.Map.HalfExtent.CompareTo(b.Map.HalfExtent));
+        _details = fineFirst.FindAll(layer => layer.Map != baseMap).ToArray();
     }
 
-    public IReadOnlyList<Heightmap> Layers { get; }
+    public IReadOnlyList<TerrainLayer> Layers => _layers;
     public TerrainMeta Meta => _base.Meta;
     public int Width => _base.Width;
     public int Height => _base.Height;
@@ -44,26 +52,27 @@ public sealed class CompositeTerrain : ITerrainSource
     {
         double result = _base.HeightAt(eastMeters, northMeters);
 
-        // Blend coarse-to-fine near each patch edge so the composite never produces a
-        // cliff where the 400 km or 40 km height field meets the base.
         for (int i = _details.Length - 1; i >= 0; i--)
         {
-            Heightmap detail = _details[i];
-            double edgeEast = detail.HalfExtent - Math.Abs(eastMeters);
-            double edgeNorth = detail.HalfExtent - Math.Abs(northMeters);
+            TerrainLayer layer = _details[i];
+            double localEast = eastMeters - layer.OffsetEast;
+            double localNorth = northMeters - layer.OffsetNorth;
+            double edgeEast = layer.Map.HalfExtent - Math.Abs(localEast);
+            double edgeNorth = layer.Map.HalfExtent - Math.Abs(localNorth);
             if (edgeEast <= 0.0 || edgeNorth <= 0.0)
             {
                 continue;
             }
 
-            double feather = Math.Min(2_000.0, detail.HalfExtent * 0.1);
+            double feather = Math.Min(2_000.0, layer.Map.HalfExtent * 0.1);
             double blend = Math.Clamp(Math.Min(edgeEast, edgeNorth) / feather, 0.0, 1.0);
             if (blend <= 0.0)
             {
                 continue;
             }
 
-            result = result * (1.0 - blend) + detail.HeightAt(eastMeters, northMeters) * blend;
+            result = result * (1.0 - blend)
+                + layer.Map.HeightAt(localEast, localNorth) * blend;
         }
 
         return result;

@@ -7,6 +7,12 @@ using IronSkies.FlightModel.Aircraft;
 namespace IronSkies.Game.World;
 
 /// <summary>Metadata written by tools/mapgen/mapgen.py.</summary>
+public sealed class TerrainOrigin
+{
+    public double Easting { get; set; }
+    public double Northing { get; set; }
+}
+
 public sealed class TerrainMeta
 {
     public string Id { get; set; } = "";
@@ -16,6 +22,7 @@ public sealed class TerrainMeta
     public int Height { get; set; }
     public double SpacingMeters { get; set; }
     public double HalfExtentMeters { get; set; }
+    public TerrainOrigin Origin { get; set; } = new();
     public string RowOrder { get; set; } = "south-to-north";
     public string Crs { get; set; } = "";
     public string OrthoFile { get; set; } = "";
@@ -29,6 +36,9 @@ public sealed class TerrainMeta
 /// Implements <see cref="IGroundSurface"/> so the flight model and the renderer use the
 /// exact same data.
 /// </summary>
+public readonly record struct TerrainLayer(
+    Heightmap Map, double OffsetEast, double OffsetNorth);
+
 public interface ITerrainSource : IGroundSurface
 {
     TerrainMeta Meta { get; }
@@ -36,7 +46,7 @@ public interface ITerrainSource : IGroundSurface
     int Height { get; }
     double Spacing { get; }
     double HalfExtent { get; }
-    IReadOnlyList<Heightmap> Layers { get; }
+    IReadOnlyList<TerrainLayer> Layers { get; }
 }
 
 public sealed class Heightmap : ITerrainSource
@@ -47,11 +57,12 @@ public sealed class Heightmap : ITerrainSource
     };
 
     private readonly short[] _samples;
-    private Heightmap[]? _layers;
+    private TerrainLayer[]? _layers;
 
     public TerrainMeta Meta { get; }
     public string SourceDirectory { get; }
-    public IReadOnlyList<Heightmap> Layers => _layers ??= new[] { this };
+    public IReadOnlyList<TerrainLayer> Layers =>
+        _layers ??= new[] { new TerrainLayer(this, 0.0, 0.0) };
     public int Width => Meta.Width;
     public int Height => Meta.Height;
     public double Spacing => Meta.SpacingMeters;
