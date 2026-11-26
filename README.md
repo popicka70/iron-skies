@@ -116,8 +116,9 @@ python3 tools/mapgen/mapgen.py --theatre europe-250m-1944 \
 
 A **streamed near-field** adds lowland relief around the aircraft: 2,035 land tiles of
 64 km, kept in a 3×3 ring, with the outer ring fading back to the continental layer.
-The 90 m GLO-90 bundle uses ≈9 MB; the optional 30 m GLO-30 bundle uses ≈82 MB and is
-zlib-compressed on disk (≈7 GB). The runtime picks 30 m when installed, otherwise 90 m.
+The 90 m GLO-90 bundle uses ≈9 MB; the 30 m GLO-30 bundle uses ≈78 MB in memory and is
+zlib-compressed on disk (≈5 GB). Release exports carry both; the runtime picks 30 m
+when installed, otherwise 90 m.
 The 50 m mountain patches still win on top, and the 25 m airfield / 50 m France layers
 keep their finer ground.
 
@@ -144,7 +145,7 @@ Europe/Normandy origin:
 | Europe 500 m detail | 500 m | Blue Marble 488 m/px | 4,000 km |
 | Europe 250 m detail | 250 m | Blue Marble 488 m/px | 4,000 km |
 | Europe 90 m tiles (streamed 3×3) | 90 m | (reuses 500 m) | 64 km each |
-| Europe 30 m tiles (optional, streamed) | 30 m | (reuses 500 m) | 64 km each |
+| Europe 30 m tiles (streamed 3×3) | 30 m | (reuses 500 m) | 64 km each |
 | Mountain patches (17, streamed) | 50 m | Blue Marble 98 m/px | 400 km each |
 | North-west France | 50 m | Sentinel-2 98 m/px | 400 km |
 | Normandy | 25 m | Sentinel-2 10 m/px | 40 km |

@@ -98,8 +98,9 @@ matches the resolution of the regional mountain patches without a giant resident
 - **Runtime:** the 3 × 3 ring is ≈82 MB at 30 m. The 90 m bundle remains the fallback
   for lower-memory installs; the runtime picks 30 m when both are installed.
 - **Priority:** 50 m patches → 30 m tiles → 25/50 m local layers → 250 m → 500 m → 2 km.
-- **Exports:** the 30 m bundle is optional and much larger than the 90 m one; the
-  default export keeps the 90 m layer unless the 30 m filter is added deliberately.
+- **Exports:** release packages carry both streamed levels (30 m + 90 m); the runtime
+  prefers 30 m and falls back to 90 m. The 30 m bundle is zlib-compressed, so the
+  package grows by ≈5 GB rather than ≈17 GB.
 
 ### Phase D2b — imagery and floating origin
 
