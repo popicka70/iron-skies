@@ -1,7 +1,8 @@
 # Europe-wide height detail — plan
 
-**Status:** height detail complete through the streamed 30 m near-field (steps 1–6).
-Steps 7–8 (imagery tiles, floating origin, OSM) remain future work.
+**Status:** height detail through the streamed 30 m near-field and the Sentinel-2
+ortho-tile pipeline (steps 1–7) are done. Continental ortho coverage, floating origin
+and OSM remain (step 8).
 Each numbered implementation step is its own commit/push.
 **Goal:** high-quality relief across the whole continent, not only the mountain ranges.
 
@@ -102,7 +103,7 @@ matches the resolution of the regional mountain patches without a giant resident
   prefers 30 m and falls back to 90 m. The 30 m bundle is zlib-compressed, so the
   package grows by ≈5 GB rather than ≈17 GB.
 
-### Phase D2b — Sentinel-2 imagery tiles *(in progress)*
+### Phase D2b — Sentinel-2 imagery tiles *(done: regional pipeline)*
 
 The height-tile grid is reused for imagery. `tools/build_ortho_tiles.py` renders
 true-colour Sentinel-2 L2A for one 64 km tile (four low-cloud scenes fill gaps) and
@@ -141,7 +142,7 @@ writes `ortho/tile_XX_YY.jpg` into the 30 m bundle.
 6. **Tiled 30 m near-field** — zlib-compressed GLO-30 tiles, runtime picks 30 m over
    90 m when installed. *(done)*
 7. **Sentinel-2 imagery tiles** — 64 km ortho tiles stitched into a 192 km inset.
-   *(in progress)*
+   *(done: regional generation; continental coverage pending)*
 8. **Floating origin + OSM/EU-Hydro** — full-resolution detail (Phase D2c).
 
 ## Build commands
