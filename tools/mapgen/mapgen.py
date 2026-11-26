@@ -814,6 +814,7 @@ def build_osm(theatre: dict, out_dir: Path, meta: dict, radius_m: float, refresh
         "[out:json][timeout:180];("
         f'way["highway"~"^(primary|secondary|tertiary|residential)$"]({bbox});'
         f'way["barrier"="hedge"]({bbox});'
+        f'way["waterway"~"^(river|stream|canal)$"]({bbox});'
         ");out geom;"
     )
     print(f"osm: querying {radius_m / 1000:.0f} km radius ...", file=sys.stderr)
@@ -841,6 +842,7 @@ def build_osm(theatre: dict, out_dir: Path, meta: dict, radius_m: float, refresh
 
     roads = []
     hedges = []
+    waterways = []
     for element in payload.get("elements", []):
         geometry = element.get("geometry")
         if not geometry or len(geometry) < 2:
@@ -859,6 +861,21 @@ def build_osm(theatre: dict, out_dir: Path, meta: dict, radius_m: float, refresh
             hedges.append(points)
         elif "highway" in tags:
             roads.append({"kind": tags["highway"], "points": points})
+        elif tags.get("waterway") in ("river", "stream", "canal"):
+            kind = tags["waterway"]
+            width = {"river": 120.0, "canal": 40.0, "stream": 12.0}.get(kind, 20.0)
+            raw_width = tags.get("width")
+            if raw_width:
+                try:
+                    width = max(4.0, min(1500.0, float(
+                        str(raw_width).lower().replace("m", "").strip())))
+                except ValueError:
+                    pass
+            waterways.append({
+                "kind": kind,
+                "width": round(width, 1),
+                "points": points,
+            })
 
     out_dir.mkdir(parents=True, exist_ok=True)
     payload_out = {
@@ -866,6 +883,7 @@ def build_osm(theatre: dict, out_dir: Path, meta: dict, radius_m: float, refresh
         "origin": {"easting": origin_e, "northing": origin_n},
         "roads": roads,
         "hedges": hedges,
+        "waterways": waterways,
     }
     out_path.write_text(json.dumps(payload_out, separators=(",", ":")), encoding="utf-8")
 
@@ -874,10 +892,12 @@ def build_osm(theatre: dict, out_dir: Path, meta: dict, radius_m: float, refresh
         "radiusMeters": radius_m,
         "roads": len(roads),
         "hedges": len(hedges),
+        "waterways": len(waterways),
         "attribution": "© OpenStreetMap contributors (ODbL 1.0)",
     }
     (out_dir / "meta.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
-    print(f"osm: {len(roads)} roads, {len(hedges)} hedges -> {out_path.name} "
+    print(f"osm: {len(roads)} roads, {len(hedges)} hedges, "
+          f"{len(waterways)} waterways -> {out_path.name} "
           f"({out_path.stat().st_size / 1_048_576:.1f} MiB)")
 
 

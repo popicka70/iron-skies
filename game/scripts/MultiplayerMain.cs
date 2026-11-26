@@ -40,6 +40,7 @@ public sealed partial class MultiplayerMain : Node3D
     private TerrainWorld _terrain = null!;
     private string _terrainDirectory = "res://assets/terrain/normandy-1944";
     private string _terrainOsmPath = "res://assets/terrain/normandy-1944/osm.json";
+    private RiverData _riverData = new();
     private SpitfireVisual _playerVisual = null!;
     private DamageSmoke _playerSmoke = null!;
     private EngineAudio _audio = null!;
@@ -149,6 +150,13 @@ public sealed partial class MultiplayerMain : Node3D
             ReadOption("--theatre") ?? LaunchConfig.CurrentTheatre);
         _map = TheatreCatalog.LoadTerrain(
             theatreId, out _terrainDirectory, out _terrainOsmPath);
+        _riverData = RiverData.Load(
+            "res://assets/water/europe-rivers.json", _terrainOsmPath);
+        if (_riverData.Lines.Count > 0)
+        {
+            _map = new CarvedTerrain(_map, new RiverCarver(_riverData));
+        }
+
         GD.Print($"Theatre: {theatreId}");
         _ground = new AirfieldSurface(_map);
         _definitions = new[] { LoadAircraft("spitfire-mk9"), LoadAircraft("bf109-g6") };
@@ -636,7 +644,7 @@ public sealed partial class MultiplayerMain : Node3D
 
         var rivers = new RiverNetwork();
         AddChild(rivers);
-        rivers.Build(_map, "res://assets/water/europe-rivers.json");
+        rivers.Build(_map, _riverData);
         _terrain.Prewarm(new Vector3(0.0f, (float)_map.HeightAt(0, 6000) + 1500.0f, -6000.0f));
 
         _playerVisual = new SpitfireVisual();

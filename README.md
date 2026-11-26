@@ -112,22 +112,24 @@ rebasing are the next steps for full-resolution continental flight.*
 ## Rivers
 
 Major European rivers are actual flowing water surfaces, not only blue lines in the
-orthophoto. **Natural Earth 1:10m** (public domain) supplies 191 river polylines across
-the theatre; `RiverNetwork` builds ribbon meshes with UV.y downstream and a width derived
-from the river rank. `river.gdshader` scrolls two ripple fields along the flow, adds
-fresnel reflection, edge foam and view-dependent transparency.
+orthophoto. **Natural Earth 1:10m** (public domain) supplies 191 major river polylines
+across Europe; the local OSM patch adds 18 streams around the airfield. `RiverNetwork`
+builds ribbon meshes with UV.y downstream and widths from the data. `river.gdshader`
+scrolls two ripple fields along the flow, adds fresnel reflection, edge foam and
+view-dependent transparency. `RiverCarver` lowers the terrain into shallow channels, so
+the water sits inside the banks instead of on top of the ground.
 
 ```bash
 python3 tools/mapgen/build_rivers.py
 ```
 
-The result is `game/assets/water/europe-rivers.json` (≈0.4 MB). Smaller OSM waterways
-around the detailed regions are the next river layer.
+The result is `game/assets/water/europe-rivers.json` (≈0.4 MB). The 2 km OSM patch
+adds local streams to `osm.json`; the airfield clear zone is excluded from carving.
 
 ![Danube as a flowing river surface](docs/media/m0-danube.png)
 
 *The Danube near Budapest: 700 m wide in the Natural Earth data, now an animated water
-surface with flow-aligned ripples and foam edges.*
+surface in a carved channel with flow-aligned ripples and foam edges.*
 
 ![Iron Skies 400 km North-west France theatre](docs/media/m0-france-400km.png)
 

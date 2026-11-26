@@ -72,11 +72,12 @@ fetch → clip/reproject → heightmap LOD pyramid → derivatives (normals, slo
   The runtime layers finer orthos over the base with feathered edges: the 400 km regional
   inset and the 40 km Normandy 10 m inset. A virtual-texture page table is still needed
   for full-resolution continental imagery.
-- **Rivers:** Natural Earth 1:10m polylines are projected to local metres, turned into
-  ribbon meshes and shaded by `river.gdshader` (flow-aligned scrolling ripples, fresnel,
-  foam, transparency). The river surface sits at the higher sampled bank and the coarse
-  far-field mesh is lowered so near terrain and water keep the depth test. River-channel
-  carving and OSM streams come later.
+- **Rivers:** Natural Earth 1:10m polylines and a 2 km OSM waterway patch are projected
+  to local metres, turned into ribbon meshes and shaded by `river.gdshader`
+  (flow-aligned scrolling ripples, fresnel, foam, transparency). `RiverCarver` lowers
+  the terrain into shallow channels along the same polylines; the water sits inside the
+  banks. The airfield clear zone is excluded, and the far-field mesh is lowered so near
+  terrain and water keep the depth test.
 - **Composite height:** a continental base with independently offset 400 km layers
   (Normandy, Alps, later Pyrenees/Scandes) and the 40 km Normandy layer on top;
   `HeightAt` converts base-local coordinates into each layer's local frame, selects the

@@ -70,18 +70,21 @@ def main() -> int:
 
     buildings: list[dict] = []
     woods: list[list[list[float]]] = []
+    waterways: list[dict] = list(osm.get("waterways", []))
     for way in root.findall("way"):
         tags = {tag.attrib["k"]: tag.attrib["v"] for tag in way.findall("tag")}
         is_building = "building" in tags and tags["building"] != "no"
         is_wood = tags.get("natural") == "wood" or tags.get("landuse") == "forest"
-        if not (is_building or is_wood):
+        is_water = tags.get("waterway") in ("river", "stream", "canal")
+        if not (is_building or is_wood or is_water):
             continue
 
         refs = [node.attrib["ref"] for node in way.findall("nd")]
         points = [nodes[ref] for ref in refs if ref in nodes]
-        if len(points) < 3:
+        minimum = 2 if is_water else 3
+        if len(points) < minimum:
             continue
-        if points[0] != points[-1]:
+        if not is_water and points[0] != points[-1]:
             points.append(points[0])
 
         lons = [p[0] for p in points]
@@ -92,7 +95,22 @@ def main() -> int:
             for x, y in zip(xs, ys)
         ]
 
-        if is_building:
+        if is_water:
+            kind = tags["waterway"]
+            width = {"river": 120.0, "canal": 40.0, "stream": 12.0}.get(kind, 20.0)
+            raw_width = tags.get("width")
+            if raw_width:
+                try:
+                    width = max(4.0, min(1500.0, float(
+                        str(raw_width).lower().replace("m", "").strip())))
+                except ValueError:
+                    pass
+            waterways.append({
+                "kind": kind,
+                "width": round(width, 1),
+                "points": local,
+            })
+        elif is_building:
             height = 6.0
             if "height" in tags:
                 try:
@@ -113,14 +131,17 @@ def main() -> int:
 
     osm["buildings"] = buildings
     osm["woods"] = woods
+    osm["waterways"] = waterways
     osm_path.write_text(json.dumps(osm, separators=(",", ":")), encoding="utf-8")
     osm_meta = meta.setdefault("osm", {})
     osm_meta["buildings"] = len(buildings)
     osm_meta["woods"] = len(woods)
+    osm_meta["waterways"] = len(waterways)
     osm_meta["patchRadiusMeters"] = radius
     osm_meta["attribution"] = "© OpenStreetMap contributors (ODbL 1.0)"
     meta_path.write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
-    print(f"osm-api: {len(buildings)} buildings, {len(woods)} woods -> {osm_path.name} "
+    print(f"osm-api: {len(buildings)} buildings, {len(woods)} woods, "
+          f"{len(waterways)} waterways -> {osm_path.name} "
           f"({osm_path.stat().st_size / 1_048_576:.1f} MiB)")
     return 0
 

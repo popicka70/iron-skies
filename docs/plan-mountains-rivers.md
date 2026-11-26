@@ -102,8 +102,8 @@ the small ones later.
    layer, Alps start location.
 4. **Natural Earth rivers** — done: 191 lines, 18k points, ribbon meshes and
    `river.gdshader` in both scenes.
-5. **Local waterways** — next: OSM `waterway=river/stream/canal` for the detailed
-   regions, plus river-channel carving for the terrain.
+5. **Local waterways** — done: 2 km OSM `waterway=river/stream/canal` patch and
+   river-channel carving (airfield clear zone excluded).
 6. **Single Player start dialog** — done: Airfield / Alps selection moved out of Settings.
 6. **Polish** — screenshots, README/architecture/roadmap updates, tests, CI, export.
 

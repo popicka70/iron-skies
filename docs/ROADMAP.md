@@ -55,7 +55,7 @@ simulation runs at 240 Hz with a stable 60 FPS render; CI is green on both OSes.
 - [x] 4,000 km Europe continental base (ETOPO1 + NASA Blue Marble) with composite 400/40 km detail
 - [x] Offset Alpine layer from Copernicus GLO-30 at 50 m with an Alps start location
 - [x] Major European rivers as flowing water surfaces (Natural Earth 1:10m + river shader)
-- [ ] Local OSM waterways and river-channel carving for the detailed regions
+- [x] Local OSM waterway patch and carved river channels (airfield clear zone excluded)
 - [ ] Source-tiled height/imagery streaming and floating-origin rebasing for full-resolution Europe
 - [ ] In-engine telemetry graphs
 - Audio: procedural engine/prop sound driven by RPM and load; wind and gunfire
