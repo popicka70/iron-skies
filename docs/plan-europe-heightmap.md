@@ -64,7 +64,7 @@ queries; clients stream them.
   patches still win locally. A tiled near-field replaces the monolithic layer in
   Phase D if memory or load time becomes a problem.
 
-### Phase D1 — tiled 90 m near-field *(next)*
+### Phase D1 — tiled 90 m near-field *(done)*
 
 A 3 × 3 ring of 64 km GLO-90 tiles (90 m) is streamed around the aircraft while the
 500 m/250 m layers remain the far field. This gives lowland detail comparable to the
@@ -116,6 +116,12 @@ for id in alps-1944 pyrenees-1944 ... iceland-1944; do
   python3 tools/mapgen/mapgen.py --theatre "$id" \
       --resolution 50 --ortho-size 4096 --no-osm
 done
+
+# Streamed 90 m near-field (2035 land tiles, ≈2 GB, ~2 min with 8 workers)
+python3 tools/build_height_tiles.py --theatre europe-90m-tiles-1944 --workers 8
+
+# Validate tile edges and lowland roughness
+python3 tools/check_height_tiles.py
 ```
 
 ## Budgets and acceptance
@@ -125,7 +131,7 @@ done
   valleys and medium hills.
 - The mountain patches still win at 50 m; the 40 km airfield layer still wins locally.
 - The patch manager keeps at most three range patches resident (~366 MB); with the
-  500 m layer, total height memory is ≈0.5 GB. The optional 250 m layer raises it to
-  ≈1 GB.
+  500 m and 250 m layers, total height memory is ≈1 GB. The 90 m near-field adds only
+  ≈9 MB for the client's 3×3 ring and grows lazily on the server.
 - Existing takeoff, mission, net and range-start tests stay green.
 - Every step is committed and pushed.

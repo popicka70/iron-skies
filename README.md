@@ -114,6 +114,16 @@ python3 tools/mapgen/mapgen.py --theatre europe-250m-1944 \
     --resolution 250 --no-ortho --no-osm
 ```
 
+A **streamed 90 m near-field** adds lowland relief around the aircraft: 2,035 land tiles
+of 64 km, kept in a 3×3 ring (≤9 tiles, ≈9 MB), with the outer ring fading back to the
+continental layer. The 50 m mountain patches still win on top, and the 25 m airfield /
+50 m France layers keep their finer ground.
+
+```bash
+python3 tools/build_height_tiles.py --theatre europe-90m-tiles-1944 --workers 8
+python3 tools/check_height_tiles.py
+```
+
 See [docs/plan-europe-heightmap.md](docs/plan-europe-heightmap.md) for the continental
 detail plan and `tools/render_heightmap.py` for shaded-relief previews.
 They are loaded over Europe when installed; **Single Player** lists every installed range
@@ -121,22 +131,24 @@ and spawns airborne over it. Airborne starts begin with **gear and flaps up**. T
 inventory and the next optimisation steps are in
 [docs/plan-europe-mountains.md](docs/plan-europe-mountains.md).
 
-Then choose **Settings → Theatre**. The runtime composes up to three levels that share
-the Normandy origin:
+Then choose **Settings → Theatre**. The runtime composes these levels on the shared
+Europe/Normandy origin:
 
 | Layer | Height | Imagery | Coverage |
 | --- | --- | --- | --- |
 | Europe base | 2 km | Blue Marble ≈1 km/px | 4,000 km |
 | Europe 500 m detail | 500 m | Blue Marble 488 m/px | 4,000 km |
-| Europe 250 m detail (optional) | 250 m | Blue Marble 488 m/px | 4,000 km |
+| Europe 250 m detail | 250 m | Blue Marble 488 m/px | 4,000 km |
+| Europe 90 m tiles (streamed 3×3) | 90 m | (reuses 500 m) | 64 km each |
 | Mountain patches (17, streamed) | 50 m | Blue Marble 98 m/px | 400 km each |
 | North-west France | 50 m | Sentinel-2 98 m/px | 400 km |
 | Normandy | 25 m | Sentinel-2 10 m/px | 40 km |
 
 For any point it uses the finest layer containing that point, and the shader blends the
 ortho insets with feathered edges. Chunk meshes within 10 km stream as before; the base
-mesh covers the continent. If a selected layer is not installed, the runtime falls back
-to the layers it has.
+mesh covers the continent. The 90 m ring only reloads when the centre 64 km tile
+changes, invalidating chunks within 20 km. If a layer is not installed, the runtime
+falls back to the layers it has.
 
 ![Single Player start location dialog](docs/media/m0-singleplayer.png)
 
