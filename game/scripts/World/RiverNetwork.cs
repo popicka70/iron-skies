@@ -1,56 +1,19 @@
 using System;
 using System.Collections.Generic;
-using System.Text.Json;
 using Godot;
 
 namespace IronSkies.Game.World;
 
 /// <summary>
-/// Builds river ribbon meshes from Natural Earth 1:10m polylines. UV.y runs downstream
-/// and the river shader scrolls its ripple field along it, so the surface reads as
-/// flowing water rather than a painted blue line.
+/// Builds river ribbon meshes from the shared river data. The terrain has already been
+/// carved along the same lines, so the water sits a little above the channel bottom and
+/// the depth test keeps the banks in front naturally. UV.y runs downstream.
 /// </summary>
 public sealed partial class RiverNetwork : Node3D
 {
-    private static readonly JsonSerializerOptions Options = new()
+    public void Build(ITerrainSource map, RiverData data)
     {
-        PropertyNameCaseInsensitive = true,
-    };
-
-    private sealed class RiverFile
-    {
-        public RiverLine[] Rivers { get; set; } = Array.Empty<RiverLine>();
-    }
-
-    private sealed class RiverLine
-    {
-        public string Name { get; set; } = "";
-        public int Rank { get; set; }
-        public float Width { get; set; }
-        public float[][] Points { get; set; } = Array.Empty<float[]>();
-    }
-
-    public void Build(ITerrainSource map, string path)
-    {
-        if (!FileAccess.FileExists(path))
-        {
-            GD.Print($"Rivers: no data at {path}");
-            return;
-        }
-
-        RiverFile? file;
-        try
-        {
-            file = JsonSerializer.Deserialize<RiverFile>(
-                FileAccess.GetFileAsString(path), Options);
-        }
-        catch (JsonException error)
-        {
-            GD.PushError($"River data unreadable: {error.Message}");
-            return;
-        }
-
-        if (file is null || file.Rivers.Length == 0)
+        if (data.Lines.Count == 0)
         {
             return;
         }
@@ -61,23 +24,36 @@ public sealed partial class RiverNetwork : Node3D
         var indices = new List<int>();
         int lines = 0;
 
-        foreach (RiverLine river in file.Rivers)
+        foreach (RiverData.Line river in data.Lines)
         {
             if (river.Points.Length < 2)
             {
                 continue;
             }
 
-            float halfWidth = Mathf.Max(4.0f, river.Width * 0.5f);
+            float halfWidth = Mathf.Max(2.0f, river.Width * 0.5f);
             double distance = 0.0;
             for (int i = 0; i < river.Points.Length - 1; i++)
             {
-                float[] p0 = river.Points[i];
-                float[] p1 = river.Points[i + 1];
-                double de = p1[0] - p0[0];
-                double dn = p1[1] - p0[1];
+                Vector2 p0 = river.Points[i];
+                Vector2 p1 = river.Points[i + 1];
+                double de = p1.X - p0.X;
+                double dn = p1.Y - p0.Y;
                 double length = Math.Sqrt(de * de + dn * dn);
                 if (length < 1.0)
+                {
+                    continue;
+                }
+
+                double centerE = (p0.X + p1.X) * 0.5;
+                double centerN = (p0.Y + p1.Y) * 0.5;
+                if (Airfield.IsInClearZone(centerE, centerN, 40.0))
+                {
+                    continue;
+                }
+
+                double height = map.HeightAt(centerE, centerN);
+                if (!double.IsFinite(height))
                 {
                     continue;
                 }
@@ -86,44 +62,26 @@ public sealed partial class RiverNetwork : Node3D
                 double un = dn / length;
                 double pe = -un;
                 double pn = ue;
-                double centerE = (p0[0] + p1[0]) * 0.5;
-                double centerN = (p0[1] + p1[1]) * 0.5;
-                double bankE = centerE + pe * halfWidth;
-                double bankN = centerN + pn * halfWidth;
-                double centerHeight = map.HeightAt(centerE, centerN);
-                double height = Math.Max(
-                    centerHeight,
-                    Math.Max(
-                        map.HeightAt(bankE, bankN),
-                        map.HeightAt(centerE - pe * halfWidth, centerN - pn * halfWidth)));
-                if (!double.IsFinite(height))
-                {
-                    continue;
-                }
-
-                // Sit at the higher bank, not a fixed offset above the centre. This keeps
-                // the depth test valid across the coarse continental mesh; carving the
-                // channel properly is a later step.
-                float y = (float)height + 2.0f;
                 float v0 = (float)(distance / 12.0);
                 float v1 = (float)((distance + length) / 12.0);
+                float y = (float)height + 1.2f;
                 int baseIndex = vertices.Count;
 
                 AddVertex(vertices, normals, uvs,
-                    new Vector3((float)(p0[0] + pe * halfWidth), y,
-                        (float)-(p0[1] + pn * halfWidth)),
+                    new Vector3((float)(p0.X + pe * halfWidth), y,
+                        (float)-(p0.Y + pn * halfWidth)),
                     new Vector2(0.0f, v0));
                 AddVertex(vertices, normals, uvs,
-                    new Vector3((float)(p0[0] - pe * halfWidth), y,
-                        (float)-(p0[1] - pn * halfWidth)),
+                    new Vector3((float)(p0.X - pe * halfWidth), y,
+                        (float)-(p0.Y - pn * halfWidth)),
                     new Vector2(1.0f, v0));
                 AddVertex(vertices, normals, uvs,
-                    new Vector3((float)(p1[0] + pe * halfWidth), y,
-                        (float)-(p1[1] + pn * halfWidth)),
+                    new Vector3((float)(p1.X + pe * halfWidth), y,
+                        (float)-(p1.Y + pn * halfWidth)),
                     new Vector2(0.0f, v1));
                 AddVertex(vertices, normals, uvs,
-                    new Vector3((float)(p1[0] - pe * halfWidth), y,
-                        (float)-(p1[1] - pn * halfWidth)),
+                    new Vector3((float)(p1.X - pe * halfWidth), y,
+                        (float)-(p1.Y - pn * halfWidth)),
                     new Vector2(1.0f, v1));
 
                 indices.Add(baseIndex);
@@ -158,16 +116,15 @@ public sealed partial class RiverNetwork : Node3D
         {
             Shader = GD.Load<Shader>("res://assets/shaders/river.gdshader"),
         };
-        var instance = new MeshInstance3D
+        AddChild(new MeshInstance3D
         {
             Name = "RiverSurfaces",
             Mesh = mesh,
             MaterialOverride = material,
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
             ExtraCullMargin = 4_000_000.0f,
-        };
-        AddChild(instance);
-        GD.Print($"Rivers: {lines} lines, {vertices.Count / 4} ribbon segments");
+        });
+        GD.Print($"Rivers: {lines} lines, {vertices.Count / 4} ribbon segments (carved)");
     }
 
     private static void AddVertex(

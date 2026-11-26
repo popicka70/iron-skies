@@ -48,6 +48,7 @@
     "attribution": "\u00a9 OpenStreetMap contributors (ODbL 1.0)",
     "buildings": 2873,
     "woods": 29,
-    "patchRadiusMeters": 2000.0
+    "patchRadiusMeters": 2000.0,
+    "waterways": 18
   }
 }

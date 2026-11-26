@@ -1675,7 +1675,16 @@ public partial class Main : Node3D
         string theatreId = TheatreCatalog.Resolve(
             ReadUserOption("--theatre") ?? LaunchConfig.CurrentTheatre);
         string osmPath;
-        _heightmap = TheatreCatalog.LoadTerrain(theatreId, out string directory, out osmPath);
+        _heightmap = TheatreCatalog.LoadTerrain(
+            theatreId, out string directory, out osmPath);
+        RiverData riverData = RiverData.Load(
+            "res://assets/water/europe-rivers.json", osmPath);
+        if (riverData.Lines.Count > 0)
+        {
+            _heightmap = new CarvedTerrain(
+                _heightmap, new RiverCarver(riverData));
+        }
+
         GD.Print($"Theatre: {theatreId}");
         var timer = Stopwatch.StartNew();
         _ground = new AirfieldSurface(_heightmap);
@@ -1695,7 +1704,7 @@ public partial class Main : Node3D
 
         var rivers = new RiverNetwork();
         AddChild(rivers);
-        rivers.Build(_heightmap, "res://assets/water/europe-rivers.json");
+        rivers.Build(_heightmap, riverData);
 
         timer.Stop();
         GD.Print($"Terrain: {_heightmap.Width}×{_heightmap.Height} @ {_heightmap.Spacing:0} m, " +
