@@ -52,6 +52,8 @@ simulation runs at 240 Hz with a stable 60 FPS render; CI is green on both OSes.
 - [x] Replay recording/playback of solo flights
 - [x] First-person cockpit: 3D cabin model and chase/cockpit/top views with orbit/look
 - [x] 400 km regional theatre with data-driven extents, multi-date imagery and a 40 km high-res inset
+- [x] 4,000 km Europe continental base (ETOPO1 + NASA Blue Marble) with composite 400/40 km detail
+- [ ] Source-tiled height/imagery streaming and floating-origin rebasing for full-resolution Europe
 - [ ] In-engine telemetry graphs
 - Audio: procedural engine/prop sound driven by RPM and load; wind and gunfire
 

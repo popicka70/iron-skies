@@ -32,14 +32,14 @@ public sealed partial class Airfield : Node3D
             && north >= south && north <= northLimit;
     }
 
-    public void Build(Heightmap map)
+    public void Build(ITerrainSource map)
     {
         BuildStrip(map);
         BuildMarkings(map);
         BuildStructures(map);
     }
 
-    private void BuildStrip(Heightmap map)
+    private void BuildStrip(ITerrainSource map)
     {
         var tool = new SurfaceTool();
         tool.Begin(Mesh.PrimitiveType.Triangles);
@@ -77,7 +77,7 @@ public sealed partial class Airfield : Node3D
         });
     }
 
-    private void BuildMarkings(Heightmap map)
+    private void BuildMarkings(ITerrainSource map)
     {
         var tool = new SurfaceTool();
         tool.Begin(Mesh.PrimitiveType.Triangles);
@@ -109,7 +109,7 @@ public sealed partial class Airfield : Node3D
         });
     }
 
-    private void BuildStructures(Heightmap map)
+    private void BuildStructures(ITerrainSource map)
     {
         var dark = new StandardMaterial3D
         {
@@ -168,7 +168,7 @@ public sealed partial class Airfield : Node3D
     }
 
     private void AddMark(
-        SurfaceTool tool, Heightmap map, double west, double south, double east, double north)
+        SurfaceTool tool, ITerrainSource map, double west, double south, double east, double north)
     {
         float lift = SurfaceLift + 0.60f;
         Vector3 a = Draped(map, west, south, lift);
@@ -179,7 +179,7 @@ public sealed partial class Airfield : Node3D
     }
 
     private void AddBox(
-        Heightmap map, double east, double north, Vector3 size, Material material,
+        ITerrainSource map, double east, double north, Vector3 size, Material material,
         float heightOffset = 0.0f)
     {
         double ground = map.HeightAt(east, north);
@@ -233,13 +233,13 @@ public sealed partial class Airfield : Node3D
     }
 
     private static Vector3 Draped(
-        Heightmap map, double east, double north, float lift)
+        ITerrainSource map, double east, double north, float lift)
     {
         return GodotPosition(map, east, north, lift);
     }
 
     private static Vector3 GodotPosition(
-        Heightmap map, double east, double north, float lift)
+        ITerrainSource map, double east, double north, float lift)
     {
         return new Vector3(
             (float)east, (float)map.HeightAt(east, north) + lift, (float)-north);

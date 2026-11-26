@@ -1,0 +1,70 @@
+# Continental Europe — coarse 4,000 km base for the long-range map.
+# The same airfield origin as Normandy keeps the detailed 400 km/40 km patches aligned.
+id = "europe-1944"
+name = "Europe, 1944"
+description = "A 4,000 km continental theatre: coarse ETOPO1 relief with NASA Blue Marble imagery, detailed around Normandy."
+generator_version = "0.3"
+seed = 19440606
+
+[geodesy]
+crs = "EPSG:32630"
+origin = { lat = 49.2200, lon = -0.3700 }
+bounds = { north = 72.0, south = 25.0, west = -50.0, east = 50.0 }
+vertical_datum = "EGM2008"
+
+[terrain]
+size_meters = 4000000
+chunk_size_m = 1000
+lod_levels = 5
+heightmap_spacing_m = 2000
+dem_source = "etopo1"
+ortho_source = "blue-marble"
+ortho_size = 4096
+heightmap_bits = 16
+
+[runtime]
+default_weather = "broken"
+time_of_day = "09:30"
+osm_center = { lat = 49.2740, lon = -0.3700 }
+
+[[sources]]
+id = "noaa-etopo1"
+kind = "elevation"
+licence = "Public domain (U.S. Government)"
+attribution = "NOAA/NCEI ETOPO1 Global Relief Model"
+resolution_m = 1852
+
+[[sources]]
+id = "nasa-blue-marble"
+kind = "imagery"
+licence = "Public domain (NASA)"
+attribution = "NASA Earth Observatory Blue Marble, via NASA GIBS"
+resolution_m = 500
+
+[[sources]]
+id = "copernicus-glo30"
+kind = "elevation-detail"
+licence = "Copernicus DEM licence (free, attribution)"
+attribution = "© DLR e.V. 2010-2014 and © Airbus DS GmbH 2017-2021"
+resolution_m = 30
+
+[[sources]]
+id = "sentinel-2-l2a"
+kind = "imagery-detail"
+licence = "Copernicus Sentinel Data Terms (free, attribution)"
+attribution = "Contains modified Copernicus Sentinel data 2026"
+resolution_m = 10
+
+[[sources]]
+id = "osm-normandy"
+kind = "vectors-detail"
+licence = "ODbL 1.0"
+attribution = "© OpenStreetMap contributors"
+notes = "Derived bundles are ODbL; see docs/assets-and-licensing.md"
+
+[[sources]]
+id = "polyhaven-materials"
+kind = "materials"
+licence = "CC0"
+attribution = "Poly Haven (polyhaven.com)"
+notes = "Textures only; no geospatial component"

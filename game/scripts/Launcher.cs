@@ -1147,9 +1147,15 @@ public sealed partial class Launcher : Control
         }
 
         bool installed = TheatreCatalog.IsInstalled(GameSettings.Theatre);
-        _theatreStatus.Text = installed
-            ? "Regional terrain bundle found."
-            : "Not installed — build it with tools/mapgen (see README).";
+        _theatreStatus.Text = !installed
+            ? "Not installed — build it with tools/mapgen (see README)."
+            : GameSettings.Theatre == TheatreCatalog.EuropeId
+                ? (TheatreCatalog.IsInstalled(TheatreCatalog.LargeId)
+                    ? "Continental base + regional detail found."
+                    : "Continental base found; regional detail not installed.")
+                : GameSettings.Theatre == TheatreCatalog.LargeId
+                    ? "Regional terrain bundle found."
+                    : "Sample terrain bundle found.";
         _theatreStatus.AddThemeColorOverride(
             "font_color",
             installed

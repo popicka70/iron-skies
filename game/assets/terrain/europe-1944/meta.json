@@ -1,0 +1,46 @@
+{
+  "id": "europe-1944",
+  "name": "Europe, 1944",
+  "heightmapFile": "heightmap.r16",
+  "width": 2001,
+  "height": 2001,
+  "spacingMeters": 2000.0,
+  "halfExtentMeters": 2000000.0,
+  "rowOrder": "south-to-north",
+  "crs": "EPSG:32630",
+  "origin": {
+    "easting": 691506.364,
+    "northing": 5455241.9
+  },
+  "boundsWgs84": {
+    "north": 72.0,
+    "south": 25.0,
+    "west": -50.0,
+    "east": 50.0
+  },
+  "heightRangeMeters": [
+    -100.0,
+    3985.0
+  ],
+  "source": [
+    "NOAA/NCEI ETOPO1"
+  ],
+  "demSource": "etopo1",
+  "generatedBy": "tools/mapgen/mapgen.py",
+  "orthoFile": "ortho.jpg.bin",
+  "orthoSize": 4096,
+  "orthoResolutionMeters": 976.5625,
+  "orthoRowOrder": "north-to-south",
+  "landcoverFile": "landcover.png.bin",
+  "landcoverSize": 2048,
+  "blueMarble": {
+    "layer": "BlueMarble_ShadedRelief_Bathymetry",
+    "bounds": {
+      "north": 72.0,
+      "south": 25.0,
+      "west": -50.0,
+      "east": 50.0
+    },
+    "attribution": "NASA Earth Observatory Blue Marble, via NASA GIBS"
+  }
+}

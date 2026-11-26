@@ -35,7 +35,7 @@ public partial class Main : Node3D
     private AircraftSimulator _sim = null!;
     private AircraftDefinition _definition = null!;
     private AircraftDefinition _aiDefinition = null!;
-    private Heightmap _heightmap = null!;
+    private ITerrainSource _heightmap = null!;
     private IGroundSurface _ground = null!;
     private TerrainWorld _terrain = null!;
     private SpitfireVisual _aircraft = null!;
@@ -101,6 +101,10 @@ public partial class Main : Node3D
     private bool _missionTest;
     private bool _damageTest;
     private bool _takeoffTest;
+    private bool _spawnSet;
+    private double _spawnEast;
+    private double _spawnNorth;
+    private double _spawnAltitude = -1.0;
     private int _missionTestTick;
     private double _accumulator;
 
@@ -180,6 +184,18 @@ public partial class Main : Node3D
         _missionTest = HasUserFlag("--mission-test") || HasUserFlag("--hunt-test");
         _damageTest = HasUserFlag("--damage-test");
         _takeoffTest = HasUserFlag("--takeoff-test");
+        if (double.TryParse(ReadUserOption("--spawn-east"), out double spawnEast)
+            && double.TryParse(ReadUserOption("--spawn-north"), out double spawnNorth))
+        {
+            _spawnSet = true;
+            _spawnEast = spawnEast;
+            _spawnNorth = spawnNorth;
+        }
+
+        if (double.TryParse(ReadUserOption("--altitude"), out double altitude))
+        {
+            _spawnAltitude = altitude;
+        }
 
         if (HasUserFlag("--strike") || LaunchConfig.Mission == "strike")
         {
@@ -1219,16 +1235,20 @@ public partial class Main : Node3D
             return;
         }
 
-        double east = _strikeStart ? 900.0 : Airfield.East;
-        double north = _strikeStart ? 7000.0 : Airfield.SouthThreshold + 120.0;
+        double east = _spawnSet ? _spawnEast
+            : _strikeStart ? 900.0 : Airfield.East;
+        double north = _spawnSet ? _spawnNorth
+            : _strikeStart ? 7000.0 : Airfield.SouthThreshold + 120.0;
         double ground = _ground.HeightAt(east, north);
         bool airborne = _airStart || _strikeStart || _huntStart || _bomberStart || _duel;
         AircraftState state = airborne
             ? AircraftState.CreateAirborne(
                 _definition,
-                altitudeMeters: ground + (_strikeStart ? 250.0
-                    : _huntStart || _bomberStart || _duel ? 1500.0
-                    : 2000.0),
+                altitudeMeters: _spawnAltitude > 0.0
+                    ? _spawnAltitude
+                    : ground + (_strikeStart ? 250.0
+                        : _huntStart || _bomberStart || _duel ? 1500.0
+                        : 2000.0),
                 speedMs: _strikeStart ? 90.0 : 120.0,
                 eastMeters: east, northMeters: north)
             : AircraftState.CreateOnGround(
@@ -1643,17 +1663,17 @@ public partial class Main : Node3D
     {
         string theatreId = TheatreCatalog.Resolve(
             ReadUserOption("--theatre") ?? LaunchConfig.CurrentTheatre);
-        string directory = TheatreCatalog.Directory(theatreId);
+        string osmPath;
+        _heightmap = TheatreCatalog.LoadTerrain(theatreId, out string directory, out osmPath);
         GD.Print($"Theatre: {theatreId}");
         var timer = Stopwatch.StartNew();
-        _heightmap = Heightmap.Load(directory);
         _ground = new AirfieldSurface(_heightmap);
         _terrain = new TerrainWorld();
         _terrain.Build(_heightmap, directory);
         AddChild(_terrain);
 
         var osm = new OsmDetail();
-        osm.Build(_heightmap, $"{directory}/osm.json");
+        osm.Build(_heightmap, osmPath);
         AddChild(osm);
         var airfield = new Airfield();
         airfield.Build(_heightmap);
@@ -1705,7 +1725,7 @@ public partial class Main : Node3D
         {
             Fov = 72.0f,
             Near = 1.0f,
-            Far = 250000.0f,
+            Far = Mathf.Max(250_000.0f, (float)_heightmap.HalfExtent * 3.0f),
         };
         AddChild(_camera);
         _camera.MakeCurrent();

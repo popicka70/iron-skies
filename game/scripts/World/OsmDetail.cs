@@ -36,7 +36,7 @@ public sealed partial class OsmDetail : Node3D
         PropertyNameCaseInsensitive = true,
     };
 
-    public void Build(Heightmap map, string path)
+    public void Build(ITerrainSource map, string path)
     {
         if (!FileAccess.FileExists(path))
         {
@@ -114,7 +114,7 @@ public sealed partial class OsmDetail : Node3D
                  $"{buildingCount} buildings, {treeCount} trees");
     }
 
-    private int BuildBuildings(BuildingWay[]? buildings, Heightmap map)
+    private int BuildBuildings(BuildingWay[]? buildings, ITerrainSource map)
     {
         if (buildings is null || buildings.Length == 0)
         {
@@ -177,7 +177,7 @@ public sealed partial class OsmDetail : Node3D
         return count;
     }
 
-    private int BuildWoods(double[][][]? woods, Heightmap map, int buildingCount)
+    private int BuildWoods(double[][][]? woods, ITerrainSource map, int buildingCount)
     {
         if (woods is null || woods.Length == 0)
         {
@@ -313,7 +313,7 @@ public sealed partial class OsmDetail : Node3D
     }
 
     private static void AddRibbon(
-        SurfaceTool tool, Heightmap map, double[][] points, float width, float lift)
+        SurfaceTool tool, ITerrainSource map, double[][] points, float width, float lift)
     {
         float half = width * 0.5f;
         for (int i = 0; i < points.Length - 1; i++)
@@ -349,7 +349,7 @@ public sealed partial class OsmDetail : Node3D
     }
 
     private static void AddFence(
-        SurfaceTool tool, Heightmap map, double[][] points, double height)
+        SurfaceTool tool, ITerrainSource map, double[][] points, double height)
     {
         for (int i = 0; i < points.Length - 1; i++)
         {
@@ -382,7 +382,7 @@ public sealed partial class OsmDetail : Node3D
         }
     }
 
-    private static Vector3 Vertex(Heightmap map, double east, double north, float lift) =>
+    private static Vector3 Vertex(ITerrainSource map, double east, double north, float lift) =>
         new((float)east, (float)map.HeightAt(east, north) + lift, (float)-north);
 
     private static void AddTriangle(SurfaceTool tool, Vector3 a, Vector3 b, Vector3 c)
