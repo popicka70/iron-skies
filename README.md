@@ -114,6 +114,11 @@ python3 tools/mapgen/mapgen.py --theatre europe-250m-1944 \
     --resolution 250 --no-ortho --no-osm
 ```
 
+A **streamed Sentinel-2 imagery layer** can overlay the lowlands: `tools/build_ortho_tiles.py`
+renders 64 km tiles on the same grid, and the runtime stitches the centre 3×3 into a
+192 km detail inset (~118 MB) under the 10 m airfield. Missing tiles fall back to Blue
+Marble. Generate a region with `--around-east/--around-north --radius`.
+
 A **streamed near-field** adds lowland relief around the aircraft: 2,035 land tiles of
 64 km, kept in a 3×3 ring, with the outer ring fading back to the continental layer.
 The 90 m GLO-90 bundle uses ≈9 MB; the 30 m GLO-30 bundle uses ≈78 MB in memory and is
@@ -127,6 +132,8 @@ python3 tools/build_height_tiles.py --theatre europe-90m-tiles-1944 --workers 8
 python3 tools/build_height_tiles.py --theatre europe-30m-tiles-1944 --workers 8
 python3 tools/check_height_tiles.py \
     game/assets/terrain/europe-30m-tiles-1944/catalog.json
+python3 tools/build_ortho_tiles.py \
+    --around-east 500000 --around-north 250000 --radius 1
 ```
 
 See [docs/plan-europe-heightmap.md](docs/plan-europe-heightmap.md) for the continental
@@ -145,7 +152,7 @@ Europe/Normandy origin:
 | Europe 500 m detail | 500 m | Blue Marble 488 m/px | 4,000 km |
 | Europe 250 m detail | 250 m | Blue Marble 488 m/px | 4,000 km |
 | Europe 90 m tiles (streamed 3×3) | 90 m | (reuses 500 m) | 64 km each |
-| Europe 30 m tiles (streamed 3×3) | 30 m | (reuses 500 m) | 64 km each |
+| Europe 30 m tiles (streamed 3×3) | 30 m | Sentinel-2 30 m tiles when generated | 64 km each |
 | Mountain patches (17, streamed) | 50 m | Blue Marble 98 m/px | 400 km each |
 | North-west France | 50 m | Sentinel-2 98 m/px | 400 km |
 | Normandy | 25 m | Sentinel-2 10 m/px | 40 km |

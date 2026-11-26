@@ -59,6 +59,7 @@ public sealed class TiledDetailTerrain : ITerrainSource
     public const int MaxResidentTiles = 9;
     public const int MaxResidentTilesFull = 128;
 
+
     private static readonly JsonSerializerOptions Options = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -167,6 +168,9 @@ public sealed class TiledDetailTerrain : ITerrainSource
         _tiles.Count * (double)(_catalog.TileSize * _catalog.TileSize * sizeof(short))
         / (1024.0 * 1024.0);
     public bool IsFullMode => _full;
+    public Texture2D? DetailOrthoTexture { get; private set; }
+    public Vector4 DetailOrthoRect { get; private set; }
+    public bool DetailOrthoChanged { get; private set; }
     public int LandTileCount => _catalogByKey.Count;
     public HeightTileCatalog Catalog => _catalog;
 
@@ -241,6 +245,7 @@ public sealed class TiledDetailTerrain : ITerrainSource
     {
         _changes.Clear();
         FocusTileChanged = false;
+        DetailOrthoChanged = false;
         _focusEast = eastMeters;
         _focusNorth = northMeters;
 
@@ -257,6 +262,7 @@ public sealed class TiledDetailTerrain : ITerrainSource
             _focusTileX = tileX;
             _focusTileY = tileY;
             FocusTileChanged = true;
+            UpdateOrtho(tileX, tileY);
             RebuildDesired();
             UnloadOutsideDesired();
         }
@@ -297,7 +303,7 @@ public sealed class TiledDetailTerrain : ITerrainSource
                      + $"{ResidentMegabytes:0.0} MB");
         }
 
-        return _changes.Count > 0;
+        return _changes.Count > 0 || FocusTileChanged;
     }
 
     private bool HasPendingTiles()
@@ -311,6 +317,76 @@ public sealed class TiledDetailTerrain : ITerrainSource
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Stitches the 3×3 Sentinel-2 ortho ring into one 192 km texture. The player
+    /// is always inside the centre tile, so the detailed/base seam stays at least
+    /// 64 km away and outside the 10 km near mesh. Missing ortho tiles fall back
+    /// to the continental/regional imagery rather than showing holes.
+    /// </summary>
+    private void UpdateOrtho(int tileX, int tileY)
+    {
+        DetailOrthoChanged = true;
+        int tileSize = _catalog.TileSize;
+        int stride = _catalog.TileStride;
+        int size = stride * 2 + tileSize;
+
+        // Check first: allocating a 6,409² image on every tile move would be
+        // wasteful in regions where no ortho tiles were generated.
+        for (int oy = -1; oy <= 1; oy++)
+        {
+            for (int ox = -1; ox <= 1; ox++)
+            {
+                string path = $"{_directory}/ortho/tile_{tileX + ox:00}_"
+                    + $"{tileY + oy:00}.jpg.bin";
+                if (!FileAccess.FileExists(path))
+                {
+                    DetailOrthoTexture = null;
+                    return;
+                }
+            }
+        }
+
+        var stitched = Image.Create(size, size, false, Image.Format.Rgb8);
+        stitched.Fill(new Color(0.18f, 0.22f, 0.14f));
+        for (int oy = -1; oy <= 1; oy++)
+        {
+            for (int ox = -1; ox <= 1; ox++)
+            {
+                string path = $"{_directory}/ortho/tile_{tileX + ox:00}_"
+                    + $"{tileY + oy:00}.jpg.bin";
+                byte[] bytes = FileAccess.GetFileAsBytes(path);
+                var tile = new Image();
+                if (bytes.Length == 0
+                    || tile.LoadJpgFromBuffer(bytes) != Error.Ok
+                    || tile.GetWidth() != tileSize
+                    || tile.GetHeight() != tileSize)
+                {
+                    GD.PushWarning($"Could not decode ortho tile: {path}");
+                    DetailOrthoTexture = null;
+                    return;
+                }
+
+                stitched.BlitRect(
+                    tile, new Rect2I(0, 0, tileSize, tileSize),
+                    new Vector2I((ox + 1) * stride, (oy + 1) * stride));
+            }
+        }
+
+        stitched.GenerateMipmaps();
+        DetailOrthoTexture = ImageTexture.CreateFromImage(stitched);
+
+        double centerEast = -_catalog.HalfExtent + tileX * _strideMeters
+            + _strideMeters * 0.5;
+        double centerNorth = _catalog.HalfExtent - tileY * _strideMeters
+            - _strideMeters * 0.5;
+        float half = (float)((size - 1) * _catalog.Spacing * 0.5);
+        DetailOrthoRect = new Vector4(
+            (float)centerEast - half, (float)(-centerNorth) - half,
+            half * 2.0f, half * 2.0f);
+        GD.Print($"{_catalog.Spacing:0} m ortho 3×3: {tileX},{tileY} "
+                 + $"({size}², {size * (double)size * 3.0 / (1024.0 * 1024.0):0.0} MB)");
     }
 
     /// <summary>

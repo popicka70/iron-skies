@@ -152,6 +152,9 @@ public sealed class MountainPatchManager : ITerrainSource
     /// <summary>True when the streamed detail centre tile (and therefore the fade ring) moved.</summary>
     public bool DetailFocusChanged => _detail?.FocusTileChanged ?? false;
 
+    public bool DetailOrthoChanged => _detail?.DetailOrthoChanged ?? false;
+    public Texture2D? DetailOrthoTexture => _detail?.DetailOrthoTexture;
+    public Vector4 DetailOrthoRect => _detail?.DetailOrthoRect ?? Vector4.Zero;
     public int ResidentDetailTileCount => _detail?.ResidentTileCount ?? 0;
     public double ResidentDetailMegabytes => _detail?.ResidentMegabytes ?? 0.0;
     public TiledDetailTerrain? Detail => _detail;

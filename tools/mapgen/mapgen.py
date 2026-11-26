@@ -375,7 +375,9 @@ def item_bbox(item: dict) -> tuple[float, float, float, float]:
     return (b[0], b[1], b[2], b[3])
 
 
-def choose_scenes(items: list[dict], bounds: dict) -> tuple[list[str], list[dict]]:
+def choose_scenes(
+    items: list[dict], bounds: dict, max_scenes: int | None = None,
+) -> tuple[list[str], list[dict]]:
     """Pick a low-cloud set of scenes that collectively covers the whole theatre.
 
     One Sentinel-2 tile is only ~110 km across, so a 400 km theatre inevitably
@@ -424,12 +426,20 @@ def choose_scenes(items: list[dict], bounds: dict) -> tuple[list[str], list[dict
     covered: set[tuple[int, int]] = set()
     chosen: list[dict] = []
     for item in ordered:
-        new_cells = cells_for(item) - covered
-        if not new_cells:
+        cells = cells_for(item)
+        if not cells:
+            continue
+        new_cells = cells - covered
+        # Once the theatre is covered, keep adding overlapping scenes only when a
+        # caller explicitly asks for extras (small tiles use this to fill cloud
+        # holes with another date/orbit).
+        if not new_cells and (max_scenes is None or len(chosen) >= max_scenes):
             continue
         chosen.append(item)
         covered.update(new_cells)
-        if covered >= all_cells:
+        if covered >= all_cells and (
+            max_scenes is None or len(chosen) >= max_scenes
+        ):
             break
 
     if not chosen:
@@ -532,7 +542,9 @@ def load_scenes(theatre: dict, bounds: dict) -> tuple[list[str], list[dict]]:
         print(f"Sentinel-2: pinned {entry['date']} ({len(items)} tiles)", file=sys.stderr)
         return [entry["date"]], items
 
-    return choose_scenes(stac_search(bounds), bounds)
+    return choose_scenes(
+        stac_search(bounds), bounds,
+        max_scenes=theatre.get("sentinel2_max_scenes"))
 
 
 def build_blue_marble_ortho(

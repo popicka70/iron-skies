@@ -109,7 +109,10 @@ fetch → clip/reproject → heightmap LOD pyramid → derivatives (normals, slo
   without unbounded growth. The
   `europe-30m-tiles-1944` bundle uses the same catalog at 30 m, with zlib-compressed
   tiles decoded by `ZLibStream`; the runtime prefers 30 m when it is installed and
-  falls back to 90 m otherwise. Release exports include both levels.
+  falls back to 90 m otherwise. Release exports include both levels. Optional
+  Sentinel-2 ortho tiles on the same 64 km grid are stitched into a 192 km detail
+  inset (three shader insets: regional, Sentinel-2, local) with the 10 m airfield
+  winning at the bottom.
 - **OSM detail:** roads and hedgerows are draped as ribbon/fence meshes for the 7 km
   patch around the spawn. Woods and buildings are the next OSM layer.
 - **Geomorphing** (vertex position blending) over the last 15% of each LOD range removes

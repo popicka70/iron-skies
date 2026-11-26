@@ -12,6 +12,11 @@ uniform vec4 map_rect = vec4(-20000.0, -20000.0, 40000.0, 40000.0);
 uniform sampler2D mid_tex : source_color, filter_linear_mipmap, repeat_disable;
 uniform vec4 mid_rect = vec4(-200000.0, -200000.0, 400000.0, 400000.0);
 uniform float mid_enabled = 0.0;
+// Streamed Sentinel-2 tile (64 km at 30 m), applied between the regional and
+// local insets so the 10 m airfield still wins.
+uniform sampler2D detail_tex : source_color, filter_linear_mipmap, repeat_disable;
+uniform vec4 detail_rect = vec4(-32000.0, -32000.0, 64000.0, 64000.0);
+uniform float detail_enabled = 0.0;
 uniform sampler2D local_tex : source_color, filter_linear_mipmap, repeat_disable;
 uniform vec4 local_rect = vec4(-20000.0, -20000.0, 40000.0, 40000.0);
 uniform float local_enabled = 0.0;
@@ -57,6 +62,16 @@ void fragment() {
         * (1.0 - smoothstep(0.94, 1.0, mid_uv.y));
     vec3 mid = texture(mid_tex, clamp(mid_uv, vec2(0.0), vec2(1.0))).rgb;
     albedo = mix(albedo, mid, mid_enabled * mid_inside * mid_fade);
+
+    vec2 detail_uv = (world_pos.xz - detail_rect.xy) / detail_rect.zw;
+    float detail_inside = step(0.0, detail_uv.x) * step(detail_uv.x, 1.0)
+        * step(0.0, detail_uv.y) * step(detail_uv.y, 1.0);
+    float detail_fade = smoothstep(0.0, 0.03, detail_uv.x)
+        * smoothstep(0.0, 0.03, detail_uv.y)
+        * (1.0 - smoothstep(0.97, 1.0, detail_uv.x))
+        * (1.0 - smoothstep(0.97, 1.0, detail_uv.y));
+    vec3 detail_color = texture(detail_tex, clamp(detail_uv, vec2(0.0), vec2(1.0))).rgb;
+    albedo = mix(albedo, detail_color, detail_enabled * detail_inside * detail_fade);
 
     vec2 local_uv = (world_pos.xz - local_rect.xy) / local_rect.zw;
     float local_inside = step(0.0, local_uv.x) * step(local_uv.x, 1.0)

@@ -63,7 +63,8 @@ simulation runs at 240 Hz with a stable 60 FPS render; CI is green on both OSes.
 - [x] Local OSM waterway patch and carved river channels (airfield clear zone excluded)
 - [x] Streamed 90 m GLO-90 height near-field (3×3 tiles, ~9 MB)
 - [x] Streamed 30 m compressed GLO-30 height tiles (~78 MB ring)
-- [ ] Imagery tiles and floating-origin rebasing for full-resolution Europe
+- [x] Sentinel-2 ortho tiles on the 64 km grid (regional generation, 192 km inset)
+- [ ] Continental ortho coverage and floating-origin rebasing
 - [ ] In-engine telemetry graphs
 - Audio: procedural engine/prop sound driven by RPM and load; wind and gunfire
 

@@ -179,6 +179,11 @@ public sealed partial class TerrainWorld : Node3D
                      + $"{_patchManager.ResidentHeightmapMegabytes:0.0} MB heightmaps");
         }
 
+        if (_patchManager.DetailOrthoChanged)
+        {
+            ApplyDetailOrtho();
+        }
+
         if (detailChanged)
         {
             GD.Print($"Terrain: detail tiles resident "
@@ -636,6 +641,19 @@ public sealed partial class TerrainWorld : Node3D
         double cdx = east - current.Layer.OffsetEast;
         double cdn = north - current.Layer.OffsetNorth;
         return dx * dx + dn * dn < cdx * cdx + cdn * cdn;
+    }
+
+    private void ApplyDetailOrtho()
+    {
+        if (_patchManager is null || _patchManager.DetailOrthoTexture is null)
+        {
+            _material.SetShaderParameter("detail_enabled", 0.0f);
+            return;
+        }
+
+        _material.SetShaderParameter("detail_tex", _patchManager.DetailOrthoTexture);
+        _material.SetShaderParameter("detail_rect", _patchManager.DetailOrthoRect);
+        _material.SetShaderParameter("detail_enabled", 1.0f);
     }
 
     private void ApplyInset(string prefix, Inset? inset)

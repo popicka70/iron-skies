@@ -102,9 +102,26 @@ matches the resolution of the regional mountain patches without a giant resident
   prefers 30 m and falls back to 90 m. The 30 m bundle is zlib-compressed, so the
   package grows by ≈5 GB rather than ≈17 GB.
 
-### Phase D2b — imagery and floating origin
+### Phase D2b — Sentinel-2 imagery tiles *(in progress)*
 
-- Sentinel-2/Blue Marble imagery tiles with a virtual-texture page table.
+The height-tile grid is reused for imagery. `tools/build_ortho_tiles.py` renders
+true-colour Sentinel-2 L2A for one 64 km tile (four low-cloud scenes fill gaps) and
+writes `ortho/tile_XX_YY.jpg` into the 30 m bundle.
+
+- **Tile:** 2,137² at 30 m, ~1.5 MB JPEG. Reuses mapgen's STAC search, cloud mask and
+  tone mapping; existing tiles are skipped, so generation is resumable.
+- **Runtime:** the centre tile and its eight neighbours are stitched into one
+  6,409² (192 km) texture (~118 MB) and applied as a third shader inset between the
+  regional and local orthos. The player is always in the centre tile, so the seam is
+  ≥64 km away; the 10 m airfield still wins.
+- **Coverage:** generating every European tile is a long batch (≈8 min/tile); generate
+  regions with `--around-east/--around-north --radius` or one tile at a time. Missing
+  tiles fall back to Blue Marble / regional imagery.
+- **Exports:** generated `ortho/*.jpg` files are included when present; they are small
+  enough to add a region without resizing the package much.
+
+### Phase D2c — floating origin and OSM
+
 - Floating-origin rebasing (ADR-0006) for clean precision across 4,000 km.
 - OSM/EU-Hydro vector detail.
 
@@ -122,8 +139,9 @@ matches the resolution of the regional mountain patches without a giant resident
    *(done)*
 6. **Tiled 30 m near-field** — zlib-compressed GLO-30 tiles, runtime picks 30 m over
    90 m when installed. *(done)*
-7. **Floating origin + imagery tiles** — full-resolution detail (Phase D2b).
-8. **Ortho/OSM pass** — Sentinel-2 ranges/lowlands, OSM/EU-Hydro waterways and roads.
+7. **Sentinel-2 imagery tiles** — 64 km ortho tiles stitched into a 192 km inset.
+   *(in progress)*
+8. **Floating origin + OSM/EU-Hydro** — full-resolution detail (Phase D2c).
 
 ## Build commands
 
@@ -147,6 +165,11 @@ python3 tools/build_height_tiles.py --theatre europe-30m-tiles-1944 --workers 8
 # Validate tile edges and lowland roughness (raw or compressed)
 python3 tools/check_height_tiles.py \
     game/assets/terrain/europe-30m-tiles-1944/catalog.json
+
+# Sentinel-2 ortho tiles (one tile, or a 3×3 ring around a point)
+python3 tools/build_ortho_tiles.py --tile 39,27
+python3 tools/build_ortho_tiles.py \
+    --around-east 500000 --around-north 250000 --radius 1
 ```
 
 ## Budgets and acceptance
