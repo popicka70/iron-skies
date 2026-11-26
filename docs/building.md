@@ -35,6 +35,7 @@ Outputs:
 build/linux/iron-skies.x86_64
 build/linux/data_IronSkies.Game_linuxbsd_x86_64/
 build/windows/iron-skies.exe
+build/windows/iron-skies.pck
 build/windows/data_IronSkies.Game_windows_x86_64/
 build/server/iron-skies-server.x86_64
 build/server/data_IronSkies.Game_linuxbsd_x86_64/
@@ -43,8 +44,11 @@ build/server/data_IronSkies.Game_linuxbsd_x86_64/
 The dedicated server package and container are described in
 [dedicated-server.md](dedicated-server.md).
 
-The exports embed the PCK; the .NET assemblies live in the `data_*` directory next to
-the executable, so ship both.
+Linux and the dedicated server embed the PCK. Windows uses a sidecar
+`iron-skies.pck` because Godot refuses to embed a PCK of 4 GiB or more; keep the `.exe`
+and `.pck` together. The .NET assemblies live in the `data_*` directory next to the
+executable, so ship that too. With all generated terrain layers installed the packages
+are ~5 GB each; a clean clone without generated bundles is much smaller.
 
 `export_presets.cfg` lists the plain terrain and aircraft files explicitly, because
 `.r16`, `.json`, `.bin` and `.csv` are not imported resources. The orthophoto and
