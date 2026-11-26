@@ -42,6 +42,13 @@ public sealed class AircraftSimulator
     /// <summary>Actual gear position, 0 (up) … 1 (down).</summary>
     public double GearPosition => _gearPosition;
 
+    /// <summary>Seeds the gear/flap positions for airborne starts or replay setup.</summary>
+    public void SetGearAndFlaps(double gearDown, double flapDown)
+    {
+        _gearPosition = System.Math.Clamp(gearDown, 0.0, 1.0);
+        _flapPosition = System.Math.Clamp(flapDown, 0.0, 1.0);
+    }
+
     public double EngineRpm => _engine.Rpm;
     public double ManifoldPressureInHg => _engine.ManifoldPressureInHg;
     public double CoolantC => _engine.CoolantC;

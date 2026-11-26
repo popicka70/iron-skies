@@ -1269,6 +1269,11 @@ public partial class Main : Node3D
             : AircraftState.CreateOnGround(
                 _definition, ground, eastMeters: east, northMeters: north);
         _sim = new AircraftSimulator(_definition, state, _ground);
+        if (airborne)
+        {
+            _sim.SetGearAndFlaps(0.0, 0.0);
+        }
+
         _cockpitPanel.Bind(_sim);
         _missionTargets.Clear();
         _mission = _missionKind switch
@@ -1286,7 +1291,7 @@ public partial class Main : Node3D
         _brake = 0.0;
         _radiator = 0.5;
         _flapTarget = 0.0;
-        _gearTarget = 1.0;
+        _gearTarget = airborne ? 0.0 : 1.0;
         _trimElevator = 0.0;
         _elevator = 0.0;
         _aileron = 0.0;
