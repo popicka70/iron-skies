@@ -33,9 +33,11 @@ public static class GameSettings
         PlayerAircraft = (string)config.GetValue("game", "aircraft", "spitfire-mk9");
         string savedTheatre = (string)config.GetValue("game", "theatre", "");
         Theatre = string.IsNullOrEmpty(savedTheatre)
-            ? (TheatreCatalog.IsInstalled(TheatreCatalog.LargeId)
-                ? TheatreCatalog.LargeId
-                : TheatreCatalog.DefaultId)
+            ? (TheatreCatalog.IsInstalled(TheatreCatalog.EuropeId)
+                ? TheatreCatalog.EuropeId
+                : TheatreCatalog.IsInstalled(TheatreCatalog.LargeId)
+                    ? TheatreCatalog.LargeId
+                    : TheatreCatalog.DefaultId)
             : savedTheatre;
         HudScale = Mathf.Clamp(
             (float)config.GetValue("game", "hud_scale", 1.0f), 0.8f, 1.6f);

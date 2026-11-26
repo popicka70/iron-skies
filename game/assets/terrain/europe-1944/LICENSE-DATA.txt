@@ -1,0 +1,10 @@
+Map data attribution for this bundle:
+
+- noaa-etopo1: NOAA/NCEI ETOPO1 Global Relief Model [Public domain (U.S. Government)]
+- nasa-blue-marble: NASA Earth Observatory Blue Marble, via NASA GIBS [Public domain (NASA)]
+- copernicus-glo30: © DLR e.V. 2010-2014 and © Airbus DS GmbH 2017-2021 [Copernicus DEM licence (free, attribution)]
+- sentinel-2-l2a: Contains modified Copernicus Sentinel data 2026 [Copernicus Sentinel Data Terms (free, attribution)]
+- osm-normandy: © OpenStreetMap contributors [ODbL 1.0]
+- polyhaven-materials: Poly Haven (polyhaven.com) [CC0]
+
+Imagery: NASA GIBS Blue Marble. Elevation: NOAA/NCEI ETOPO1.

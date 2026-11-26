@@ -6,7 +6,9 @@
 2. **Reproducible.** A theatre bundle can be rebuilt from pinned sources and a seed.
 3. **Persistent.** Edits and battle damage survive restarts, with a journal that can be
    replayed and compacted.
-4. **Streamed.** Memory use is bounded; the player can fly 40 km without a loading screen.
+4. **Streamed.** Mesh memory is bounded; the player can cross the 4,000 km Europe base
+   without a loading screen. Source data is still resident for one theatre; tiled source
+   streaming is the next step.
 
 ## 2. Theatre bundle
 
@@ -66,9 +68,13 @@ fetch → clip/reproject → heightmap LOD pyramid → derivatives (normals, slo
 - **Data-driven extents:** the runtime derives map size, chunk count and base step from
   `meta.json`, so the same code serves the 40 km sample and a 400 km regional bundle.
 - **Textures:** a world-space orthophoto/landcover pair covers the whole theatre (4096²
-  for the 40 km sample, 8192² for the 400 km region). The larger theatre also layers the
-  committed 40 km Normandy ortho over its centre as a sharp 10 m inset with a feathered
-  edge. Continental maps will need a virtual-texture page table.
+  for the 40 km sample and for the 4,000 km Europe base, 4096² for the 400 km region).
+  The runtime layers finer orthos over the base with feathered edges: the 400 km regional
+  inset and the 40 km Normandy 10 m inset. A virtual-texture page table is still needed
+  for full-resolution continental imagery.
+- **Composite height:** a continental base with 400 km and 40 km height layers on top;
+  `HeightAt` selects the finest layer containing the query point. All layers share the
+  theatre ENU origin.
 - **OSM detail:** roads and hedgerows are draped as ribbon/fence meshes for the 7 km
   patch around the spawn. Woods and buildings are the next OSM layer.
 - **Geomorphing** (vertex position blending) over the last 15% of each LOD range removes
@@ -181,6 +187,9 @@ No application-level rewrite is expected; only the repository implementation cha
 - M0 baseline: 40 × 40 km, 1601² samples at 25 m, heights −44…248 m, built in < 1 s.
 - Regional baseline: 400 × 400 km, 8001² samples at 50 m, multi-date Sentinel-2 mosaic
   at 4096² (optionally 8192²); the runtime keeps the same 10 km detailed ring.
+- Continental baseline: 4,000 × 4,000 km, 2001² ETOPO1 samples at 2 km, NASA Blue Marble
+  at 4096² (≈1 km/px), with the 400 km/40 km layers composited on top. Floating-origin
+  rebasing is required before low-level flight at the map edges.
 - Visual: side-by-side screenshots vs. reference photos at 6 landmark locations.
 - Streaming: fly a 40 km transect, assert no hitch > 16 ms and memory within budget.
 - Persistence: kill -9 the server mid-mission, restart, assert state matches the journal.

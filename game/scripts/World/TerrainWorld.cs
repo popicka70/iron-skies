@@ -34,7 +34,7 @@ public sealed partial class TerrainWorld : Node3D
     private readonly Dictionary<Vector2I, int> _desired = new(512);
     private readonly List<Vector2I> _removals = new(64);
 
-    private Heightmap _map = null!;
+    private ITerrainSource _map = null!;
     private ShaderMaterial _material = null!;
     private Vector3 _focus;
     private double _updateTimer;
@@ -44,7 +44,7 @@ public sealed partial class TerrainWorld : Node3D
     private int _chunksPerAxis = 40;
     private int _baseStepMeters = 200;
 
-    public void Build(Heightmap map, string textureDirectory)
+    public void Build(ITerrainSource map, string textureDirectory)
     {
         _map = map;
         _mapSizeMeters = (int)Math.Round(2.0 * map.HalfExtent);
@@ -299,7 +299,7 @@ public sealed partial class TerrainWorld : Node3D
         return mesh;
     }
 
-    private static ShaderMaterial CreateMaterial(Heightmap map, string directory)
+    private static ShaderMaterial CreateMaterial(ITerrainSource map, string directory)
     {
         var shader = GD.Load<Shader>("res://assets/shaders/terrain.gdshader");
         var material = new ShaderMaterial { Shader = shader };
@@ -319,25 +319,41 @@ public sealed partial class TerrainWorld : Node3D
         float half = (float)map.HalfExtent;
         material.SetShaderParameter("map_rect", new Vector4(-half, -half, 2.0f * half, 2.0f * half));
 
-        // Layer the committed 40 km Normandy imagery over a larger regional bundle.
-        // Both bundles share the same origin, so the inset is centred on the player spawn.
-        if (map.Meta.Id != "normandy-1944")
+        // Layer finer ortho insets over the base. All maps share the theatre origin,
+        // so a rect centred on the origin is enough. The first extra layer is the
+        // 400 km regional field; the next is the 40 km Normandy sample.
+        int inset = 0;
+        foreach (Heightmap layer in map.Layers)
         {
-            const string detailPath =
-                "res://assets/terrain/normandy-1944/ortho.jpg.bin";
-            if (FileAccess.FileExists(detailPath))
+            if (layer.SourceDirectory == directory)
             {
-                Texture2D? detail = LoadTexture(detailPath);
-                if (detail is not null)
-                {
-                    const float detailHalf = 20_000.0f;
-                    material.SetShaderParameter("detail_tex", detail);
-                    material.SetShaderParameter(
-                        "detail_rect",
-                        new Vector4(-detailHalf, -detailHalf,
-                            detailHalf * 2.0f, detailHalf * 2.0f));
-                    material.SetShaderParameter("detail_enabled", 1.0f);
-                }
+                continue;
+            }
+
+            string path = $"{layer.SourceDirectory}/{layer.Meta.OrthoFile}";
+            if (!FileAccess.FileExists(path))
+            {
+                continue;
+            }
+
+            Texture2D? texture = LoadTexture(path);
+            if (texture is null)
+            {
+                continue;
+            }
+
+            string prefix = inset == 0 ? "mid" : "local";
+            float layerHalf = (float)layer.HalfExtent;
+            material.SetShaderParameter($"{prefix}_tex", texture);
+            material.SetShaderParameter(
+                $"{prefix}_rect",
+                new Vector4(-layerHalf, -layerHalf,
+                    layerHalf * 2.0f, layerHalf * 2.0f));
+            material.SetShaderParameter($"{prefix}_enabled", 1.0f);
+            inset++;
+            if (inset >= 2)
+            {
+                break;
             }
         }
 

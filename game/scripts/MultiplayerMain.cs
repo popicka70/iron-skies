@@ -31,7 +31,7 @@ public sealed partial class MultiplayerMain : Node3D
         public double LastSeen;
     }
 
-    private Heightmap _map = null!;
+    private ITerrainSource _map = null!;
     private IGroundSurface _ground = null!;
     private AircraftDefinition[] _definitions = null!;
     private AircraftDefinition _definition = null!;
@@ -39,6 +39,7 @@ public sealed partial class MultiplayerMain : Node3D
 
     private TerrainWorld _terrain = null!;
     private string _terrainDirectory = "res://assets/terrain/normandy-1944";
+    private string _terrainOsmPath = "res://assets/terrain/normandy-1944/osm.json";
     private SpitfireVisual _playerVisual = null!;
     private DamageSmoke _playerSmoke = null!;
     private EngineAudio _audio = null!;
@@ -144,10 +145,11 @@ public sealed partial class MultiplayerMain : Node3D
             _screenshotTicks = screenshotDelay * 240;
         }
 
-        _terrainDirectory = TheatreCatalog.Directory(TheatreCatalog.Resolve(
-            ReadOption("--theatre") ?? LaunchConfig.CurrentTheatre));
-        GD.Print($"Theatre: {_terrainDirectory}");
-        _map = Heightmap.Load(_terrainDirectory);
+        string theatreId = TheatreCatalog.Resolve(
+            ReadOption("--theatre") ?? LaunchConfig.CurrentTheatre);
+        _map = TheatreCatalog.LoadTerrain(
+            theatreId, out _terrainDirectory, out _terrainOsmPath);
+        GD.Print($"Theatre: {theatreId}");
         _ground = new AirfieldSurface(_map);
         _definitions = new[] { LoadAircraft("spitfire-mk9"), LoadAircraft("bf109-g6") };
         string requestedAircraft = ReadOption("--aircraft") ?? GameSettings.PlayerAircraft;
@@ -623,7 +625,7 @@ public sealed partial class MultiplayerMain : Node3D
         _terrain.Build(_map, _terrainDirectory);
         AddChild(_terrain);
         var osm = new OsmDetail();
-        osm.Build(_map, $"{_terrainDirectory}/osm.json");
+        osm.Build(_map, _terrainOsmPath);
         AddChild(osm);
         var airfield = new Airfield();
         airfield.Build(_map);
@@ -655,7 +657,7 @@ public sealed partial class MultiplayerMain : Node3D
         {
             Fov = 72.0f,
             Near = 1.0f,
-            Far = 250000.0f,
+            Far = Mathf.Max(250_000.0f, (float)_map.HalfExtent * 3.0f),
         };
         AddChild(_camera);
         _camera.GlobalPosition = new Vector3(0.0f, 2000.0f, 3000.0f);

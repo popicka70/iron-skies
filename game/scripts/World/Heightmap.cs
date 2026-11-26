@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text.Json;
 using Godot;
 using IronSkies.FlightModel.Aircraft;
@@ -28,7 +29,17 @@ public sealed class TerrainMeta
 /// Implements <see cref="IGroundSurface"/> so the flight model and the renderer use the
 /// exact same data.
 /// </summary>
-public sealed class Heightmap : IGroundSurface
+public interface ITerrainSource : IGroundSurface
+{
+    TerrainMeta Meta { get; }
+    int Width { get; }
+    int Height { get; }
+    double Spacing { get; }
+    double HalfExtent { get; }
+    IReadOnlyList<Heightmap> Layers { get; }
+}
+
+public sealed class Heightmap : ITerrainSource
 {
     private static readonly JsonSerializerOptions Options = new()
     {
@@ -36,17 +47,21 @@ public sealed class Heightmap : IGroundSurface
     };
 
     private readonly short[] _samples;
+    private Heightmap[]? _layers;
 
     public TerrainMeta Meta { get; }
+    public string SourceDirectory { get; }
+    public IReadOnlyList<Heightmap> Layers => _layers ??= new[] { this };
     public int Width => Meta.Width;
     public int Height => Meta.Height;
     public double Spacing => Meta.SpacingMeters;
     public double HalfExtent => Meta.HalfExtentMeters;
 
-    private Heightmap(TerrainMeta meta, short[] samples)
+    private Heightmap(TerrainMeta meta, short[] samples, string sourceDirectory)
     {
         Meta = meta;
         _samples = samples;
+        SourceDirectory = sourceDirectory;
     }
 
     public static Heightmap Load(string directory)
@@ -71,7 +86,8 @@ public sealed class Heightmap : IGroundSurface
             throw new NotSupportedException($"Unsupported row order: {meta.RowOrder}");
         }
 
-        string rawPath = $"{directory.TrimEnd('/')}/{meta.HeightmapFile}";
+        string normalized = directory.TrimEnd('/');
+        string rawPath = $"{normalized}/{meta.HeightmapFile}";
         byte[] bytes = FileAccess.GetFileAsBytes(rawPath);
         int expected = meta.Width * meta.Height * sizeof(short);
         if (bytes.Length != expected)
@@ -82,7 +98,7 @@ public sealed class Heightmap : IGroundSurface
 
         var samples = new short[meta.Width * meta.Height];
         Buffer.BlockCopy(bytes, 0, samples, 0, bytes.Length);
-        return new Heightmap(meta, samples);
+        return new Heightmap(meta, samples, normalized);
     }
 
     /// <summary>Bilinear height at east/north metres from the theatre centre.</summary>

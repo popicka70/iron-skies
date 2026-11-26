@@ -7,11 +7,14 @@ uniform sampler2D ortho_tex : source_color, filter_linear_mipmap, repeat_disable
 uniform sampler2D landcover_tex : filter_linear_mipmap, repeat_disable;
 // x, z origin then width, height (Godot world space).
 uniform vec4 map_rect = vec4(-20000.0, -20000.0, 40000.0, 40000.0);
-// Optional high-resolution inset (the 40 km Normandy sample) layered over a
-// larger regional theatre. detail_rect is x, z origin then width, height.
-uniform sampler2D detail_tex : source_color, filter_linear_mipmap, repeat_disable;
-uniform vec4 detail_rect = vec4(-20000.0, -20000.0, 40000.0, 40000.0);
-uniform float detail_enabled = 0.0;
+// Optional insets layered over the base: a 400 km regional field and the
+// 40 km Normandy sample. rect is x, z origin then width, height.
+uniform sampler2D mid_tex : source_color, filter_linear_mipmap, repeat_disable;
+uniform vec4 mid_rect = vec4(-200000.0, -200000.0, 400000.0, 400000.0);
+uniform float mid_enabled = 0.0;
+uniform sampler2D local_tex : source_color, filter_linear_mipmap, repeat_disable;
+uniform vec4 local_rect = vec4(-20000.0, -20000.0, 40000.0, 40000.0);
+uniform float local_enabled = 0.0;
 uniform float water_wave_strength = 0.14;
 
 varying vec3 world_pos;
@@ -43,17 +46,27 @@ void fragment() {
     vec2 uv = clamp((world_pos.xz - map_rect.xy) / map_rect.zw, vec2(0.0), vec2(1.0));
     vec3 albedo = texture(ortho_tex, uv).rgb;
 
-    // Blend the sharp local inset over the coarse regional ortho, with a feathered
-    // edge so the transition is invisible in flight.
-    vec2 duv = (world_pos.xz - detail_rect.xy) / detail_rect.zw;
-    float detail_inside = step(0.0, duv.x) * step(duv.x, 1.0)
-        * step(0.0, duv.y) * step(duv.y, 1.0);
-    float detail_fade = smoothstep(0.0, 0.06, duv.x)
-        * smoothstep(0.0, 0.06, duv.y)
-        * (1.0 - smoothstep(0.94, 1.0, duv.x))
-        * (1.0 - smoothstep(0.94, 1.0, duv.y));
-    vec3 detail = texture(detail_tex, clamp(duv, vec2(0.0), vec2(1.0))).rgb;
-    albedo = mix(albedo, detail, detail_enabled * detail_inside * detail_fade);
+    // Blend the regional (400 km) and local (40 km) insets over the base, with
+    // feathered edges so the transitions are invisible in flight.
+    vec2 mid_uv = (world_pos.xz - mid_rect.xy) / mid_rect.zw;
+    float mid_inside = step(0.0, mid_uv.x) * step(mid_uv.x, 1.0)
+        * step(0.0, mid_uv.y) * step(mid_uv.y, 1.0);
+    float mid_fade = smoothstep(0.0, 0.06, mid_uv.x)
+        * smoothstep(0.0, 0.06, mid_uv.y)
+        * (1.0 - smoothstep(0.94, 1.0, mid_uv.x))
+        * (1.0 - smoothstep(0.94, 1.0, mid_uv.y));
+    vec3 mid = texture(mid_tex, clamp(mid_uv, vec2(0.0), vec2(1.0))).rgb;
+    albedo = mix(albedo, mid, mid_enabled * mid_inside * mid_fade);
+
+    vec2 local_uv = (world_pos.xz - local_rect.xy) / local_rect.zw;
+    float local_inside = step(0.0, local_uv.x) * step(local_uv.x, 1.0)
+        * step(0.0, local_uv.y) * step(local_uv.y, 1.0);
+    float local_fade = smoothstep(0.0, 0.06, local_uv.x)
+        * smoothstep(0.0, 0.06, local_uv.y)
+        * (1.0 - smoothstep(0.94, 1.0, local_uv.x))
+        * (1.0 - smoothstep(0.94, 1.0, local_uv.y));
+    vec3 local_color = texture(local_tex, clamp(local_uv, vec2(0.0), vec2(1.0))).rgb;
+    albedo = mix(albedo, local_color, local_enabled * local_inside * local_fade);
 
     vec4 landcover = texture(landcover_tex, uv);
 

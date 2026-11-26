@@ -15,10 +15,11 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 > placeholder airframes, cockpit view, engine
 > simulation, procedural audio and four working guns, up to six AI bandits plus AI wingmen,
 > hit-zone battle damage
-> (engine, controls, fuel) and a live cockpit instrument panel. A generated
-> **400 × 400 km** North-west France theatre covers Normandy, eastern Brittany and the
-> approaches to Paris, with the 40 km sample layered over the airfield as a sharp inset.
-> Linux and Windows release packages are configured.
+> (engine, controls, fuel) and a live cockpit instrument panel. A committed
+> **4,000 × 4,000 km Europe base** built from NOAA ETOPO1 relief and NASA Blue Marble
+> imagery provides a continental map; the 40 km Normandy sample is blended over the
+> airfield as a sharp inset, and an optional generated **400 × 400 km** North-west France
+> layer adds regional detail. Linux and Windows release packages are configured.
 
 ![Iron Skies launcher](docs/media/m0-launcher.png)
 
@@ -40,22 +41,50 @@ re-centred with Home; the same axes/buttons can be bound on a HOTAS.*
 
 ## Theatres
 
-The repository ships the **40 × 40 km Normandy** sample, so a clean clone and CI boot
-without downloading gigabytes. Larger terrain is generated locally from open data:
+The repository ships two committed bases:
+
+- **Europe — 4,000 km** (≈13 MB): NOAA ETOPO1 elevation at 2 km and NASA Blue Marble
+  imagery at ≈1 km/px. This is the continental map.
+- **Normandy — 40 km** (≈16 MB): the original Sentinel-2/OSM sample and the sharp
+  25 m/10 m airfield layer.
+
+The **400 × 400 km North-west France** layer is generated locally because it is
+100× larger than the sample and still uses 50 m height and 98 m imagery:
 
 ```bash
-# 400 km North-west France theatre (height 50 m, regional ortho 4096²)
 python3 tools/mapgen/mapgen.py --theatre france-northwest-1944 \
     --resolution 50 --ortho-size 4096
 python3 tools/mapgen/fetch_osm_objects.py \
     --theatre france-northwest-1944 --radius 2000
 ```
 
-Then choose **Settings → Theatre → North-west France — 400 km**. The runtime derives
-the map extents and chunk count from the bundle metadata and keeps the same 10 km
-detailed streaming ring; the committed Normandy ortho is blended over the centre as a
-10 m inset. The generated bundle is deliberately git-ignored. If a selected theatre is
-not installed, the game falls back to the Normandy sample.
+The Europe base can be rebuilt from the same pipeline (ETOPO1 is cached after the first
+~323 MB download; imagery comes from NASA GIBS):
+
+```bash
+python3 tools/mapgen/mapgen.py --theatre europe-1944 \
+    --resolution 2000 --ortho-size 4096 --no-osm
+```
+
+Then choose **Settings → Theatre**. The runtime composes up to three levels that share
+the Normandy origin:
+
+| Layer | Height | Imagery | Coverage |
+| --- | --- | --- | --- |
+| Europe base | 2 km | Blue Marble ≈1 km/px | 4,000 km |
+| North-west France | 50 m | Sentinel-2 98 m/px | 400 km |
+| Normandy | 25 m | Sentinel-2 10 m/px | 40 km |
+
+For any point it uses the finest layer containing that point, and the shader blends the
+ortho insets with feathered edges. Chunk meshes within 10 km stream as before; the base
+mesh covers the continent. If a selected layer is not installed, the runtime falls back
+to the layers it has.
+
+![Europe 4,000 km base](docs/media/m0-europe-base.jpg)
+
+*The committed Europe base: ETOPO1 relief and NASA Blue Marble. In game it is under the
+400 km and 40 km detail layers. Source-tiled height/imagery streaming and floating-origin
+rebasing are the next steps for full-resolution continental flight.*
 
 ![Iron Skies 400 km North-west France theatre](docs/media/m0-france-400km.png)
 

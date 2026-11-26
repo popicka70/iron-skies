@@ -34,6 +34,11 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[2]
 DEM_CACHE = Path.home() / ".cache" / "iron-skies" / "dem"
 S3_BASE = "https://copernicus-dem-30m.s3.amazonaws.com"
+ETOPO1_URL = (
+    "https://www.ngdc.noaa.gov/mgg/global/relief/ETOPO1/data/ice_surface/"
+    "grid_registered/georeferenced_tiff/ETOPO1_Ice_g_geotiff.zip"
+)
+GIBS_WMS = "https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi"
 
 S2_STAC = "https://earth-search.aws.element84.com/v1"
 S2_START = "2024-04-01T00:00:00Z"
@@ -99,6 +104,38 @@ def fetch_tile(name: str) -> Path:
     return target
 
 
+def fetch_etopo1() -> Path:
+    """Download/cache the public-domain ETOPO1 1-arc-minute GeoTIFF."""
+    DEM_CACHE.mkdir(parents=True, exist_ok=True)
+    target = DEM_CACHE / "ETOPO1_Ice_g_geotiff.tif"
+    if target.exists() and target.stat().st_size > 50_000_000:
+        return target
+
+    zip_path = DEM_CACHE / "ETOPO1_Ice_g_geotiff.zip"
+    if not zip_path.exists() or zip_path.stat().st_size < 300_000_000:
+        print("  downloading ETOPO1 (~323 MB, cached) ...", file=sys.stderr)
+        tmp = zip_path.with_suffix(".part")
+        with urllib.request.urlopen(ETOPO1_URL, timeout=600) as response, tmp.open("wb") as out:
+            while chunk := response.read(1 << 20):
+                out.write(chunk)
+        tmp.replace(zip_path)
+
+    import zipfile
+
+    with zipfile.ZipFile(zip_path) as archive:
+        member = next(
+            (name for name in archive.namelist() if name.lower().endswith(".tif")),
+            None,
+        )
+        if member is None:
+            raise SystemExit("ETOPO1 archive contains no GeoTIFF")
+        archive.extract(member, DEM_CACHE)
+        extracted = DEM_CACHE / member
+        if extracted != target:
+            extracted.replace(target)
+    return target
+
+
 def build_heightmap(theatre: dict, out_dir: Path, resolution_m: float) -> dict:
     try:
         import rasterio
@@ -107,6 +144,7 @@ def build_heightmap(theatre: dict, out_dir: Path, resolution_m: float) -> dict:
         from rasterio.transform import from_origin
         from rasterio.warp import Resampling, reproject
         from rasterio.warp import transform as warp_transform
+        from rasterio.windows import from_bounds
     except ImportError as exc:  # pragma: no cover
         raise SystemExit(
             "mapgen needs rasterio, numpy and Pillow:\n"
@@ -119,27 +157,40 @@ def build_heightmap(theatre: dict, out_dir: Path, resolution_m: float) -> dict:
     size_m = float(theatre["terrain"]["size_meters"])
     dst_crs = CRS.from_string(geodesy["crs"])
 
-    lats = [bounds["south"], bounds["north"]]
-    lons = [bounds["west"], bounds["east"]]
-    names = {
-        dem_tile_name(lat, lon)
-        for lat in (math.floor(lats[0]), math.floor(lats[1]))
-        for lon in (math.floor(lons[0]), math.floor(lons[1]))
-    }
-    print(f"DEM tiles: {', '.join(sorted(names))}", file=sys.stderr)
-    paths = [fetch_tile(name) for name in sorted(names)]
+    dem_source = theatre.get("terrain", {}).get("dem_source", "copernicus-glo30")
+    if dem_source == "etopo1":
+        path = fetch_etopo1()
+        print(f"DEM:   ETOPO1 {path.name}", file=sys.stderr)
+        with rasterio.open(path) as source:
+            window = from_bounds(
+                bounds["west"], bounds["south"], bounds["east"], bounds["north"],
+                source.transform)
+            band = source.read(1, window=window)
+            src_transform = source.window_transform(window)
+            # ETOPO1 ships as a global geographic grid but omits the CRS tag.
+            src_crs = source.crs or CRS.from_epsg(4326)
+    else:
+        lats = [bounds["south"], bounds["north"]]
+        lons = [bounds["west"], bounds["east"]]
+        names = {
+            dem_tile_name(lat, lon)
+            for lat in (math.floor(lats[0]), math.floor(lats[1]))
+            for lon in (math.floor(lons[0]), math.floor(lons[1]))
+        }
+        print(f"DEM tiles: {', '.join(sorted(names))}", file=sys.stderr)
+        paths = [fetch_tile(name) for name in sorted(names)]
 
-    sources = [rasterio.open(path) for path in paths]
-    try:
-        mosaic, src_transform = merge(
-            sources,
-            bounds=(bounds["west"], bounds["south"], bounds["east"], bounds["north"]),
-        )
-        src_crs = sources[0].crs
-        band = mosaic[0]
-    finally:
-        for source in sources:
-            source.close()
+        sources = [rasterio.open(path) for path in paths]
+        try:
+            mosaic, src_transform = merge(
+                sources,
+                bounds=(bounds["west"], bounds["south"], bounds["east"], bounds["north"]),
+            )
+            src_crs = sources[0].crs
+            band = mosaic[0]
+        finally:
+            for source in sources:
+                source.close()
 
     size = int(round(size_m / resolution_m)) + 1
     half = (size - 1) * resolution_m / 2.0
@@ -191,7 +242,9 @@ def build_heightmap(theatre: dict, out_dir: Path, resolution_m: float) -> dict:
         "origin": {"easting": round(center_e[0], 3), "northing": round(center_n[0], 3)},
         "boundsWgs84": bounds,
         "heightRangeMeters": [float(heights.min()), float(heights.max())],
-        "source": ["Copernicus DEM GLO-30"],
+        "source": (["NOAA/NCEI ETOPO1"]
+                   if dem_source == "etopo1" else ["Copernicus DEM GLO-30"]),
+        "demSource": dem_source,
         "generatedBy": "tools/mapgen/mapgen.py",
     }
     for key in ("orthoFile", "orthoSize", "orthoResolutionMeters", "orthoRowOrder",
@@ -408,7 +461,134 @@ def load_scenes(theatre: dict, bounds: dict) -> tuple[list[str], list[dict]]:
     return choose_scenes(stac_search(bounds), bounds)
 
 
+def build_blue_marble_ortho(
+    theatre: dict, out_dir: Path, meta: dict, size: int) -> dict:
+    """Reproject one public-domain NASA GIBS Blue Marble image onto the theatre grid."""
+    try:
+        from io import BytesIO
+        from PIL import Image
+        from rasterio.crs import CRS
+        from rasterio.enums import Resampling
+        from rasterio.transform import from_bounds, from_origin
+        from rasterio.warp import reproject
+    except ImportError as exc:  # pragma: no cover
+        raise SystemExit("mapgen needs rasterio, numpy and Pillow") from exc
+
+    bounds = theatre["geodesy"]["bounds"]
+    params = urllib.parse.urlencode({
+        "SERVICE": "WMS",
+        "REQUEST": "GetMap",
+        "VERSION": "1.3.0",
+        "LAYERS": "BlueMarble_ShadedRelief_Bathymetry",
+        "STYLES": "",
+        "FORMAT": "image/jpeg",
+        "CRS": "EPSG:4326",
+        "WIDTH": size,
+        "HEIGHT": size,
+        # WMS 1.3.0 / EPSG:4326 axis order is lat, lon.
+        "BBOX": f"{bounds['south']},{bounds['west']},{bounds['north']},{bounds['east']}",
+    })
+    request = urllib.request.Request(
+        f"{GIBS_WMS}?{params}",
+        headers={"User-Agent": "IronSkies/0.1 (terrain tooling)"},
+    )
+    print(f"Blue Marble: requesting {size}×{size} ...", file=sys.stderr)
+    with urllib.request.urlopen(request, timeout=300) as response:
+        payload = response.read()
+    image = Image.open(BytesIO(payload)).convert("RGB")
+    source = np.asarray(image).transpose(2, 0, 1)
+    src_transform = from_bounds(
+        bounds["west"], bounds["south"], bounds["east"], bounds["north"],
+        image.width, image.height)
+
+    half = float(meta["halfExtentMeters"])
+    center_e = float(meta["origin"]["easting"])
+    center_n = float(meta["origin"]["northing"])
+    left, right = center_e - half, center_e + half
+    bottom, top = center_n - half, center_n + half
+    resolution = (2.0 * half) / size
+    dst_transform = from_origin(left, top, resolution, resolution)
+
+    destination = np.zeros((3, size, size), dtype=np.uint8)
+    reproject(
+        source=source,
+        destination=destination,
+        src_transform=src_transform,
+        src_crs=CRS.from_epsg(4326),
+        dst_transform=dst_transform,
+        dst_crs=CRS.from_string(theatre["geodesy"]["crs"]),
+        resampling=Resampling.bilinear,
+    )
+
+    ortho = Image.fromarray(destination.transpose(1, 2, 0), "RGB")
+    ortho.save(out_dir / "ortho.jpg", quality=90, optimize=True)
+    (out_dir / "ortho.jpg.bin").write_bytes((out_dir / "ortho.jpg").read_bytes())
+
+    lc_size = min(2048, size)
+    height = np.fromfile(
+        out_dir / meta["heightmapFile"], dtype="<i2"
+    ).reshape(meta["height"], meta["width"])
+    height_small = np.asarray(
+        Image.fromarray(height.astype(np.float32)).resize(
+            (lc_size, lc_size), Image.BILINEAR)
+    )
+    height_small = np.flipud(height_small)  # match the north-up ortho
+    rgb = np.asarray(
+        ortho.resize((lc_size, lc_size), Image.BILINEAR)
+    ).astype(np.float32) / 255.0
+    water = height_small <= 0.5
+    brightness = rgb.mean(axis=2)
+    greenness = rgb[..., 1] - (rgb[..., 0] + rgb[..., 2]) * 0.5
+    vegetation = (~water) & (greenness > 0.015) & (brightness > 0.04)
+    built = (
+        (~water) & (~vegetation)
+        & (np.abs(rgb[..., 0] - rgb[..., 1]) < 0.04)
+        & (np.abs(rgb[..., 1] - rgb[..., 2]) < 0.04)
+    )
+    forest = vegetation & (brightness < 0.16)
+
+    rgba = np.zeros((lc_size, lc_size, 4), dtype=np.uint8)
+    rgba[..., 0] = np.where(water, 255, 0)
+    rgba[..., 1] = np.where(vegetation, 255, 0)
+    rgba[..., 2] = np.where(built, 255, 0)
+    rgba[..., 3] = np.where(forest, 255, 0)
+    Image.fromarray(rgba, "RGBA").save(out_dir / "landcover.png", optimize=True)
+    (out_dir / "landcover.png.bin").write_bytes(
+        (out_dir / "landcover.png").read_bytes())
+
+    meta.update({
+        "orthoFile": "ortho.jpg.bin",
+        "orthoSize": size,
+        "orthoResolutionMeters": round(resolution, 4),
+        "orthoRowOrder": "north-to-south",
+        "landcoverFile": "landcover.png.bin",
+        "landcoverSize": lc_size,
+        "blueMarble": {
+            "layer": "BlueMarble_ShadedRelief_Bathymetry",
+            "bounds": bounds,
+            "attribution": "NASA Earth Observatory Blue Marble, via NASA GIBS",
+        },
+    })
+    (out_dir / "meta.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
+
+    attribution = "\n".join(
+        f"- {source.get('id')}: {source.get('attribution', '')} [{source.get('licence')}]"
+        for source in theatre.get("sources", [])
+    )
+    (out_dir / "LICENSE-DATA.txt").write_text(
+        "Map data attribution for this bundle:\n\n"
+        + attribution
+        + "\n\nImagery: NASA GIBS Blue Marble. Elevation: NOAA/NCEI ETOPO1.\n",
+        encoding="utf-8",
+    )
+    print(f"ortho:    {size}×{size} @ {resolution:.2f} m -> ortho.jpg (Blue Marble)")
+    print(f"landcover: {lc_size}×{lc_size} -> landcover.png")
+    return meta
+
+
 def build_ortho(theatre: dict, out_dir: Path, meta: dict, size: int) -> dict:
+    if theatre.get("terrain", {}).get("ortho_source") == "blue-marble":
+        return build_blue_marble_ortho(theatre, out_dir, meta, size)
     try:
         from PIL import Image, ImageFilter
         from rasterio.crs import CRS
