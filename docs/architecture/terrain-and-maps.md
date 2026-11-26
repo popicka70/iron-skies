@@ -85,9 +85,12 @@ fetch → clip/reproject → heightmap LOD pyramid → derivatives (normals, slo
   the offsets are exact.
 - **Dynamic insets:** `TerrainWorld` loads the installed detail orthos and selects the
   regional/local inset containing the camera; the shader only samples the active two.
-- **Mountain catalog:** independently offset 400 km GLO-30 patches (Alps, Pyrenees, then
-  the ranges in `docs/plan-europe-mountains.md`) are loaded under the Europe base; the
-  Single Player dialog lists each installed range as an airborne start.
+- **Mountain catalog:** 17 independently offset 400 km GLO-30 patches (Alps, Pyrenees,
+  Scandes, Carpathians, Apennines, Dinarides, Pindus, Iberia, Cantabrian, Sierra Nevada,
+  Massif Central, UK Highlands, Wales/Lake District, Iceland) are loaded under the
+  Europe base; the Single Player dialog lists each installed range as an airborne start.
+  All patches together are ~2.1 GB of heightmaps; the patch manager will keep only the
+  nearby ones resident.
 - **OSM detail:** roads and hedgerows are draped as ribbon/fence meshes for the 7 km
   patch around the spawn. Woods and buildings are the next OSM layer.
 - **Geomorphing** (vertex position blending) over the last 15% of each LOD range removes

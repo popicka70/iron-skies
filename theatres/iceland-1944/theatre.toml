@@ -1,0 +1,47 @@
+# Iceland, 1944 — 400 km high-resolution mountain layer over the Europe base.
+id = "iceland-1944"
+name = "Iceland, 1944"
+description = "Icelandic highlands and volcanic relief"
+generator_version = "0.3"
+seed = 19440606
+
+[geodesy]
+crs = "EPSG:32630"
+origin = { lat = 64.80, lon = -18.50 }
+bounds = { north = 68.8, south = 60.8, west = -26.5, east = -10.5 }
+vertical_datum = "EGM2008"
+
+[terrain]
+size_meters = 400000
+chunk_size_m = 1000
+lod_levels = 5
+heightmap_spacing_m = 50
+dem_source = "copernicus-glo30"
+ortho_source = "blue-marble"
+ortho_size = 4096
+heightmap_bits = 16
+
+[runtime]
+default_weather = "broken"
+time_of_day = "09:30"
+
+[[sources]]
+id = "copernicus-glo30"
+kind = "elevation"
+licence = "Copernicus DEM licence (free, attribution)"
+attribution = "© DLR e.V. 2010-2014 and © Airbus DS GmbH 2017-2021"
+resolution_m = 30
+
+[[sources]]
+id = "nasa-blue-marble"
+kind = "imagery"
+licence = "Public domain (NASA)"
+attribution = "NASA Earth Observatory Blue Marble, via NASA GIBS"
+resolution_m = 500
+
+[[sources]]
+id = "polyhaven-materials"
+kind = "materials"
+licence = "CC0"
+attribution = "Poly Haven (polyhaven.com)"
+notes = "Textures only; no geospatial component"

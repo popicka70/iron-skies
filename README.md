@@ -20,7 +20,9 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 > imagery provides a continental map; the 40 km Normandy sample is blended over the
 > airfield as a sharp inset, and an optional generated **400 × 400 km** North-west France
 > layer adds regional detail. Major European rivers are rendered as flowing water
-> surfaces, and a generated Copernicus GLO-30 **Alps** layer covers the high range.
+> surfaces, and 17 generated Copernicus GLO-30 **mountain patches** cover the Alps,
+> Pyrenees, Scandes, Carpathians, Apennines, Dinarides, Greece, Iberia, Massif Central,
+> the UK and Iceland.
 > Linux and Windows release packages are configured.
 
 ![Iron Skies launcher](docs/media/m0-launcher.png)
@@ -68,18 +70,35 @@ python3 tools/mapgen/mapgen.py --theatre europe-1944 \
     --resolution 2000 --ortho-size 4096 --no-osm
 ```
 
-The **Alps** and **Pyrenees** layers are generated locally from Copernicus GLO-30:
+The **mountain patches** are generated locally from Copernicus GLO-30: a 400 km square
+per range at 50 m height, with Blue Marble imagery. The current catalog is:
+
+- Alps, Pyrenees
+- Scandes (south and north)
+- Carpathians (west and east)
+- Apennines (north and south)
+- Dinarides, Pindus/Greece
+- Iberia (central), Cantabrian, Sierra Nevada
+- Massif Central/Vosges, Scottish Highlands, Wales/Lake District, Iceland
 
 ```bash
-python3 tools/mapgen/mapgen.py --theatre alps-1944 \
-    --resolution 50 --ortho-size 4096 --no-osm
-python3 tools/mapgen/mapgen.py --theatre pyrenees-1944 \
-    --resolution 50 --ortho-size 4096 --no-osm
+for id in alps-1944 pyrenees-1944 \
+    scandes-south-1944 scandes-north-1944 \
+    carpathians-west-1944 carpathians-east-1944 \
+    apennines-north-1944 apennines-south-1944 \
+    dinarides-1944 pindus-1944 \
+    iberia-central-1944 cantabrian-1944 sierra-nevada-1944 \
+    massif-central-1944 uk-highlands-1944 \
+    wales-lake-district-1944 iceland-1944; do
+  python3 tools/mapgen/mapgen.py --theatre "$id" \
+      --resolution 50 --ortho-size 4096 --no-osm
+done
 ```
 
-They are loaded over Europe when installed; **Single Player** lists each installed range
-and spawns airborne over it. The generated 123 MB heightmaps stay git-ignored. The full
-range inventory and the path to all of Europe are in
+Each patch is ≈123 MB; all 17 together are ≈2.1 GB, generated locally and git-ignored.
+They are loaded over Europe when installed; **Single Player** lists every installed range
+and spawns airborne over it. Airborne starts begin with **gear and flaps up**. The full
+inventory and the next optimisation steps are in
 [docs/plan-europe-mountains.md](docs/plan-europe-mountains.md).
 
 Then choose **Settings → Theatre**. The runtime composes up to three levels that share
@@ -88,6 +107,7 @@ the Normandy origin:
 | Layer | Height | Imagery | Coverage |
 | --- | --- | --- | --- |
 | Europe base | 2 km | Blue Marble ≈1 km/px | 4,000 km |
+| Mountain patches (17) | 50 m | Blue Marble 98 m/px | 400 km each |
 | North-west France | 50 m | Sentinel-2 98 m/px | 400 km |
 | Normandy | 25 m | Sentinel-2 10 m/px | 40 km |
 
@@ -98,7 +118,7 @@ to the layers it has.
 
 ![Single Player start location dialog](docs/media/m0-singleplayer.png)
 
-*Single Player now asks for a start location — the runway, or an airborne Alpine start.
+*Single Player asks for a start location — the runway or any installed mountain range.
 The start location no longer lives in Settings; the theatre is still chosen there.*
 
 ![Pyrenees 400 km high-resolution layer](docs/media/m0-pyrenees.jpg)
@@ -109,8 +129,13 @@ Blue Marble imagery.*
 ![Alps 400 km high-resolution layer](docs/media/m0-alps.jpg)
 
 *The generated 400 km Alpine layer: Copernicus GLO-30 height at 50 m over the Europe
-base, with the 4,096² Blue Marble ortho. Choose **Start location → Alps** to spawn
+base, with the 4,096² Blue Marble ortho. Choose **Single Player → Alps** to spawn
 airborne over the range.*
+
+![European mountain range catalog](docs/media/m0-europe-ranges.jpg)
+
+*The full 17-range catalog: each patch is a 400 km GLO-30 height field with Blue Marble
+imagery, composited over the Europe base and selectable as an airborne start.*
 
 ![Europe 4,000 km base](docs/media/m0-europe-base.jpg)
 

@@ -907,6 +907,9 @@ public partial class Main : Node3D
             _brake = 1.0;
             _gearTarget = 1.0;
             _flapTarget = 1.0;
+            // Airborne starts begin gear-up now; seed a landing configuration for
+            // the forced mission-test touchdown.
+            _sim.SetGearAndFlaps(1.0, 1.0);
         }
         else if (_missionTestTick >= 600)
         {
