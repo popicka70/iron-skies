@@ -54,27 +54,36 @@ public sealed class CompositeTerrain : ITerrainSource
 
         for (int i = _details.Length - 1; i >= 0; i--)
         {
-            TerrainLayer layer = _details[i];
-            double localEast = eastMeters - layer.OffsetEast;
-            double localNorth = northMeters - layer.OffsetNorth;
-            double edgeEast = layer.Map.HalfExtent - Math.Abs(localEast);
-            double edgeNorth = layer.Map.HalfExtent - Math.Abs(localNorth);
-            if (edgeEast <= 0.0 || edgeNorth <= 0.0)
-            {
-                continue;
-            }
-
-            double feather = Math.Min(2_000.0, layer.Map.HalfExtent * 0.1);
-            double blend = Math.Clamp(Math.Min(edgeEast, edgeNorth) / feather, 0.0, 1.0);
-            if (blend <= 0.0)
-            {
-                continue;
-            }
-
-            result = result * (1.0 - blend)
-                + layer.Map.HeightAt(localEast, localNorth) * blend;
+            result = BlendLayer(result, _details[i], eastMeters, northMeters);
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Feathered blend of one finer layer over the current height. Shared with the
+    /// dynamic patch manager so resident patches match the static composite exactly.
+    /// </summary>
+    internal static double BlendLayer(
+        double result, TerrainLayer layer, double eastMeters, double northMeters)
+    {
+        double localEast = eastMeters - layer.OffsetEast;
+        double localNorth = northMeters - layer.OffsetNorth;
+        double edgeEast = layer.Map.HalfExtent - Math.Abs(localEast);
+        double edgeNorth = layer.Map.HalfExtent - Math.Abs(localNorth);
+        if (edgeEast <= 0.0 || edgeNorth <= 0.0)
+        {
+            return result;
+        }
+
+        double feather = Math.Min(2_000.0, layer.Map.HalfExtent * 0.1);
+        double blend = Math.Clamp(Math.Min(edgeEast, edgeNorth) / feather, 0.0, 1.0);
+        if (blend <= 0.0)
+        {
+            return result;
+        }
+
+        return result * (1.0 - blend)
+            + layer.Map.HeightAt(localEast, localNorth) * blend;
     }
 }

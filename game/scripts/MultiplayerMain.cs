@@ -38,6 +38,7 @@ public sealed partial class MultiplayerMain : Node3D
     private byte _localType;
 
     private TerrainWorld _terrain = null!;
+    private MountainPatchManager? _patchManager;
     private string _terrainDirectory = "res://assets/terrain/normandy-1944";
     private string _terrainOsmPath = "res://assets/terrain/normandy-1944/osm.json";
     private RiverData _riverData = new();
@@ -148,8 +149,12 @@ public sealed partial class MultiplayerMain : Node3D
 
         string theatreId = TheatreCatalog.Resolve(
             ReadOption("--theatre") ?? LaunchConfig.CurrentTheatre);
-        _map = TheatreCatalog.LoadTerrain(
-            theatreId, out _terrainDirectory, out _terrainOsmPath);
+        _map = _serverMode
+            ? TheatreCatalog.LoadTerrainFull(
+                theatreId, out _terrainDirectory, out _terrainOsmPath)
+            : TheatreCatalog.LoadTerrain(
+                theatreId, out _terrainDirectory, out _terrainOsmPath);
+        _patchManager = _map as MountainPatchManager;
         _riverData = RiverData.Load(
             "res://assets/water/europe-rivers.json", _terrainOsmPath);
         if (_riverData.Lines.Count > 0)
@@ -630,7 +635,7 @@ public sealed partial class MultiplayerMain : Node3D
         });
 
         _terrain = new TerrainWorld();
-        _terrain.Build(_map, _terrainDirectory);
+        _terrain.Build(_map, _terrainDirectory, _patchManager);
         AddChild(_terrain);
         var osm = new OsmDetail();
         osm.Build(_map, _terrainOsmPath);
