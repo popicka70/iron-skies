@@ -24,6 +24,7 @@ import json
 import math
 import signal
 import sys
+import time
 import tomllib
 import urllib.parse
 import urllib.request
@@ -88,7 +89,7 @@ def dem_tile_name(lat: float, lon: float) -> str:
     return f"Copernicus_DSM_COG_10_{ns}{lat_i:02d}_00_{ew}{lon_i:03d}_00_DEM"
 
 
-def fetch_tile(name: str) -> Path:
+def fetch_tile(name: str) -> Path | None:
     DEM_CACHE.mkdir(parents=True, exist_ok=True)
     target = DEM_CACHE / f"{name}.tif"
     if target.exists() and target.stat().st_size > 1_000_000:
@@ -97,11 +98,21 @@ def fetch_tile(name: str) -> Path:
     url = f"{S3_BASE}/{name}/{name}.tif"
     print(f"  downloading {name}.tif ...", file=sys.stderr)
     tmp = target.with_suffix(".part")
-    with urllib.request.urlopen(url, timeout=180) as response, tmp.open("wb") as out:
-        while chunk := response.read(1 << 20):
-            out.write(chunk)
-    tmp.replace(target)
-    return target
+    last_error = None
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(url, timeout=180) as response, tmp.open("wb") as out:
+                while chunk := response.read(1 << 20):
+                    out.write(chunk)
+            tmp.replace(target)
+            return target
+        except Exception as error:  # noqa: BLE001 - retry transient S3 failures
+            if getattr(error, "code", None) == 404:
+                print(f"  missing DEM tile (sea/no coverage): {name}", file=sys.stderr)
+                return None
+            last_error = error
+            time.sleep(2 + attempt * 2)
+    raise SystemExit(f"could not download {name}: {last_error}")
 
 
 def fetch_etopo1() -> Path:
@@ -170,15 +181,23 @@ def build_heightmap(theatre: dict, out_dir: Path, resolution_m: float) -> dict:
             # ETOPO1 ships as a global geographic grid but omits the CRS tag.
             src_crs = source.crs or CRS.from_epsg(4326)
     else:
-        lats = [bounds["south"], bounds["north"]]
-        lons = [bounds["west"], bounds["east"]]
+        # Every 1° tile touching the bounds, not just the four corners.
+        lat_first = math.floor(bounds["south"])
+        lat_last = math.ceil(bounds["north"])
+        lon_first = math.floor(bounds["west"])
+        lon_last = math.ceil(bounds["east"])
         names = {
             dem_tile_name(lat, lon)
-            for lat in (math.floor(lats[0]), math.floor(lats[1]))
-            for lon in (math.floor(lons[0]), math.floor(lons[1]))
+            for lat in range(lat_first, lat_last)
+            for lon in range(lon_first, lon_last)
         }
         print(f"DEM tiles: {', '.join(sorted(names))}", file=sys.stderr)
-        paths = [fetch_tile(name) for name in sorted(names)]
+        paths = [
+            path for path in (fetch_tile(name) for name in sorted(names))
+            if path is not None
+        ]
+        if not paths:
+            raise SystemExit("no Copernicus DEM tiles available for this theatre")
 
         sources = [rasterio.open(path) for path in paths]
         try:

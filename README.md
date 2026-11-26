@@ -66,6 +66,16 @@ python3 tools/mapgen/mapgen.py --theatre europe-1944 \
     --resolution 2000 --ortho-size 4096 --no-osm
 ```
 
+The **Alps** layer is generated locally from Copernicus GLO-30:
+
+```bash
+python3 tools/mapgen/mapgen.py --theatre alps-1944 \
+    --resolution 50 --ortho-size 4096 --no-osm
+```
+
+It is loaded over Europe when installed; **Settings → Start location → Alps** spawns
+airborne over Innsbruck/Stelvio. The generated 123 MB heightmap stays git-ignored.
+
 Then choose **Settings → Theatre**. The runtime composes up to three levels that share
 the Normandy origin:
 
@@ -79,6 +89,12 @@ For any point it uses the finest layer containing that point, and the shader ble
 ortho insets with feathered edges. Chunk meshes within 10 km stream as before; the base
 mesh covers the continent. If a selected layer is not installed, the runtime falls back
 to the layers it has.
+
+![Alps 400 km high-resolution layer](docs/media/m0-alps.jpg)
+
+*The generated 400 km Alpine layer: Copernicus GLO-30 height at 50 m over the Europe
+base, with the 4,096² Blue Marble ortho. Choose **Start location → Alps** to spawn
+airborne over the range.*
 
 ![Europe 4,000 km base](docs/media/m0-europe-base.jpg)
 

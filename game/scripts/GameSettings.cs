@@ -15,6 +15,7 @@ public static class GameSettings
     public static bool Fullscreen { get; set; }
     public static string PlayerAircraft { get; set; } = "spitfire-mk9";
     public static string Theatre { get; set; } = "normandy-1944";
+    public static string StartLocation { get; set; } = "airfield";
     public static float HudScale { get; set; } = 1.0f;
     public static bool InvertPitch { get; set; }
     public static float HotasDeadzone { get; set; } = 0.08f;
@@ -32,6 +33,7 @@ public static class GameSettings
         Fullscreen = (bool)config.GetValue("display", "fullscreen", false);
         PlayerAircraft = (string)config.GetValue("game", "aircraft", "spitfire-mk9");
         string savedTheatre = (string)config.GetValue("game", "theatre", "");
+        StartLocation = (string)config.GetValue("game", "start_location", "airfield");
         Theatre = string.IsNullOrEmpty(savedTheatre)
             ? (TheatreCatalog.IsInstalled(TheatreCatalog.EuropeId)
                 ? TheatreCatalog.EuropeId
@@ -55,6 +57,7 @@ public static class GameSettings
         config.SetValue("display", "fullscreen", Fullscreen);
         config.SetValue("game", "aircraft", PlayerAircraft);
         config.SetValue("game", "theatre", Theatre);
+        config.SetValue("game", "start_location", StartLocation);
         config.SetValue("game", "hud_scale", HudScale);
         config.SetValue("game", "invert_pitch", InvertPitch);
         config.SetValue("game", "hotas_deadzone", HotasDeadzone);

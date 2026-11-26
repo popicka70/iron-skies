@@ -24,6 +24,7 @@ public sealed partial class Launcher : Control
     private CheckButton _fullscreenCheck = null!;
     private OptionButton _aircraftOption = null!;
     private OptionButton _theatreOption = null!;
+    private OptionButton _startOption = null!;
     private Label _theatreStatus = null!;
     private HSlider _hudScaleSlider = null!;
     private CheckButton _invertPitchCheck = null!;
@@ -957,9 +958,9 @@ public sealed partial class Launcher : Control
             AnchorRight = 0.5f,
             AnchorBottom = 0.5f,
             OffsetLeft = -240.0f,
-            OffsetTop = -240.0f,
+            OffsetTop = -270.0f,
             OffsetRight = 250.0f,
-            OffsetBottom = 240.0f,
+            OffsetBottom = 270.0f,
         };
         var style = new StyleBoxFlat
         {
@@ -1065,6 +1066,24 @@ public sealed partial class Launcher : Control
         content.AddChild(_theatreStatus);
         RefreshTheatreStatus();
 
+        content.AddChild(new Label { Text = "Start location" });
+        _startOption = new OptionButton();
+        _startOption.AddItem("Airfield (Normandy)");
+        _startOption.SetItemMetadata(0, "airfield");
+        _startOption.AddItem(
+            TheatreCatalog.IsInstalled(TheatreCatalog.AlpsId)
+                ? "Alps — airborne"
+                : "Alps — not installed");
+        _startOption.SetItemMetadata(1, "alps");
+        _startOption.Selected = GameSettings.StartLocation == "alps" ? 1 : 0;
+        _startOption.ItemSelected += index =>
+        {
+            GameSettings.StartLocation =
+                _startOption.GetItemMetadata((int)index).AsString();
+            GameSettings.Save();
+        };
+        content.AddChild(_startOption);
+
         content.AddChild(new Label { Text = "HUD scale" });
         _hudScaleSlider = new HSlider
         {
@@ -1136,6 +1155,7 @@ public sealed partial class Launcher : Control
             }
         }
 
+        _startOption.Selected = GameSettings.StartLocation == "alps" ? 1 : 0;
         RefreshTheatreStatus();
     }
 

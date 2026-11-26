@@ -15,6 +15,7 @@ public static class TheatreCatalog
     public const string DefaultId = "normandy-1944";
     public const string LargeId = "france-northwest-1944";
     public const string EuropeId = "europe-1944";
+    public const string AlpsId = "alps-1944";
 
     public static readonly Entry[] All =
     {
@@ -40,6 +41,22 @@ public static class TheatreCatalog
 
     public static string Directory(string id) => $"res://assets/terrain/{id}";
 
+    public static bool TryGetLayer(
+        ITerrainSource source, string id, out TerrainLayer layer)
+    {
+        foreach (TerrainLayer candidate in source.Layers)
+        {
+            if (candidate.Map.Meta.Id == id)
+            {
+                layer = candidate;
+                return true;
+            }
+        }
+
+        layer = default;
+        return false;
+    }
+
     /// <summary>
     /// Loads a theatre plus any available finer layers: the 40 km Normandy field always
     /// sits under the 400 km/Europe maps, and the generated 400 km field sits under
@@ -54,6 +71,11 @@ public static class TheatreCatalog
         if (id == EuropeId && IsInstalled(LargeId))
         {
             details.Add(Heightmap.Load(Directory(LargeId)));
+        }
+
+        if (id == EuropeId && IsInstalled(AlpsId))
+        {
+            details.Add(Heightmap.Load(Directory(AlpsId)));
         }
 
         if (id != DefaultId && IsInstalled(DefaultId))
