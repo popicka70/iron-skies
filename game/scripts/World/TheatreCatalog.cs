@@ -28,12 +28,38 @@ public static class TheatreCatalog
     public sealed record StartLocation(
         string Id, string Label, string LayerId);
 
-    public static readonly StartLocation[] StartLocations =
+    public static readonly StartLocation[] MountainPatches =
     {
-        new("airfield", "Airfield — take off from the runway", ""),
         new("alps", "Alps — start airborne over the range", AlpsId),
         new("pyrenees", "Pyrenees — start airborne over the range", PyreneesId),
+        new("scandes-south", "Scandes (south) — start airborne", "scandes-south-1944"),
+        new("scandes-north", "Scandes (north) — start airborne", "scandes-north-1944"),
+        new("carpathians-west", "Carpathians (west) — start airborne", "carpathians-west-1944"),
+        new("carpathians-east", "Carpathians (east) — start airborne", "carpathians-east-1944"),
+        new("apennines-north", "Apennines (north) — start airborne", "apennines-north-1944"),
+        new("apennines-south", "Apennines (south) — start airborne", "apennines-south-1944"),
+        new("dinarides", "Dinarides — start airborne", "dinarides-1944"),
+        new("pindus", "Pindus and Greece — start airborne", "pindus-1944"),
+        new("iberia-central", "Iberia (central) — start airborne", "iberia-central-1944"),
+        new("cantabrian", "Cantabrian Mountains — start airborne", "cantabrian-1944"),
+        new("sierra-nevada", "Sierra Nevada — start airborne", "sierra-nevada-1944"),
+        new("massif-central", "Massif Central and Vosges — start airborne", "massif-central-1944"),
+        new("uk-highlands", "Scottish Highlands — start airborne", "uk-highlands-1944"),
+        new("wales-lake-district", "Wales and the Lake District — start airborne", "wales-lake-district-1944"),
+        new("iceland", "Iceland — start airborne", "iceland-1944"),
     };
+
+    public static readonly StartLocation[] StartLocations = BuildStartLocations();
+
+    private static StartLocation[] BuildStartLocations()
+    {
+        var list = new System.Collections.Generic.List<StartLocation>
+        {
+            new("airfield", "Airfield — take off from the runway", ""),
+        };
+        list.AddRange(MountainPatches);
+        return list.ToArray();
+    }
 
     public static StartLocation? FindStartLocation(string id)
     {
@@ -110,14 +136,15 @@ public static class TheatreCatalog
             details.Add(Heightmap.Load(Directory(LargeId)));
         }
 
-        if (id == EuropeId && IsInstalled(AlpsId))
+        if (id == EuropeId)
         {
-            details.Add(Heightmap.Load(Directory(AlpsId)));
-        }
-
-        if (id == EuropeId && IsInstalled(PyreneesId))
-        {
-            details.Add(Heightmap.Load(Directory(PyreneesId)));
+            foreach (StartLocation patch in MountainPatches)
+            {
+                if (IsInstalled(patch.LayerId))
+                {
+                    details.Add(Heightmap.Load(Directory(patch.LayerId)));
+                }
+            }
         }
 
         if (id != DefaultId && IsInstalled(DefaultId))

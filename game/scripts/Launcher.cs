@@ -302,8 +302,8 @@ public sealed partial class Launcher : Control
         var panel = (PanelContainer)_singleOverlay.GetChild(1);
         panel.OffsetLeft = -290.0f;
         panel.OffsetRight = 290.0f;
-        panel.OffsetTop = -175.0f;
-        panel.OffsetBottom = 175.0f;
+        panel.OffsetTop = -300.0f;
+        panel.OffsetBottom = 300.0f;
         var content = (VBoxContainer)panel.GetChild(0);
 
         var title = new Label
@@ -324,6 +324,16 @@ public sealed partial class Launcher : Control
         _singleStatus.AddThemeColorOverride("font_color", new Color(0.62f, 0.72f, 0.64f));
         content.AddChild(_singleStatus);
 
+        var scroll = new ScrollContainer
+        {
+            CustomMinimumSize = new Vector2(0.0f, 320.0f),
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+        };
+        content.AddChild(scroll);
+        var startList = new VBoxContainer();
+        startList.AddThemeConstantOverride("separation", 4);
+        scroll.AddChild(startList);
+
         foreach (TheatreCatalog.StartLocation start in TheatreCatalog.StartLocations)
         {
             bool installed = start.LayerId.Length == 0
@@ -332,11 +342,11 @@ public sealed partial class Launcher : Control
             {
                 Text = installed ? start.Label : $"{start.Label} (not installed)",
                 Disabled = !installed,
-                CustomMinimumSize = new Vector2(0.0f, 44.0f),
+                CustomMinimumSize = new Vector2(0.0f, 38.0f),
             };
             string id = start.Id;
             button.Pressed += () => StartSinglePlayer(id);
-            content.AddChild(button);
+            startList.AddChild(button);
         }
 
         var note = new Label

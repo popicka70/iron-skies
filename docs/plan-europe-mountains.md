@@ -81,13 +81,13 @@ The long-term answer remains a tiled source:
 1. **Plan** — this document. *(done)*
 2. **Pyrenees + general start-location catalog** — done: 400 km GLO-30 patch,
    Europe layer loading, Airfield/Alps/Pyrenees start dialog.
-3. **Patch manager** — dynamic load/unload and memory budget; validate with 3–4 ranges.
-4. **Scandes** — two patches.
-5. **Carpathians** — two patches.
-6. **Apennines** — two patches.
-7. **Dinarides / Greece** — one or two patches.
-8. **Iberia** — Sistema Central/Iberian, Cantabrian, Sierra Nevada.
-9. **UK / Massif Central / Iceland** — optional medium-relief patches.
+3. **Patch manager** — next optimisation: dynamic load/unload and memory budget.
+4. **Scandes** — done: two patches.
+5. **Carpathians** — done: two patches.
+6. **Apennines** — done: two patches.
+7. **Dinarides / Greece** — done: Dinarides and Pindus.
+8. **Iberia** — done: central Iberia, Cantabrian and Sierra Nevada.
+9. **UK / Massif Central / Iceland** — done: Highlands, Wales/Lake District, Massif Central, Iceland.
 10. **Sentinel-2 ortho pass** — priority ranges, 10 m imagery.
 11. **OSM/EU-Hydro detail** — roads, settlements and small waterways per patch.
 12. **Full tiled Europe + floating origin** — final continental architecture.
