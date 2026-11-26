@@ -41,21 +41,28 @@ compresses to a single 8,001² 16-bit heightmap (128 MB). At 250 m it is 16,001�
 - Dynamic ortho selection: inside a range the 400 km range ortho is used; in the
   lowlands the 500 m/8k ortho is used; the 40 km Normandy inset wins at the airfield.
 - Rivers, carved channels and the airfield keep working unchanged.
-- Memory: 128 MB height + ~10 MB ortho. With all 17 ranges still loaded, total is
-  ~2.2 GB; the patch manager follows.
+- Memory: 128 MB height + ~10 MB ortho. Streaming keeps at most three 400 km range
+  patches (~366 MB) resident, so total height memory stays around 0.5 GB before the
+  250 m layer.
 
-### Phase B — patch manager (sub-agent)
+### Phase B — patch manager *(done)*
 
-A `MountainPatchManager` keeps only 2–3 range patches resident around the player,
-unloads far ones, and refreshes the ortho insets. This makes the 17 ranges + 500 m
-layer practical within a 6 GB target.
+`MountainPatchManager` keeps at most three 400 km range patches resident around the
+player and unloads far ones. It loads a patch when focus is within half extent + 75 km,
+retains it to +125 km (hysteresis), evicts the least-recently-used patch, and tells
+`TerrainWorld` to refresh ortho insets and invalidate only overlapping chunks. The
+authoritative multiplayer server still loads every patch for deterministic ground
+queries; clients stream them.
 
 ### Phase C — 250 m Europe layer
 
-- GLO-90 upsampled or GLO-30 sampled to 250 m: 16,001² = 512 MB.
-- Not resident as a whole: stream 64 km height tiles from disk with an LRU, or use a
-  lower far-field and a 250 m ring around the player.
-- 500 m stays as the far base; 250 m near ring; 50 m mountain patches.
+- GLO-90 sampled to 250 m: 16,001² = 512 MB, built with `--no-ortho` so it reuses the
+  500 m imagery and costs no extra GPU texture memory.
+- Resolved as a whole over the 500 m layer for now: ~1 GB of resident height data with
+  three streamed range patches, comfortably inside the 6 GB target.
+- 500 m remains the fallback where the 250 m bundle is not installed; 50 m mountain
+  patches still win locally. A tiled near-field replaces the monolithic layer in
+  Phase D if memory or load time becomes a problem.
 
 ### Phase D — full tiled source
 
@@ -67,10 +74,13 @@ layer practical within a 6 GB target.
 ## Implementation steps
 
 1. **Plan** — this document. *(done)*
-2. **GLO-90 mapgen + `europe-500m-1944` bundle + runtime layer** — 500 m across Europe,
-   tests and screenshots. *(main agent)*
-3. **Patch manager** — dynamic range load/unload and memory budget. *(sub-agent, worktree)*
-4. **250 m Europe layer/tiles** — 512 MB source handled by the manager/tile cache.
+2. **GLO-90 mapgen + `europe-500m-1944` bundle + runtime layer** — GLO-90 support,
+   parallel tile fetch, ocean no-data fill, 500 m bundle and runtime detail layer.
+   *(done)*
+3. **Patch manager** — dynamic range load/unload and memory budget. *(done)*
+4. **250 m Europe layer** — 512 MB source loaded over the 500 m layer; the finer
+   spacing wins the composite tie at equal extent. Built with `--no-ortho` so it reuses
+   the 500 m ortho and adds no GPU texture memory. *(in progress)*
 5. **Tiled GLO-30/GLO-90 source + floating origin** — full continental detail.
 6. **Ortho/OSM pass** — Sentinel-2 ranges/lowlands, OSM/EU-Hydro waterways and roads.
 
@@ -94,6 +104,8 @@ done
 - Lowland relief should be visibly better than the 2 km ETOPO1 base, including river
   valleys and medium hills.
 - The mountain patches still win at 50 m; the 40 km airfield layer still wins locally.
-- The patch manager keeps 2–3 range patches resident; total height memory ≤ ~600 MB.
+- The patch manager keeps at most three range patches resident (~366 MB); with the
+  500 m layer, total height memory is ≈0.5 GB. The optional 250 m layer raises it to
+  ≈1 GB.
 - Existing takeoff, mission, net and range-start tests stay green.
 - Every step is committed and pushed.

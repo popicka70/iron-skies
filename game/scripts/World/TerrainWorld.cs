@@ -568,6 +568,18 @@ public sealed partial class TerrainWorld : Node3D
             return false;
         }
 
+        double spacing = candidate.Layer.Map.Spacing;
+        double currentSpacing = current.Layer.Map.Spacing;
+        if (spacing < currentSpacing)
+        {
+            return true;
+        }
+
+        if (spacing > currentSpacing)
+        {
+            return false;
+        }
+
         double dx = east - candidate.Layer.OffsetEast;
         double dn = north - candidate.Layer.OffsetNorth;
         double cdx = east - current.Layer.OffsetEast;

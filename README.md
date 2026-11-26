@@ -96,6 +96,25 @@ done
 ```
 
 Each patch is ≈123 MB; all 17 together are ≈2.1 GB, generated locally and git-ignored.
+The continental lowlands use a 500 m GLO-90 layer:
+
+```bash
+python3 tools/mapgen/mapgen.py --theatre europe-500m-1944 \
+    --resolution 500 --ortho-size 8192 --no-osm
+```
+
+That layer is 8,001² (128 MB) and is loaded over the 2 km base; mountain patches still
+win locally. **Mountain patches are streamed:** at most three 400 km ranges stay resident
+around the aircraft (load at half extent + 75 km, unload past +125 km), so the 17 ranges
+no longer sit in memory at once. An optional 250 m layer doubles the lowland detail:
+
+```bash
+python3 tools/mapgen/mapgen.py --theatre europe-250m-1944 \
+    --resolution 250 --no-ortho --no-osm
+```
+
+See [docs/plan-europe-heightmap.md](docs/plan-europe-heightmap.md) for the continental
+detail plan and `tools/render_heightmap.py` for shaded-relief previews.
 They are loaded over Europe when installed; **Single Player** lists every installed range
 and spawns airborne over it. Airborne starts begin with **gear and flaps up**. The full
 inventory and the next optimisation steps are in
@@ -107,7 +126,9 @@ the Normandy origin:
 | Layer | Height | Imagery | Coverage |
 | --- | --- | --- | --- |
 | Europe base | 2 km | Blue Marble ≈1 km/px | 4,000 km |
-| Mountain patches (17) | 50 m | Blue Marble 98 m/px | 400 km each |
+| Europe 500 m detail | 500 m | Blue Marble 488 m/px | 4,000 km |
+| Europe 250 m detail (optional) | 250 m | Blue Marble 488 m/px | 4,000 km |
+| Mountain patches (17, streamed) | 50 m | Blue Marble 98 m/px | 400 km each |
 | North-west France | 50 m | Sentinel-2 98 m/px | 400 km |
 | Normandy | 25 m | Sentinel-2 10 m/px | 40 km |
 
@@ -136,6 +157,11 @@ airborne over the range.*
 
 *The full 17-range catalog: each patch is a 400 km GLO-30 height field with Blue Marble
 imagery, composited over the Europe base and selectable as an airborne start.*
+
+![Europe 500 m height detail](docs/media/m0-europe-500m.jpg)
+
+*The Europe-wide 500 m height layer: GLO-90 relief over the 2 km base, with the range
+patches still winning at 50 m.*
 
 ![Europe 4,000 km base](docs/media/m0-europe-base.jpg)
 

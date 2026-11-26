@@ -89,8 +89,15 @@ fetch → clip/reproject → heightmap LOD pyramid → derivatives (normals, slo
   Scandes, Carpathians, Apennines, Dinarides, Pindus, Iberia, Cantabrian, Sierra Nevada,
   Massif Central, UK Highlands, Wales/Lake District, Iceland) are loaded under the
   Europe base; the Single Player dialog lists each installed range as an airborne start.
-  All patches together are ~2.1 GB of heightmaps; the patch manager will keep only the
-  nearby ones resident.
+  All patches together are ~2.1 GB of heightmaps. `MountainPatchManager` streams them:
+  at most three are resident, loading within half extent + 75 km and unloading beyond
+  +125 km; `TerrainWorld` refreshes ortho insets and invalidates only chunks that overlap
+  a changed patch. The multiplayer server uses the full composite for determinism.
+- **Continental 500 m layer:** a generated 4,000 km GLO-90 heightmap (8,001², 128 MB)
+  and 8,192² Blue Marble ortho sit between the 2 km base and the 50 m ranges; the
+  lowlands and medium hills now have 500 m relief. An optional 250 m layer (16,001²,
+  512 MB) refines it further; the composite orders equal-extent layers by spacing so
+  the finer one wins deterministically.
 - **OSM detail:** roads and hedgerows are draped as ribbon/fence meshes for the 7 km
   patch around the spawn. Woods and buildings are the next OSM layer.
 - **Geomorphing** (vertex position blending) over the last 15% of each LOD range removes

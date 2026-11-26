@@ -318,7 +318,19 @@ public sealed class MountainPatchManager : ITerrainSource
         }
 
         // Coarse first; HeightAt then blends finer patches last.
-        _patchLayers.Sort((a, b) => b.Map.HalfExtent.CompareTo(a.Map.HalfExtent));
+        _patchLayers.Sort(static (a, b) =>
+        {
+            int extent = b.Map.HalfExtent.CompareTo(a.Map.HalfExtent);
+            if (extent != 0)
+            {
+                return extent;
+            }
+
+            int spacing = b.Map.Spacing.CompareTo(a.Map.Spacing);
+            return spacing != 0
+                ? spacing
+                : string.CompareOrdinal(a.Map.Meta.Id, b.Map.Meta.Id);
+        });
 
         _allLayers.Clear();
         _allLayers.AddRange(_base.Layers);

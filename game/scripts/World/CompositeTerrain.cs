@@ -34,11 +34,13 @@ public sealed class CompositeTerrain : ITerrainSource
                 detail.Meta.Origin.Northing - baseMap.Meta.Origin.Northing));
         }
 
-        all.Sort((a, b) => b.Map.HalfExtent.CompareTo(a.Map.HalfExtent));
+        // Coarse to fine. Extent is the primary key; for layers with the same extent
+        // (the 500 m and 250 m continental details) the coarser spacing is applied
+        // first so the finer one wins the blend deterministically.
+        all.Sort(CompareCoarseFirst);
         _layers = all.ToArray();
-        var fineFirst = new List<TerrainLayer>(_layers);
-        fineFirst.Sort((a, b) => a.Map.HalfExtent.CompareTo(b.Map.HalfExtent));
-        _details = fineFirst.FindAll(layer => layer.Map != baseMap).ToArray();
+        var coarseFirst = new List<TerrainLayer>(_layers);
+        _details = coarseFirst.FindAll(layer => layer.Map != baseMap).ToArray();
     }
 
     public IReadOnlyList<TerrainLayer> Layers => _layers;
@@ -52,12 +54,29 @@ public sealed class CompositeTerrain : ITerrainSource
     {
         double result = _base.HeightAt(eastMeters, northMeters);
 
-        for (int i = _details.Length - 1; i >= 0; i--)
+        foreach (TerrainLayer layer in _details)
         {
-            result = BlendLayer(result, _details[i], eastMeters, northMeters);
+            result = BlendLayer(result, layer, eastMeters, northMeters);
         }
 
         return result;
+    }
+
+    private static int CompareCoarseFirst(TerrainLayer a, TerrainLayer b)
+    {
+        int extent = b.Map.HalfExtent.CompareTo(a.Map.HalfExtent);
+        if (extent != 0)
+        {
+            return extent;
+        }
+
+        int spacing = b.Map.Spacing.CompareTo(a.Map.Spacing);
+        if (spacing != 0)
+        {
+            return spacing;
+        }
+
+        return string.CompareOrdinal(a.Map.Meta.Id, b.Map.Meta.Id);
     }
 
     /// <summary>

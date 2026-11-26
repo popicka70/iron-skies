@@ -28,13 +28,19 @@ import time
 import tomllib
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
 DEM_CACHE = Path.home() / ".cache" / "iron-skies" / "dem"
-S3_BASE = "https://copernicus-dem-30m.s3.amazonaws.com"
+DEM_PRODUCTS = {
+    "copernicus-glo30": (
+        "https://copernicus-dem-30m.s3.amazonaws.com", "10", "Copernicus DEM GLO-30"),
+    "copernicus-glo90": (
+        "https://copernicus-dem-90m.s3.amazonaws.com", "30", "Copernicus DEM GLO-90"),
+}
 ETOPO1_URL = (
     "https://www.ngdc.noaa.gov/mgg/global/relief/ETOPO1/data/ice_surface/"
     "grid_registered/georeferenced_tiff/ETOPO1_Ice_g_geotiff.zip"
@@ -79,23 +85,25 @@ def print_plan(theatre: dict) -> None:
 # --------------------------------------------------------------------------- DEM
 
 
-def dem_tile_name(lat: float, lon: float) -> str:
+def dem_tile_name(lat: float, lon: float, product: str = "copernicus-glo30") -> str:
     ns = "N" if lat >= 0 else "S"
     ew = "E" if lon >= 0 else "W"
     lat_i = abs(int(math.floor(lat)))
     lon_i = abs(int(math.floor(lon)))
     if lat_i > 90 or lon_i > 180:
         raise SystemExit(f"invalid DEM tile coordinate: {lat}, {lon}")
-    return f"Copernicus_DSM_COG_10_{ns}{lat_i:02d}_00_{ew}{lon_i:03d}_00_DEM"
+    _, cog, _ = DEM_PRODUCTS.get(product, DEM_PRODUCTS["copernicus-glo30"])
+    return f"Copernicus_DSM_COG_{cog}_{ns}{lat_i:02d}_00_{ew}{lon_i:03d}_00_DEM"
 
 
-def fetch_tile(name: str) -> Path | None:
+def fetch_tile(name: str, product: str = "copernicus-glo30") -> Path | None:
     DEM_CACHE.mkdir(parents=True, exist_ok=True)
     target = DEM_CACHE / f"{name}.tif"
     if target.exists() and target.stat().st_size > 1_000_000:
         return target
 
-    url = f"{S3_BASE}/{name}/{name}.tif"
+    base, _, _ = DEM_PRODUCTS.get(product, DEM_PRODUCTS["copernicus-glo30"])
+    url = f"{base}/{name}/{name}.tif"
     print(f"  downloading {name}.tif ...", file=sys.stderr)
     tmp = target.with_suffix(".part")
     last_error = None
@@ -182,20 +190,27 @@ def build_heightmap(theatre: dict, out_dir: Path, resolution_m: float) -> dict:
             src_crs = source.crs or CRS.from_epsg(4326)
     else:
         # Every 1° tile touching the bounds, not just the four corners.
+        product = (dem_source if dem_source in DEM_PRODUCTS
+                   else "copernicus-glo30")
         lat_first = math.floor(bounds["south"])
         lat_last = math.ceil(bounds["north"])
         lon_first = math.floor(bounds["west"])
         lon_last = math.ceil(bounds["east"])
         names = {
-            dem_tile_name(lat, lon)
+            dem_tile_name(lat, lon, product)
             for lat in range(lat_first, lat_last)
             for lon in range(lon_first, lon_last)
         }
-        print(f"DEM tiles: {', '.join(sorted(names))}", file=sys.stderr)
-        paths = [
-            path for path in (fetch_tile(name) for name in sorted(names))
-            if path is not None
-        ]
+        print(f"DEM tiles: {len(names)} {product} tiles", file=sys.stderr)
+        # Copernicus has no bathymetry, so many tiles over the Atlantic and
+        # Mediterranean are absent. Check/fetch them concurrently; serial S3
+        # probes otherwise dominate the build time for continental layers.
+        with ThreadPoolExecutor(max_workers=12) as pool:
+            paths = [
+                path for path in pool.map(
+                    lambda name: fetch_tile(name, product), sorted(names))
+                if path is not None
+            ]
         if not paths:
             raise SystemExit("no Copernicus DEM tiles available for this theatre")
 
@@ -231,10 +246,49 @@ def build_heightmap(theatre: dict, out_dir: Path, resolution_m: float) -> dict:
     )
 
     nan_count = int(np.isnan(destination).sum())
-    if nan_count > destination.size // 1000:
-        raise SystemExit(f"{nan_count} destination pixels had no DEM data; check bounds")
+    missing_percent = float(theatre.get("terrain", {}).get(
+        "missing_dem_percent", 0.1))
+    max_missing = destination.size * missing_percent / 100.0
+    if nan_count > max_missing:
+        raise SystemExit(
+            f"{nan_count} destination pixels had no DEM data "
+            f"({100.0 * nan_count / destination.size:.2f}% > "
+            f"{missing_percent:.2f}%); check bounds or raise missing_dem_percent")
+    if nan_count:
+        print(
+            f"  filling {nan_count} no-DEM pixels "
+            f"({100.0 * nan_count / destination.size:.2f}%) with the sea floor",
+            file=sys.stderr)
 
-    destination = np.nan_to_num(destination, nan=0.0)
+    # Copernicus is land-only. Put the no-data ocean below the water plane so the
+    # transparent sea surface does not z-fight with terrain at exactly 0 m.
+    destination = np.nan_to_num(destination, nan=-100.0)
+
+    if dem_source != "etopo1":
+        # Coastal Copernicus tiles often contain 0 m over the sea rather than a
+        # no-data tag. Use the cached ETOPO1 bathymetry as a water mask so those
+        # pixels also drop below the water plane (and keep coarse sea-floor depth).
+        etopo_path = fetch_etopo1()
+        with rasterio.open(etopo_path) as reference_source:
+            reference_window = from_bounds(
+                bounds["west"], bounds["south"], bounds["east"], bounds["north"],
+                reference_source.transform)
+            reference_band = reference_source.read(1, window=reference_window)
+            reference_transform = reference_source.window_transform(reference_window)
+            reference_crs = reference_source.crs or CRS.from_epsg(4326)
+        reference = np.zeros(destination.shape, dtype=np.float32)
+        reproject(
+            source=reference_band,
+            destination=reference,
+            src_transform=reference_transform,
+            src_crs=reference_crs,
+            dst_transform=dst_transform,
+            dst_crs=dst_crs,
+            resampling=Resampling.bilinear,
+        )
+        ocean = (destination <= 0.5) & (reference < -1.0)
+        destination[ocean] = np.clip(reference[ocean], -100.0, -1.0)
+        print(f"  sea floor from ETOPO1 on {int(ocean.sum())} pixels", file=sys.stderr)
     destination = np.flipud(destination)  # row 0 = south
     heights = np.clip(np.rint(destination), -100, 5000).astype("<i2")
 
@@ -261,8 +315,9 @@ def build_heightmap(theatre: dict, out_dir: Path, resolution_m: float) -> dict:
         "origin": {"easting": round(center_e[0], 3), "northing": round(center_n[0], 3)},
         "boundsWgs84": bounds,
         "heightRangeMeters": [float(heights.min()), float(heights.max())],
-        "source": (["NOAA/NCEI ETOPO1"]
-                   if dem_source == "etopo1" else ["Copernicus DEM GLO-30"]),
+        "source": (["NOAA/NCEI ETOPO1"] if dem_source == "etopo1"
+                   else [DEM_PRODUCTS.get(
+                       dem_source, DEM_PRODUCTS["copernicus-glo30"])[2]]),
         "demSource": dem_source,
         "generatedBy": "tools/mapgen/mapgen.py",
     }

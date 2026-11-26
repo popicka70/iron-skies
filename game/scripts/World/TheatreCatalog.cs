@@ -15,6 +15,8 @@ public static class TheatreCatalog
     public const string DefaultId = "normandy-1944";
     public const string LargeId = "france-northwest-1944";
     public const string EuropeId = "europe-1944";
+    public const string DetailId = "europe-500m-1944";
+    public const string Detail250Id = "europe-250m-1944";
     public const string AlpsId = "alps-1944";
     public const string PyreneesId = "pyrenees-1944";
 
@@ -136,6 +138,16 @@ public static class TheatreCatalog
         if (id == EuropeId)
         {
             var details = new List<Heightmap>();
+            if (IsInstalled(DetailId))
+            {
+                details.Add(Heightmap.Load(Directory(DetailId)));
+            }
+
+            if (IsInstalled(Detail250Id))
+            {
+                details.Add(Heightmap.Load(Directory(Detail250Id)));
+            }
+
             if (IsInstalled(LargeId))
             {
                 details.Add(Heightmap.Load(Directory(LargeId)));
@@ -174,6 +186,16 @@ public static class TheatreCatalog
         directory = Directory(id);
         Heightmap baseMap = Heightmap.Load(directory);
         var details = new List<Heightmap>();
+
+        if (id == EuropeId && IsInstalled(DetailId))
+        {
+            details.Add(Heightmap.Load(Directory(DetailId)));
+        }
+
+        if (id == EuropeId && IsInstalled(Detail250Id))
+        {
+            details.Add(Heightmap.Load(Directory(Detail250Id)));
+        }
 
         if (id == EuropeId && IsInstalled(LargeId))
         {

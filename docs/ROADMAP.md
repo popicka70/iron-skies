@@ -56,7 +56,9 @@ simulation runs at 240 Hz with a stable 60 FPS render; CI is green on both OSes.
 - [x] Offset Alpine layer from Copernicus GLO-30 at 50 m with an Alps start location
 - [x] Pyrenees 400 km GLO-30 layer and general mountain start-location catalog
 - [x] Remaining European ranges: Scandes, Carpathians, Apennines, Dinarides, Pindus, Iberia, Massif Central, UK, Iceland
-- [ ] Mountain patch manager (dynamic load/unload and memory budget)
+- [x] Mountain patch manager (dynamic load/unload and memory budget)
+- [x] Europe-wide 500 m GLO-90 height layer and plan for 250 m/tiled detail
+- [ ] Europe-wide 250 m detail layer
 - [x] Major European rivers as flowing water surfaces (Natural Earth 1:10m + river shader)
 - [x] Local OSM waterway patch and carved river channels (airfield clear zone excluded)
 - [ ] Source-tiled height/imagery streaming and floating-origin rebasing for full-resolution Europe
