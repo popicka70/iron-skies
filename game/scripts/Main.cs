@@ -1235,18 +1235,29 @@ public partial class Main : Node3D
             return;
         }
 
+        TerrainLayer alpsLayer = default;
+        bool alpsStart = GameSettings.StartLocation == "alps"
+            && !_spawnSet
+            && _missionKind == MissionKind.None
+            && !_strikeStart && !_huntStart && !_bomberStart && !_duel
+            && TheatreCatalog.TryGetLayer(
+                _heightmap, TheatreCatalog.AlpsId, out alpsLayer);
         double east = _spawnSet ? _spawnEast
+            : alpsStart ? alpsLayer.OffsetEast
             : _strikeStart ? 900.0 : Airfield.East;
         double north = _spawnSet ? _spawnNorth
+            : alpsStart ? alpsLayer.OffsetNorth
             : _strikeStart ? 7000.0 : Airfield.SouthThreshold + 120.0;
         double ground = _ground.HeightAt(east, north);
-        bool airborne = _airStart || _strikeStart || _huntStart || _bomberStart || _duel;
+        bool airborne = _airStart || alpsStart
+            || _strikeStart || _huntStart || _bomberStart || _duel;
         AircraftState state = airborne
             ? AircraftState.CreateAirborne(
                 _definition,
                 altitudeMeters: _spawnAltitude > 0.0
                     ? _spawnAltitude
-                    : ground + (_strikeStart ? 250.0
+                    : ground + (alpsStart ? 2500.0
+                        : _strikeStart ? 250.0
                         : _huntStart || _bomberStart || _duel ? 1500.0
                         : 2000.0),
                 speedMs: _strikeStart ? 90.0 : 120.0,
@@ -1681,6 +1692,10 @@ public partial class Main : Node3D
         var clouds = new Cloudscape();
         clouds.Build();
         AddChild(clouds);
+
+        var rivers = new RiverNetwork();
+        AddChild(rivers);
+        rivers.Build(_heightmap, "res://assets/water/europe-rivers.json");
 
         timer.Stop();
         GD.Print($"Terrain: {_heightmap.Width}×{_heightmap.Height} @ {_heightmap.Spacing:0} m, " +

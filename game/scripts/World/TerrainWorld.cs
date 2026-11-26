@@ -30,9 +30,16 @@ public sealed partial class TerrainWorld : Node3D
         public int Lod { get; set; } = -1;
     }
 
+    private sealed class Inset
+    {
+        public required TerrainLayer Layer { get; init; }
+        public required Texture2D Texture { get; init; }
+    }
+
     private readonly Dictionary<Vector2I, Chunk> _chunks = new();
     private readonly Dictionary<Vector2I, int> _desired = new(512);
     private readonly List<Vector2I> _removals = new(64);
+    private readonly List<Inset> _insets = new();
 
     private ITerrainSource _map = null!;
     private ShaderMaterial _material = null!;
@@ -43,6 +50,7 @@ public sealed partial class TerrainWorld : Node3D
     private double _mapHalfMeters = 20_000.0;
     private int _chunksPerAxis = 40;
     private int _baseStepMeters = 200;
+    private string _insetKey = "";
 
     public void Build(ITerrainSource map, string textureDirectory)
     {
@@ -55,8 +63,9 @@ public sealed partial class TerrainWorld : Node3D
         _baseStepMeters = Math.Max(
             MinBaseStepMeters, (_mapSizeMeters + MaxBaseQuads - 1) / MaxBaseQuads);
         _material = CreateMaterial(map, textureDirectory);
+        ConfigureInsets(map, textureDirectory);
         GD.Print($"Terrain: {_mapSizeMeters / 1000} km, {_chunksPerAxis}×{_chunksPerAxis} "
-                 + $"chunks, base step {_baseStepMeters} m");
+                 + $"chunks, base step {_baseStepMeters} m, {_insets.Count} inset(s)");
 
         var baseNode = new MeshInstance3D
         {
@@ -65,7 +74,10 @@ public sealed partial class TerrainWorld : Node3D
                 -_mapHalfMeters, -_mapHalfMeters, _mapSizeMeters, _baseStepMeters),
             MaterialOverride = _material,
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
-            Position = new Vector3(0.0f, -0.6f, 0.0f),
+            // Keep the coarse far-field mesh safely below the fine chunks. On the
+            // continental map the 20 km base can otherwise poke through near terrain.
+            Position = new Vector3(
+                0.0f, _mapSizeMeters > 100_000 ? -50.0f : -20.0f, 0.0f),
         };
         AddChild(baseNode);
 
@@ -96,7 +108,11 @@ public sealed partial class TerrainWorld : Node3D
 
     public int ResidentChunks => _chunks.Count;
 
-    public void SetFocus(Vector3 focus) => _focus = focus;
+    public void SetFocus(Vector3 focus)
+    {
+        _focus = focus;
+        UpdateInsets();
+    }
 
     public override void _Process(double delta)
     {
@@ -318,19 +334,20 @@ public sealed partial class TerrainWorld : Node3D
 
         float half = (float)map.HalfExtent;
         material.SetShaderParameter("map_rect", new Vector4(-half, -half, 2.0f * half, 2.0f * half));
+        return material;
+    }
 
-        // Layer finer ortho insets over the base. All maps share the theatre origin,
-        // so a rect centred on the origin is enough. The first extra layer is the
-        // 400 km regional field; the next is the 40 km Normandy sample.
-        int inset = 0;
-        foreach (Heightmap layer in map.Layers)
+    private void ConfigureInsets(ITerrainSource map, string directory)
+    {
+        _insets.Clear();
+        foreach (TerrainLayer layer in map.Layers)
         {
-            if (layer.SourceDirectory == directory)
+            if (layer.Map.SourceDirectory == directory)
             {
                 continue;
             }
 
-            string path = $"{layer.SourceDirectory}/{layer.Meta.OrthoFile}";
+            string path = $"{layer.Map.SourceDirectory}/{layer.Map.Meta.OrthoFile}";
             if (!FileAccess.FileExists(path))
             {
                 continue;
@@ -342,22 +359,75 @@ public sealed partial class TerrainWorld : Node3D
                 continue;
             }
 
-            string prefix = inset == 0 ? "mid" : "local";
-            float layerHalf = (float)layer.HalfExtent;
-            material.SetShaderParameter($"{prefix}_tex", texture);
-            material.SetShaderParameter(
-                $"{prefix}_rect",
-                new Vector4(-layerHalf, -layerHalf,
-                    layerHalf * 2.0f, layerHalf * 2.0f));
-            material.SetShaderParameter($"{prefix}_enabled", 1.0f);
-            inset++;
-            if (inset >= 2)
+            _insets.Add(new Inset { Layer = layer, Texture = texture });
+        }
+
+        _insetKey = "";
+        UpdateInsets();
+    }
+
+    private void UpdateInsets()
+    {
+        if (_material is null || _insets.Count == 0)
+        {
+            return;
+        }
+
+        double east = _focus.X;
+        double north = -_focus.Z;
+        Inset? mid = null;
+        Inset? local = null;
+        foreach (Inset inset in _insets)
+        {
+            TerrainLayer layer = inset.Layer;
+            double half = layer.Map.HalfExtent;
+            if (Math.Abs(east - layer.OffsetEast) > half
+                || Math.Abs(north - layer.OffsetNorth) > half)
             {
-                break;
+                continue;
+            }
+
+            if (half <= 50_000.0)
+            {
+                if (local is null || half < local.Layer.Map.HalfExtent)
+                {
+                    local = inset;
+                }
+            }
+            else if (mid is null || half < mid.Layer.Map.HalfExtent)
+            {
+                mid = inset;
             }
         }
 
-        return material;
+        string key = $"{mid?.Layer.Map.Meta.Id ?? "-"}|{local?.Layer.Map.Meta.Id ?? "-"}";
+        if (key == _insetKey)
+        {
+            return;
+        }
+
+        _insetKey = key;
+        ApplyInset("mid", mid);
+        ApplyInset("local", local);
+    }
+
+    private void ApplyInset(string prefix, Inset? inset)
+    {
+        if (inset is null)
+        {
+            _material.SetShaderParameter($"{prefix}_enabled", 0.0f);
+            return;
+        }
+
+        TerrainLayer layer = inset.Layer;
+        float half = (float)layer.Map.HalfExtent;
+        float centerX = (float)layer.OffsetEast;
+        float centerZ = (float)(-layer.OffsetNorth);
+        _material.SetShaderParameter($"{prefix}_tex", inset.Texture);
+        _material.SetShaderParameter(
+            $"{prefix}_rect",
+            new Vector4(centerX - half, centerZ - half, half * 2.0f, half * 2.0f));
+        _material.SetShaderParameter($"{prefix}_enabled", 1.0f);
     }
 
     private static Texture2D? LoadTexture(string path)

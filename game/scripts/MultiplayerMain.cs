@@ -633,6 +633,10 @@ public sealed partial class MultiplayerMain : Node3D
         var clouds = new Cloudscape();
         clouds.Build();
         AddChild(clouds);
+
+        var rivers = new RiverNetwork();
+        AddChild(rivers);
+        rivers.Build(_map, "res://assets/water/europe-rivers.json");
         _terrain.Prewarm(new Vector3(0.0f, (float)_map.HeightAt(0, 6000) + 1500.0f, -6000.0f));
 
         _playerVisual = new SpitfireVisual();

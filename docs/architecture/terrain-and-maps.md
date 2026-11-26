@@ -72,9 +72,18 @@ fetch → clip/reproject → heightmap LOD pyramid → derivatives (normals, slo
   The runtime layers finer orthos over the base with feathered edges: the 400 km regional
   inset and the 40 km Normandy 10 m inset. A virtual-texture page table is still needed
   for full-resolution continental imagery.
-- **Composite height:** a continental base with 400 km and 40 km height layers on top;
-  `HeightAt` selects the finest layer containing the query point. All layers share the
-  theatre ENU origin.
+- **Rivers:** Natural Earth 1:10m polylines are projected to local metres, turned into
+  ribbon meshes and shaded by `river.gdshader` (flow-aligned scrolling ripples, fresnel,
+  foam, transparency). The river surface sits at the higher sampled bank and the coarse
+  far-field mesh is lowered so near terrain and water keep the depth test. River-channel
+  carving and OSM streams come later.
+- **Composite height:** a continental base with independently offset 400 km layers
+  (Normandy, Alps, later Pyrenees/Scandes) and the 40 km Normandy layer on top;
+  `HeightAt` converts base-local coordinates into each layer's local frame, selects the
+  finest containing layer and feathers the boundaries. All layer origins are UTM 30N so
+  the offsets are exact.
+- **Dynamic insets:** `TerrainWorld` loads the installed detail orthos and selects the
+  regional/local inset containing the camera; the shader only samples the active two.
 - **OSM detail:** roads and hedgerows are draped as ribbon/fence meshes for the 7 km
   patch around the spawn. Woods and buildings are the next OSM layer.
 - **Geomorphing** (vertex position blending) over the last 15% of each LOD range removes
@@ -190,6 +199,8 @@ No application-level rewrite is expected; only the repository implementation cha
 - Continental baseline: 4,000 × 4,000 km, 2001² ETOPO1 samples at 2 km, NASA Blue Marble
   at 4096² (≈1 km/px), with the 400 km/40 km layers composited on top. Floating-origin
   rebasing is required before low-level flight at the map edges.
+- Alpine baseline: 400 × 400 km, 8001² Copernicus GLO-30 samples at 50 m, Blue Marble
+  ortho at 4096², offset over the Europe base; height range −7…4,532 m.
 - Visual: side-by-side screenshots vs. reference photos at 6 landmark locations.
 - Streaming: fly a 40 km transect, assert no hitch > 16 ms and memory within budget.
 - Persistence: kill -9 the server mid-mission, restart, assert state matches the journal.
