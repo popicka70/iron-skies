@@ -74,7 +74,10 @@ public sealed partial class TerrainWorld : Node3D
                 -_mapHalfMeters, -_mapHalfMeters, _mapSizeMeters, _baseStepMeters),
             MaterialOverride = _material,
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
-            Position = new Vector3(0.0f, -0.6f, 0.0f),
+            // Keep the coarse far-field mesh safely below the fine chunks. On the
+            // continental map the 20 km base can otherwise poke through near terrain.
+            Position = new Vector3(
+                0.0f, _mapSizeMeters > 100_000 ? -50.0f : -20.0f, 0.0f),
         };
         AddChild(baseNode);
 

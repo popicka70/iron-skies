@@ -19,7 +19,9 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 > **4,000 × 4,000 km Europe base** built from NOAA ETOPO1 relief and NASA Blue Marble
 > imagery provides a continental map; the 40 km Normandy sample is blended over the
 > airfield as a sharp inset, and an optional generated **400 × 400 km** North-west France
-> layer adds regional detail. Linux and Windows release packages are configured.
+> layer adds regional detail. Major European rivers are rendered as flowing water
+> surfaces, and a generated Copernicus GLO-30 **Alps** layer covers the high range.
+> Linux and Windows release packages are configured.
 
 ![Iron Skies launcher](docs/media/m0-launcher.png)
 
@@ -101,6 +103,26 @@ airborne over the range.*
 *The committed Europe base: ETOPO1 relief and NASA Blue Marble. In game it is under the
 400 km and 40 km detail layers. Source-tiled height/imagery streaming and floating-origin
 rebasing are the next steps for full-resolution continental flight.*
+
+## Rivers
+
+Major European rivers are actual flowing water surfaces, not only blue lines in the
+orthophoto. **Natural Earth 1:10m** (public domain) supplies 191 river polylines across
+the theatre; `RiverNetwork` builds ribbon meshes with UV.y downstream and a width derived
+from the river rank. `river.gdshader` scrolls two ripple fields along the flow, adds
+fresnel reflection, edge foam and view-dependent transparency.
+
+```bash
+python3 tools/mapgen/build_rivers.py
+```
+
+The result is `game/assets/water/europe-rivers.json` (≈0.4 MB). Smaller OSM waterways
+around the detailed regions are the next river layer.
+
+![Danube as a flowing river surface](docs/media/m0-danube.png)
+
+*The Danube near Budapest: 700 m wide in the Natural Earth data, now an animated water
+surface with flow-aligned ripples and foam edges.*
 
 ![Iron Skies 400 km North-west France theatre](docs/media/m0-france-400km.png)
 

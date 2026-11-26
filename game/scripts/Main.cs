@@ -1693,6 +1693,10 @@ public partial class Main : Node3D
         clouds.Build();
         AddChild(clouds);
 
+        var rivers = new RiverNetwork();
+        AddChild(rivers);
+        rivers.Build(_heightmap, "res://assets/water/europe-rivers.json");
+
         timer.Stop();
         GD.Print($"Terrain: {_heightmap.Width}×{_heightmap.Height} @ {_heightmap.Spacing:0} m, " +
                  $"ortho {_heightmap.Meta.OrthoSize}px, base built in {timer.ElapsedMilliseconds} ms");

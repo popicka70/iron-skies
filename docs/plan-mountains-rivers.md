@@ -97,13 +97,13 @@ the small ones later.
 ## Steps
 
 1. **Plan and research** — this document. *(done)*
-2. **Multi-offset composite layers + dynamic ortho selection** — architecture only;
-   regression-test the existing France/Normandy/Europe layers.
-3. **Alps patch** — new theatre definition, GLO-30 height + Blue Marble ortho,
-   runtime layer loading, Alpine spawn/inspection.
-4. **Natural Earth rivers** — download/cache, project, emit `rivers.json`, build
-   `RiverNetwork` ribbons and `river.gdshader`, add to both scenes.
-5. **Local waterways** — OSM waterway fetch/build for the detailed regions.
+2. **Multi-offset composite layers + dynamic ortho selection** — done.
+3. **Alps patch** — done: GLO-30 height at 50 m, Blue Marble ortho, offset runtime
+   layer, Alps start location.
+4. **Natural Earth rivers** — done: 191 lines, 18k points, ribbon meshes and
+   `river.gdshader` in both scenes.
+5. **Local waterways** — next: OSM `waterway=river/stream/canal` for the detailed
+   regions, plus river-channel carving for the terrain.
 6. **Polish** — screenshots, README/architecture/roadmap updates, tests, CI, export.
 
 ## Acceptance criteria
