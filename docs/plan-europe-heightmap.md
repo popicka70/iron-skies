@@ -1,6 +1,8 @@
 # Europe-wide height detail — plan
 
-**Status:** in progress. Each numbered implementation step is its own commit/push.
+**Status:** height detail complete through the streamed 90 m near-field (steps 1–5).
+Steps 6–7 (30 m/imagery tiles, floating origin, OSM) remain future work.
+Each numbered implementation step is its own commit/push.
 **Goal:** high-quality relief across the whole continent, not only the mountain ranges.
 
 ## Current state
