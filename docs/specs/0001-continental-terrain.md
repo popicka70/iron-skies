@@ -179,10 +179,17 @@ Each numbered item is a branch/step sequence; each commit is pushed.
      resumable batch for the other 14 ranges (~153 tiles, ~184 MiB). The checker reports
      0 holes/seams and the Alpine top view shows the sharper imagery.
 
-6. [ ] **Package and distribution strategy**
+6. [x] **Package and distribution strategy** *(done 2026-11-27)*
    - Optional terrain bundles, stronger compression, and an installer/first-run
      downloader path; keep Windows exe+pck pairs and headless server packages.
    - Acceptance: a minimal install is documented; full and minimal packages are tested.
+   - Result: `Linux Minimal`/`Windows Minimal` presets generated; measured minimal
+     Linux ~450 MB and Windows ~105 MB exe + ~379 MB PCK, both booted (the Linux minimal
+     completed the takeoff test). The full Linux export (~11 GB) also boots. Optional
+     bundles are `.tar.xz` + a SHA-256 manifest from `tools/package_terrain.py`;
+     `tools/fetch_terrain_bundle.py` verifies and installs them (Normandy 7.4 MiB
+     pack/install tested). The runtime now checks the heightmap before reporting a
+     theatre installed, so a data-less PCK falls back cleanly to Normandy.
 
 7. [ ] **Telemetry, memory and CI guards**
    - Log tile load times, resident MB, FPS and hitch counts; add a non-flaky budget
@@ -254,12 +261,12 @@ Each numbered item is a branch/step sequence; each commit is pushed.
 
 Recommended order for the next session:
 
-1. Package and distribution strategy (plan item 6): optional/minimal terrain bundles,
-   first-run bundle import/download, Windows sidecar PCK checks.
+1. Extend the streaming instrumentation into CI/nightly guards (plan item 7).
 2. Run the full continental 120 m batch with `tools/build_ortho_batch.py --all`
    (resumable, local, ~3–4 h with four workers); 30 m stays priority-region only.
-3. Extend the streaming instrumentation into CI/nightly guards (plan item 7).
-4. Generate the remaining 14 range rings with `tools/build_range_ortho.py` as needed.
+3. Generate the remaining 14 range rings with `tools/build_range_ortho.py` as needed.
+4. Publish the optional bundle manifest and wire the installer/first-run helper to the
+   hosting URL.
 
 Do not start a full continental 30 m batch: the measured 1.2 MB/tile would add ~2.5 GB
 and the 120 m fallback is the intended continental tier.

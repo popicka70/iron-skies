@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.Json;
 using Godot;
 
 namespace IronSkies.Game.World;
@@ -79,10 +80,31 @@ public static class TheatreCatalog
     }
 
     public static bool IsInstalled(string id) =>
-        FileAccess.FileExists($"res://assets/terrain/{id}/meta.json");
+        FileAccess.FileExists($"res://assets/terrain/{id}/meta.json")
+        && FileAccess.FileExists($"res://assets/terrain/{id}/heightmap.r16");
 
-    public static bool AreHeightTilesInstalled(string id) =>
-        FileAccess.FileExists($"res://assets/terrain/{id}/catalog.json");
+    public static bool AreHeightTilesInstalled(string id)
+    {
+        string catalogPath = $"res://assets/terrain/{id}/catalog.json";
+        if (!FileAccess.FileExists(catalogPath))
+        {
+            return false;
+        }
+
+        try
+        {
+            HeightTileCatalog? catalog = JsonSerializer.Deserialize<HeightTileCatalog>(
+                FileAccess.GetFileAsString(catalogPath),
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            return catalog is not null && catalog.Tiles.Length > 0
+                && FileAccess.FileExists(
+                    $"res://assets/terrain/{id}/{catalog.Tiles[0].File}");
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
 
     /// <summary>Finer streamed height tiles win when more than one bundle is installed.</summary>
     public static string? PreferredHeightTiles()

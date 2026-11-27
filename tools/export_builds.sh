@@ -18,6 +18,25 @@ if ! command -v godot >/dev/null 2>&1; then
   exit 1
 fi
 
+mode="${1:-full}"
+if [ "$mode" = "--minimal" ]; then
+  mkdir -p build/minimal/linux build/minimal/windows
+
+  echo "==> Linux Minimal (Normandy bundle only; optional terrain downloaded)"
+  godot --headless --path game --export-release "Linux Minimal" \
+    "$root/build/minimal/linux/iron-skies.x86_64"
+
+  echo "==> Windows Minimal"
+  godot --headless --path game --export-release "Windows Minimal" \
+    "$root/build/minimal/windows/iron-skies.exe"
+
+  echo
+  ls -lh build/minimal/linux build/minimal/windows
+  echo
+  echo "Optional terrain bundles are packaged separately by tools/package_terrain.py."
+  exit 0
+fi
+
 mkdir -p build/linux build/windows build/server
 
 echo "==> Linux"
