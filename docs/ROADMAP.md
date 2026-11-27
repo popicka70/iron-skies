@@ -68,9 +68,9 @@ simulation runs at 240 Hz with a stable 60 FPS render; CI is green on both OSes.
 - [x] Streamed 30 m compressed GLO-30 height tiles (~78 MB ring)
 - [x] Sentinel-2 ortho tiles on the 64 km grid (regional 30 m, 192 km inset)
 - [x] 120 m Sentinel-2 fallback ring and mixed-resolution stitching
-- [ ] Continental ortho coverage
-- [ ] Floating-origin rebasing (ADR-0006)
-- [ ] Async terrain/ortho tile loading (remove 64 km transition hitches)
+- [x] Continental ortho coverage (source evaluation + resumable batch; full 120 m set is a local run)
+- [x] Floating-origin rebasing (ADR-0006)
+- [x] Async terrain/ortho tile loading (remove 64 km transition hitches)
 - [ ] In-engine telemetry graphs
 - Audio: procedural engine/prop sound driven by RPM and load; wind and gunfire
 

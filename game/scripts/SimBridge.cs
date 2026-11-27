@@ -1,5 +1,6 @@
 using Godot;
 using IronSkies.FlightModel.Math;
+using IronSkies.Game.World;
 
 namespace IronSkies.Game;
 
@@ -12,7 +13,15 @@ public static class SimBridge
 {
     public static Vector3 ToGodot(Vec3 v) => new((float)v.X, (float)v.Z, (float)-v.Y);
 
+    /// <summary>Absolute ENU to camera-relative float render space (ADR-0006).</summary>
+    public static Vector3 ToGodot(Vec3 v, RenderOrigin origin) => new(
+        (float)(v.X - origin.East), (float)v.Z, (float)-(v.Y - origin.North));
+
     public static Vec3 ToSim(Vector3 v) => new(v.X, -v.Z, v.Y);
+
+    /// <summary>Render-space Godot position back to absolute ENU (height preserved).</summary>
+    public static Vec3 ToSim(Vector3 v, RenderOrigin origin) => new(
+        v.X + origin.East, origin.North - v.Z, v.Y);
 
     /// <summary>
     /// Builds the Godot basis from the body axes. Local +X is right, +Y is up and
@@ -28,4 +37,8 @@ public static class SimBridge
 
     public static Transform3D ToGodot(Quat orientation, Vec3 position) =>
         new(ToGodot(orientation), ToGodot(position));
+
+    public static Transform3D ToGodot(
+        Quat orientation, Vec3 position, RenderOrigin origin) =>
+        new(ToGodot(orientation), ToGodot(position, origin));
 }

@@ -78,6 +78,13 @@ at most 128 tiles in full mode (~1.2 GB).
   update above 16 ms and no frame above 50 ms. Spawn still loads the 3×3 height ring
   synchronously (≈0.2 s, ≈0.5 s with a mountain patch) so ground queries are exact
   before the first frame.
+- Floating origin (`RenderOrigin`, ADR-0006): the sim and server stay in absolute double
+  ENU; the renderer uses a 4 km cell. Static world geometry is under one `WorldRoot`
+  node that moves by the cell delta; dynamic visuals use `SimBridge.ToGodot(..., origin)`;
+  the terrain shader's map/inset/detail rects are re-expressed in render space. No mesh
+  rebuilds on a rebase. `--precision-test` reports 0.0252 mm worst round-trip error at
+  ±2,000 km (budget 10 mm); rendered reposes at the airfield, the Rhine demo, a 4 km
+  crossing and a 1,500 km spawn stay aligned.
 
 ### Verification baseline
 
@@ -85,6 +92,7 @@ at most 128 tiles in full mode (~1.2 GB).
 dotnet test                                   # 115 passed
 godot --headless --path game scenes/Main.tscn -- --takeoff-test   # 832 m
 godot --headless --path game scenes/Main.tscn -- --mission-test   # landed=1
+godot --headless --path game scenes/Main.tscn -- --precision-test # PASS <10 mm
 ./tools/net_smoke_test.sh 7801                # server + 2 clients
 python3 tools/check_licenses.py               # all registered
 ```
@@ -129,13 +137,16 @@ Each numbered item is a branch/step sequence; each commit is pushed.
      four regions (16.3 MiB), zero holes/seams. Full continental 120 m: ~3–4 h at four
      workers, ~165 MiB, resumable.
 
-3. [ ] **Floating-origin rebasing (ADR-0006)**
+3. [x] **Floating-origin rebasing (ADR-0006)** *(done 2026-11-27)*
    - Introduce a render-origin offset at 4 km cells; shift terrain/world nodes and all
      render-space entities; pass the origin to the terrain shader; keep the sim in
      double ENU and the server authoritative.
    - Acceptance: <1 cm relative precision at 2,000 km from origin; aircraft, camera,
      water, rivers, OSM and multiplayer snapshots stay aligned; all tests and a
      two-client sortie pass.
+   - Result: `RenderOrigin` + one `WorldRoot`; static shader rects rebased without mesh
+     rebuilds; `--precision-test` PASS at 0.0252 mm; rendered checks at the airfield,
+     demo, a 4 km crossing and a 1,500 km spawn; net smoke test still passes.
 
 4. [ ] **OSM/EU-Hydro vector detail**
    - Extend roads/waterways/woods/buildings beyond the 2–10 km spawn patch with LOD and
@@ -167,6 +178,10 @@ Each numbered item is a branch/step sequence; each commit is pushed.
 - Ortho coverage changes run `tools/check_ortho_tiles.py <bundle>` and must report zero
   holes/seams; `tools/build_ortho_batch.py --dry-run` documents the planned tile count,
   time and size before a long batch.
+- Precision/render-space changes run
+  `godot --headless --path game scenes/Main.tscn -- --precision-test` and must print
+  `Worst ... (budget 10 mm): PASS`; a rendered chase screenshot after a 4 km crossing
+  must show the aircraft centred over continuous terrain.
 - Visual changes attach a screenshot to the commit/PR and update the spec.
 - Performance/streaming changes log measured numbers, not just “looks smooth”.
 - Exports are rebuilt and the exported Linux client is launched at least once.
@@ -192,8 +207,11 @@ Each numbered item is a branch/step sequence; each commit is pushed.
   frame that starts it, but it happens on approach at half extent + 75 km, not on a
   64 km tile boundary. The focus-update timer now records it; move patches onto the same
   loader thread in a follow-up if the approach hitch is measured above the 50 ms budget.
-- **Floating origin touches everything.** Keep it behind a clear render-origin API,
-  shift only render-space nodes, and add precision tests before changing net/replay.
+- **New render nodes must join the world root.** Static geometry added directly under
+  `Main` instead of `WorldRoot` will stay at the old origin after the first 4 km rebase;
+  dynamic entities must use the `SimBridge` origin overload. The precision test, the
+  four rendered reposes and the two-client sortie guard this. The sim, server and
+  snapshot anchors are unchanged.
 - **Package size is already ~10 GB.** Any new data must justify its size; prefer
   `.jpg.bin`/zlib and optional bundles.
 - **Generated data is not source.** Tools and specs are committed; bundles are local.
@@ -203,13 +221,11 @@ Each numbered item is a branch/step sequence; each commit is pushed.
 
 Recommended order for the next session:
 
-1. Implement floating origin with a render-origin API and precision tests (plan item 3;
-   item 1 is measured and item 2's source decision is closed).
-2. Extend vector detail (OSM/EU-Hydro) with LOD and a data budget (plan item 4).
-3. Run the full continental 120 m batch with `tools/build_ortho_batch.py --all`
+1. Extend vector detail (OSM/EU-Hydro) with LOD and a data budget (plan item 4).
+2. Run the full continental 120 m batch with `tools/build_ortho_batch.py --all`
    (resumable, local, ~3–4 h with four workers); 30 m stays priority-region only.
-4. Consider 10 m range imagery and package slimming (plan items 5–6).
-5. Extend the streaming instrumentation into CI/nightly guards (plan item 7).
+3. Consider 10 m range imagery and package slimming (plan items 5–6).
+4. Extend the streaming instrumentation into CI/nightly guards (plan item 7).
 
 Do not start a full continental 30 m batch: the measured 1.2 MB/tile would add ~2.5 GB
 and the 120 m fallback is the intended continental tier.

@@ -38,6 +38,8 @@ public sealed partial class MultiplayerMain : Node3D
     private byte _localType;
 
     private TerrainWorld _terrain = null!;
+    private Node3D _worldRoot = null!;
+    private readonly RenderOrigin _renderOrigin = new();
     private MountainPatchManager? _patchManager;
     private string _terrainDirectory = "res://assets/terrain/normandy-1944";
     private string _terrainOsmPath = "res://assets/terrain/normandy-1944/osm.json";
@@ -99,6 +101,7 @@ public sealed partial class MultiplayerMain : Node3D
     private float _chaseYaw;
     private float _chasePitch = 15.0f;
     private float _chaseDistance = 30.0f;
+    private bool _snapCamera = true;
     private bool _prevHudKey;
     private bool _hudVisible = true;
 
@@ -244,12 +247,14 @@ public sealed partial class MultiplayerMain : Node3D
 
         _client?.SendControls(controls, delta, _lastSnapshotTick);
 
+        UpdateRenderOrigin();
         _playerVisual.GlobalTransform = SimBridge.ToGodot(
-            _localSim.State.Orientation, _localSim.State.Position);
+            _localSim.State.Orientation, _localSim.State.Position,
+            _renderOrigin);
         _playerVisual.UpdateFrom(_localSim, delta);
         _playerSmoke.Update(_localSim.Damage.Smoke, _localSim.Damage.Fire);
         _audio.UpdateFrom(_localSim, _throttle);
-        _terrain.SetFocus(_playerVisual.GlobalPosition);
+        _terrain.SetFocus(SimBridge.ToGodot(_localSim.State.Position));
         UpdateCamera(delta);
     }
 
@@ -336,10 +341,14 @@ public sealed partial class MultiplayerMain : Node3D
         if (!_headlessClient)
         {
             _playerVisual.Visible = true;
-            _playerVisual.GlobalTransform = SimBridge.ToGodot(state.Orientation, state.Position);
+            UpdateRenderOrigin(force: true);
+            _playerVisual.GlobalTransform = SimBridge.ToGodot(
+                state.Orientation, state.Position, _renderOrigin);
             _combat.Bind(_localSim);
             _terrain.Prewarm(SimBridge.ToGodot(state.Position));
-            _camera.GlobalPosition = SimBridge.ToGodot(state.Position) + new Vector3(0, 12, 40);
+            _camera.GlobalPosition = SimBridge.ToGodot(state.Position, _renderOrigin)
+                + new Vector3(0, 12, 40);
+            _snapCamera = true;
         }
 
         GD.Print($"[mp] welcome: player {playerId} at {state.Position}");
@@ -583,7 +592,8 @@ public sealed partial class MultiplayerMain : Node3D
             double flap = remote.Previous.Flap + (remote.Current.Flap - remote.Previous.Flap) * alpha;
             double gear = remote.Previous.Gear + (remote.Current.Gear - remote.Previous.Gear) * alpha;
 
-            remote.Visual.SetExternalTransform(position, orientation);
+            remote.Visual.GlobalTransform = SimBridge.ToGodot(
+                orientation, position, _renderOrigin);
             remote.Visual.UpdateExternal(rpm, flap, gear, delta);
 
             double healthFraction = remote.MaxHealth > 0.0
@@ -635,21 +645,24 @@ public sealed partial class MultiplayerMain : Node3D
             DirectionalShadowMaxDistance = 8000.0f,
         });
 
+        _worldRoot = new Node3D { Name = "WorldRoot" };
+        AddChild(_worldRoot);
         _terrain = new TerrainWorld();
         _terrain.Build(_map, _terrainDirectory, _patchManager);
-        AddChild(_terrain);
+        _terrain.SetRenderOrigin(_renderOrigin);
+        _worldRoot.AddChild(_terrain);
         var osm = new OsmDetail();
         osm.Build(_map, _terrainOsmPath);
-        AddChild(osm);
+        _worldRoot.AddChild(osm);
         var airfield = new Airfield();
         airfield.Build(_map);
-        AddChild(airfield);
+        _worldRoot.AddChild(airfield);
         var clouds = new Cloudscape();
         clouds.Build();
-        AddChild(clouds);
+        _worldRoot.AddChild(clouds);
 
         var rivers = new RiverNetwork();
-        AddChild(rivers);
+        _worldRoot.AddChild(rivers);
         rivers.Build(_map, _riverData);
         _terrain.Prewarm(new Vector3(0.0f, (float)_map.HeightAt(0, 6000) + 1500.0f, -6000.0f));
 
@@ -670,7 +683,7 @@ public sealed partial class MultiplayerMain : Node3D
 
         _combat = new CombatVisual();
         _combat.Build();
-        AddChild(_combat);
+        _worldRoot.AddChild(_combat);
 
         _camera = new Camera3D
         {
@@ -942,6 +955,41 @@ public sealed partial class MultiplayerMain : Node3D
         }
     }
 
+    /// <summary>
+    /// Rebases the render frame on a 4 km crossing; see Main.UpdateRenderOrigin.
+    /// </summary>
+    private void UpdateRenderOrigin(bool force = false)
+    {
+        if (_localSim is null)
+        {
+            return;
+        }
+
+        double oldEast = _renderOrigin.East;
+        double oldNorth = _renderOrigin.North;
+        bool changed = _renderOrigin.Update(
+            _localSim.State.Position.X, _localSim.State.Position.Y);
+        if (!changed && !force)
+        {
+            return;
+        }
+
+        if (_worldRoot is not null)
+        {
+            _worldRoot.Position = _renderOrigin.WorldNodePosition;
+        }
+
+        _terrain?.SetRenderOrigin(_renderOrigin);
+
+        if (changed && _camera is not null)
+        {
+            _camera.GlobalPosition += new Vector3(
+                (float)(oldEast - _renderOrigin.East),
+                0.0f,
+                (float)(_renderOrigin.North - oldNorth));
+        }
+    }
+
     private void UpdateCamera(double delta)
     {
         if (_localSim is null)
@@ -954,7 +1002,8 @@ public sealed partial class MultiplayerMain : Node3D
         _camera.Near = _cameraMode == CameraMode.Cockpit ? 0.05f : 1.0f;
         _playerVisual.SetCockpitView(_cameraMode == CameraMode.Cockpit);
 
-        Vector3 position = SimBridge.ToGodot(_localSim.State.Position);
+        Vector3 position = SimBridge.ToGodot(
+            _localSim.State.Position, _renderOrigin);
         var basis = SimBridge.ToGodot(_localSim.State.Orientation);
         Vector3 forward = -basis.Z;
         Vector3 up = basis.Y;
@@ -980,11 +1029,18 @@ public sealed partial class MultiplayerMain : Node3D
         Vector3 desired = position
             + backDir * (_chaseDistance * Mathf.Cos(pitchRad))
             + up * (_chaseDistance * Mathf.Sin(pitchRad));
-        double ground = _map.HeightAt(desired.X, -desired.Z);
+        double ground = _map.HeightAt(
+            _renderOrigin.AbsoluteEast(desired.X),
+            _renderOrigin.AbsoluteNorth(desired.Z));
         desired.Y = Mathf.Max(desired.Y, (float)ground + 3.0f);
         float smoothing = 1.0f - Mathf.Exp(-6.0f * (float)delta);
-        Vector3 smoothed = _camera.GlobalPosition.Lerp(desired, smoothing);
-        double smoothedGround = _map.HeightAt(smoothed.X, -smoothed.Z);
+        Vector3 smoothed = _snapCamera
+            ? desired
+            : _camera.GlobalPosition.Lerp(desired, smoothing);
+        _snapCamera = false;
+        double smoothedGround = _map.HeightAt(
+            _renderOrigin.AbsoluteEast(smoothed.X),
+            _renderOrigin.AbsoluteNorth(smoothed.Z));
         smoothed.Y = Mathf.Max(smoothed.Y, (float)smoothedGround + 2.0f);
         _camera.GlobalPosition = smoothed;
         _camera.LookAt(position + forward * 8.0f, up);
