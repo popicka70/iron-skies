@@ -49,10 +49,11 @@ Measured blockout state (LOD0, Godot auto-LOD enabled on import):
 
 Known gaps:
 
-- Silhouettes are a measured blockout. The Spitfire is now overlaid and measured against
-  a CC0 Mk Vb 3-view and the Mk IX side profile (span 11.23 m, length 9.55 m vs 9.47 m
-  authoritative, outer-wing chord within ~0.2 m); the Bf 109 and Ju 88 are not yet
-  overlaid.
+- Silhouettes are a measured blockout. The Spitfire is overlaid and measured against a
+  CC0 Mk Vb 3-view and the Mk IX side profile (span 11.23 m, length 9.55 m vs 9.47 m
+  authoritative, outer-wing chord within ~0.2 m). The Bf 109 (span 9.92 m, length
+  9.07 m vs 9.02 m) and Ju 88 (span 20.10 m, length 14.36 m exact) are measured with
+  model-only sheets; their reference overlays are still to do.
 - Surface detail is geometry panel lines plus a triplanar camo map; no rivets, access
   panels, fabric rib tapes, exhaust staining, chipped paint or oil streaks.
 - The Spitfire cockpit has a structural pass: tub, cushioned seat, harness and buckles,
@@ -113,7 +114,10 @@ where it keeps review manageable. Push every commit.
      only) puts the side view within a few centimetres, the length at 9.55 m against
      9.47 m, and the outer-wing chord within ~0.2 m. Accepted as-is; corrections would
      chase a Mk Vb root fairing, not a Mk IX error.
-   - [ ] Bf 109 G-6 and Ju 88 A-4 overlays.
+   - [x] Bf 109 G-6 and Ju 88 A-4 *(measured 2026-11-27)*: model-only sheets committed
+     (`bf109-g6-silhouette.jpg`, `ju88-a4-silhouette.jpg`); span is exact for both,
+     length is 5 cm over 9.02 m for the Bf 109 and exact for the Ju 88. The G-5 3-view
+     and Ju 88 A-4 drawings are registered; full overlays remain a review task.
 
 2. [ ] **Surface-detail and bake pipeline.**
    - Build a high-poly detail cage: shallow panel-line insets, rivet strips, access
@@ -272,6 +276,8 @@ measured; the art budget is the schedule risk, not the code.
 
 ## Changelog
 
+- 2026-11-27 — `34ab626` — Bf 109 and Ju 88 orthographic silhouette sheets; spans exact,
+  Bf 109 5 cm over 9.02 m, Ju 88 length exact.
 - 2026-11-27 — `788f44f` — Spitfire cockpit structural pass (eight-gauge panel, seat,
   harness, gunsight, canopy rails, bevel), adjustable eye point and cockpit fill light;
   22,812 tris.

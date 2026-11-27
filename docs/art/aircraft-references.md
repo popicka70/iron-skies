@@ -87,6 +87,18 @@ Shape notes:
   band or undercowl if a generic Western Front aircraft is wanted. Balkenkreuz;
   omit the tail swastika on the default skin.
 
+Silhouette sources (measured 2026-11-27):
+
+| Source | Use | Licence | Shipped | Notes |
+| --- | --- | --- | --- | --- |
+| Wikimedia Commons, `File:Messerschmitt Bf 109 G-5 3-seiten neu.jpg` — https://commons.wikimedia.org/wiki/File:Messerschmitt_Bf_109_G-5_3-seiten_neu.jpg | 3-view for the blockout silhouette (G-5 shares the G-6 airframe) | **CC BY-SA 2.0 de** (B. Huber) | no | reference-only; the overlay is a local review artifact |
+| Wikimedia Commons, `File:Messerschmitt Bf 109 G-6.jpg` — https://commons.wikimedia.org/wiki/File:Messerschmitt_Bf_109_G-6.jpg | G-6 side profile: Erla canopy, cowl bulges, spinner | **CC BY-SA 2.0 de** (B. Huber) | no | reference-only |
+
+Measured with `tools/blender/render_silhouette.py` (gear up): span 9.92 m, length
+9.07 m against the 9.02 m authoritative figure (5 cm / 0.55%), height 2.77 m with the
+prop disc. The model-only sheet is `docs/media/aircraft/bf109-g6-silhouette.jpg`; the
+full reference overlay is still to do.
+
 ## Junkers Ju 88 A-4
 
 | Source | Use | Licence | Shipped | Notes |
@@ -106,6 +118,16 @@ Shape notes:
   wanted. Default: fit it, it is visually characteristic.
 - Camouflage: RLM 70/71/65 splinter upper, light blue lower; or 72/73/65. Default to
   70/71/65 with Balkenkreuz and generic Geschwader codes.
+
+Silhouette source (measured 2026-11-27):
+
+| Source | Use | Licence | Shipped | Notes |
+| --- | --- | --- | --- | --- |
+| Wikimedia Commons, `File:Junkers Ju 88 A-4.svg` — https://commons.wikimedia.org/wiki/File:Junkers_Ju_88_A-4.svg | A-4 3-view for the blockout silhouette | **CC BY-SA 3.0** (Kaboldy) | no | reference-only; the overlay is a local review artifact |
+
+Measured with `tools/blender/render_silhouette.py` (gear up): span 20.10 m, length
+14.36 m (exact), height 3.56 m with the prop discs. The model-only sheet is
+`docs/media/aircraft/ju88-a4-silhouette.jpg`; the full reference overlay is still to do.
 
 ## Reference intake checklist
 
