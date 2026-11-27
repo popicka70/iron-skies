@@ -38,6 +38,7 @@ public partial class Main : Node3D
     private ITerrainSource _heightmap = null!;
     private IGroundSurface _ground = null!;
     private TerrainWorld _terrain = null!;
+    private OsmDetail _osm = null!;
     private Node3D _worldRoot = null!;
     private readonly RenderOrigin _renderOrigin = new();
     private MountainPatchManager? _patchManager;
@@ -566,6 +567,15 @@ public partial class Main : Node3D
         _crosshair.Visible = _hudVisible;
         _cockpitPanel.Visible = _hudVisible && _cameraMode == CameraMode.Cockpit;
         _terrain.SetFocus(SimBridge.ToGodot(_sim.State.Position));
+        long osmStart = Stopwatch.GetTimestamp();
+        _osm.SetFocus(_sim.State.Position.X, _sim.State.Position.Y);
+        double osmMilliseconds =
+            (Stopwatch.GetTimestamp() - osmStart) * 1000.0 / Stopwatch.Frequency;
+        if (osmMilliseconds > 16.0)
+        {
+            GD.Print($"[stream] OSM focus update {osmMilliseconds:0.0} ms");
+        }
+
         UpdateCamera(delta);
 
         if (_takeoffTest)
@@ -1260,6 +1270,8 @@ public partial class Main : Node3D
             _accumulator = 0.0;
             _playerDown = false;
             _terrain.Prewarm(SimBridge.ToGodot(_sim.State.Position));
+            _osm.SetFocus(
+                _sim.State.Position.X, _sim.State.Position.Y, immediate: true);
             _combat.Bind(_sim);
             GD.Print($"[replay] {_replayData.AircraftId}, " +
                      $"{_replayData.Frames.Length} frames");
@@ -1345,6 +1357,8 @@ public partial class Main : Node3D
         _tick = 0;
         _accumulator = 0.0;
         _terrain.Prewarm(SimBridge.ToGodot(_sim.State.Position));
+        _osm.SetFocus(
+            _sim.State.Position.X, _sim.State.Position.Y, immediate: true);
         var fighters = new AircraftSimulator[
             _enemies.Count + _bombers.Count + _wingmen.Count];
         int fighterIndex = 0;
@@ -1756,9 +1770,9 @@ public partial class Main : Node3D
         _terrain.SetRenderOrigin(_renderOrigin);
         _worldRoot.AddChild(_terrain);
 
-        var osm = new OsmDetail();
-        osm.Build(_heightmap, osmPath);
-        _worldRoot.AddChild(osm);
+        _osm = new OsmDetail();
+        _osm.Build(_heightmap, osmPath);
+        _worldRoot.AddChild(_osm);
         var airfield = new Airfield();
         airfield.Build(_heightmap);
         _worldRoot.AddChild(airfield);

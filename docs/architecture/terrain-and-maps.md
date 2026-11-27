@@ -127,8 +127,13 @@ fetch → clip/reproject → heightmap LOD pyramid → derivatives (normals, slo
   travel, so crossing a 64 km boundary does not start a cold read. The last ortho
   texture stays bound until its replacement is ready; the 117 MB texture is created
   on the loader thread and the main thread only rebinds it.
-- **OSM detail:** roads and hedgerows are draped as ribbon/fence meshes for the 7 km
-  patch around the spawn. Woods and buildings are the next OSM layer.
+- **OSM detail:** `tools/mapgen/fetch_osm_tiles.py` fetches 16 km tiles plus a manifest
+  from Overpass. `OsmDetail` streams a 3×3 ring and applies near/mid/far LOD: near
+  adds roads, hedges, buildings, trees and streams; mid keeps roads/streams; far keeps
+  major roads. Geometry is built in ≈4 ms chunks across frames. Buildings are pruned
+  to ≥200 m² and ≤1,500/tile; a 48 km Normandy ring is 9 tiles / 10.6 MiB. The single
+  `osm.json` patch remains the fallback. EU-Hydro is licence-compatible but requires an
+  EU Login for basin downloads and is not adopted for this pass.
 - **Geomorphing** (vertex position blending) over the last 15% of each LOD range removes
   popping; skirts hide cracks at chunk borders.
 - **Splatting:** 4-channel splat blended with a macro-variation texture (two scales)

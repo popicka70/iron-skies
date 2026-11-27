@@ -85,6 +85,14 @@ at most 128 tiles in full mode (~1.2 GB).
   rebuilds on a rebase. `--precision-test` reports 0.0252 mm worst round-trip error at
   ±2,000 km (budget 10 mm); rendered reposes at the airfield, the Rhine demo, a 4 km
   crossing and a 1,500 km spawn stay aligned.
+- OSM vector detail (`tools/mapgen/fetch_osm_tiles.py` + `OsmDetail`): 16 km tiles with a
+  manifest, a 3×3 ring, and near/mid/far LOD (near: roads, hedges, buildings, trees,
+  streams; mid: roads and streams; far: major roads). Tile geometry is built in ≈4 ms
+  chunks across frames; buildings are pruned to ≥200 m² and ≤1,500/tile. The generated
+  Normandy ring is 9 tiles / 10.6 MiB with ≈12 MB resident; without a manifest the old
+  single `osm.json` patch is used. EU-Hydro was evaluated but not adopted (Copernicus
+  terms are compatible, but basin downloads need an EU Login and the current Natural
+  Earth + OSM water coverage is sufficient).
 
 ### Verification baseline
 
@@ -148,11 +156,16 @@ Each numbered item is a branch/step sequence; each commit is pushed.
      rebuilds; `--precision-test` PASS at 0.0252 mm; rendered checks at the airfield,
      demo, a 4 km crossing and a 1,500 km spawn; net smoke test still passes.
 
-4. [ ] **OSM/EU-Hydro vector detail**
+4. [x] **OSM/EU-Hydro vector detail** *(done 2026-11-27)*
    - Extend roads/waterways/woods/buildings beyond the 2–10 km spawn patch with LOD and
      a data-size budget; evaluate EU-Hydro for continental rivers.
    - Acceptance: a 100 km sortie has continuous roads/water, no z-fighting, and the
      vector data fits the agreed package/streaming budget.
+   - Result: `fetch_osm_tiles.py` writes resumable 16 km tiles + manifest and
+     `OsmDetail` streams a 3×3 ring with near/mid/far LOD and ≈4 ms build chunks. The
+     generated Normandy ring is 9 tiles / 10.6 MiB with ≈12 MB resident; the 100 km
+     north corridor is the documented `--region 700,5420,16000,80000` batch. EU-Hydro
+     was evaluated and deferred (compatible licence, EU Login basin downloads).
 
 5. [ ] **Imagery refinement**
    - 10 m Sentinel-2 near-ring or 30 m ortho for the 17 ranges, chosen by measured
@@ -182,6 +195,11 @@ Each numbered item is a branch/step sequence; each commit is pushed.
   `godot --headless --path game scenes/Main.tscn -- --precision-test` and must print
   `Worst ... (budget 10 mm): PASS`; a rendered chase screenshot after a 4 km crossing
   must show the aircraft centred over continuous terrain.
+- OSM coverage changes regenerate with
+  `tools/mapgen/fetch_osm_tiles.py --region ...`, then
+  `--prune-only --max-buildings-per-tile 1500`, and run a rendered sortie. Check the
+  log for duplicate tiles/features and the build/focus timings; the generated bundle
+  stays local and ODbL-attributed.
 - Visual changes attach a screenshot to the commit/PR and update the spec.
 - Performance/streaming changes log measured numbers, not just “looks smooth”.
 - Exports are rebuilt and the exported Linux client is launched at least once.
@@ -193,6 +211,15 @@ Each numbered item is a branch/step sequence; each commit is pushed.
   holes. A full continental 120 m set is ~2,037 tiles: ~3–4 h with four workers and
   ~165 MiB, resumable with `tools/build_ortho_batch.py`. 30 m stays priority-region only
   (~1.2 MB/tile); a full 30 m set would be ~2.5 GB and is not planned.
+- **OSM sourcing is the fragile part.** Public Overpass instances throttle and 502
+  regularly; `fetch_osm_tiles.py` retries across three mirrors, resumes existing tiles,
+  and can omit buildings (`--no-buildings`) for far corridor tiles. A full 100 km
+  corridor is a background batch, not a single request. Generated tiles are ODbL and
+  local; `OsmDetail` keeps only a 48 km ring and prunes to the largest 1,500 buildings
+  per tile.
+- **OSM build chunks are amortized, not free.** The first road/hedge chunks on the
+  densest tiles can still take ~50–60 ms; a future pass should parse/geometry-build on
+  a worker if that proves visible. The terrain/ortho async path is unaffected.
 - **Per-tile STAC is retained only as a fallback.** Its 120 m output left 40–45% of the
   airfield/demo tiles on the flat fill colour and produced 30 m seams; do not use
   `--source stac` for new continental coverage unless the S2GM mirror lacks a region or
@@ -221,10 +248,12 @@ Each numbered item is a branch/step sequence; each commit is pushed.
 
 Recommended order for the next session:
 
-1. Extend vector detail (OSM/EU-Hydro) with LOD and a data budget (plan item 4).
-2. Run the full continental 120 m batch with `tools/build_ortho_batch.py --all`
+1. Imagery refinement: 30 m Sentinel-2 tiles around the 17 ranges (plan item 5), using
+   `tools/build_ortho_batch.py --region <range>,1 --resolution 30`.
+2. Package and distribution strategy (plan item 6): optional/minimal terrain bundles,
+   first-run bundle import/download, Windows sidecar PCK checks.
+3. Run the full continental 120 m batch with `tools/build_ortho_batch.py --all`
    (resumable, local, ~3–4 h with four workers); 30 m stays priority-region only.
-3. Consider 10 m range imagery and package slimming (plan items 5–6).
 4. Extend the streaming instrumentation into CI/nightly guards (plan item 7).
 
 Do not start a full continental 30 m batch: the measured 1.2 MB/tile would add ~2.5 GB
