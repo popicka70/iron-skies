@@ -1,6 +1,10 @@
 # Europe mountain ranges — plan for continental high detail
 
-**Status:** planned in phases; each numbered implementation step is its own commit/push.
+> **Implementation log / archive.** The mountain catalog is complete. Current terrain
+> work is tracked in [specs/0001-continental-terrain.md](specs/0001-continental-terrain.md);
+> this file records the range inventory and build details.
+
+**Status:** archive — completed range catalog.
 
 ## Goal
 

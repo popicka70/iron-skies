@@ -480,9 +480,22 @@ Servers advertise themselves on the LAN (UDP 7778) and appear in the launcher's 
 See [docs/dedicated-server.md](docs/dedicated-server.md). A manual GitHub workflow
 (`.github/workflows/export.yml`) builds the packages and uploads them as artifacts.
 
+## Documentation and specs
+
+- **Product goal and scope:** [docs/SPEC.md](docs/SPEC.md)
+- **Current workstreams:** [docs/specs/](docs/specs/README.md)
+- **Milestone backlog:** [docs/ROADMAP.md](docs/ROADMAP.md)
+- **Agent/LLM workflow:** [AGENTS.md](AGENTS.md) (canonical entry point)
+- **Architecture:** [docs/architecture/](docs/architecture/overview.md)
+- **Decisions:** [docs/adr/](docs/adr/)
+
+Older `docs/plan-*.md` files are implementation logs; their headers point at the spec
+that superseded them. Start with `AGENTS.md` if you are an AI session.
+
 ## Contributing
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [specification](docs/SPEC.md) first.
+Read [AGENTS.md](AGENTS.md), [CONTRIBUTING.md](CONTRIBUTING.md), the
+[specification](docs/SPEC.md) and the active [spec](docs/specs/README.md) first.
 Good first issues are labelled `good first issue`.
 
 ## Licence

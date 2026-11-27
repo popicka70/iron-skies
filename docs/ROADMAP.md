@@ -34,6 +34,9 @@ simulation runs at 240 Hz with a stable 60 FPS render; CI is green on both OSes.
 
 **Goal:** one aircraft that feels and performs like a real one.
 
+> **Terrain workstream:** [specs/0001-continental-terrain.md](specs/0001-continental-terrain.md).
+> The checklist below is the milestone view; the spec has the current step and acceptance.
+
 - [x] Coefficient tables for the Spitfire Mk IX and Bf 109 G-6
 - [x] Both aircraft flyable in single-player (placeholder airframes)
 - [x] Engine model (RPM, manifold pressure, boost timer, coolant/oil, radiator, fuel burn)
@@ -63,8 +66,11 @@ simulation runs at 240 Hz with a stable 60 FPS render; CI is green on both OSes.
 - [x] Local OSM waterway patch and carved river channels (airfield clear zone excluded)
 - [x] Streamed 90 m GLO-90 height near-field (3×3 tiles, ~9 MB)
 - [x] Streamed 30 m compressed GLO-30 height tiles (~78 MB ring)
-- [x] Sentinel-2 ortho tiles on the 64 km grid (regional generation, 192 km inset)
-- [ ] Continental ortho coverage and floating-origin rebasing
+- [x] Sentinel-2 ortho tiles on the 64 km grid (regional 30 m, 192 km inset)
+- [x] 120 m Sentinel-2 fallback ring and mixed-resolution stitching
+- [ ] Continental ortho coverage
+- [ ] Floating-origin rebasing (ADR-0006)
+- [ ] Async terrain/ortho tile loading (remove 64 km transition hitches)
 - [ ] In-engine telemetry graphs
 - Audio: procedural engine/prop sound driven by RPM and load; wind and gunfire
 
@@ -81,6 +87,7 @@ sortie with engine management; deterministic replays reproduce exactly.
 - Geomorphing/skirts to remove LOD seams; streaming budget instrumentation
 - [x] OSM woods and extruded buildings (2 km patch around the spawn)
 - [ ] Larger OSM settlement/wood coverage across the theatre
+- [ ] EU-Hydro continental river network and vector-detail streaming
 - [x] Animated water normals + fresnel on the sea
 - [ ] Detail normals and 3D vegetation
 - Splat-blended ground, forests via MultiMesh, water, roads

@@ -1,6 +1,10 @@
 # Mountains and rivers — research and implementation plan
 
-**Status:** in progress. Each numbered step is a separate commit/push.
+> **Implementation log / archive.** Superseded by the completed mountain catalog and
+> [specs/0001-continental-terrain.md](specs/0001-continental-terrain.md). Kept for the
+> research notes and original river design.
+
+**Status:** archive — research and early river/mountain design.
 
 ## Goal
 
