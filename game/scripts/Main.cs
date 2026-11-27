@@ -704,6 +704,19 @@ public partial class Main : Node3D
             ["osmTiles"] = _osm?.ResidentTiles ?? 0,
             ["osmMb"] = Math.Round(osmMb, 1),
             ["totalMb"] = Math.Round(detailMb + patchMb + osmMb, 1),
+            // Renderer cost, for the aircraft LOD/perf pass (spec 0002 step 5).
+            ["drawCalls"] = RenderingServer.GetRenderingInfo(
+                RenderingServer.RenderingInfo.TotalDrawCallsInFrame),
+            ["primitives"] = RenderingServer.GetRenderingInfo(
+                RenderingServer.RenderingInfo.TotalPrimitivesInFrame),
+            ["objects"] = RenderingServer.GetRenderingInfo(
+                RenderingServer.RenderingInfo.TotalObjectsInFrame),
+            ["videoMemMb"] = Math.Round(
+                RenderingServer.GetRenderingInfo(
+                    RenderingServer.RenderingInfo.VideoMemUsed) / 1048576.0, 1),
+            ["textureMemMb"] = Math.Round(
+                RenderingServer.GetRenderingInfo(
+                    RenderingServer.RenderingInfo.TextureMemUsed) / 1048576.0, 1),
             ["east"] = Math.Round(_sim.State.Position.X, 1),
             ["north"] = Math.Round(_sim.State.Position.Y, 1),
             ["altitude"] = Math.Round(_sim.State.AltitudeMeters, 1),
