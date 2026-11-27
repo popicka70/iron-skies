@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import shutil
 import sys
 import tempfile
@@ -144,8 +145,14 @@ def render_tile(
               f"{bbox[0]:.2f},{bbox[1]:.2f}..{bbox[2]:.2f},{bbox[3]:.2f}")
         mapgen.build_ortho(local, temp, meta, size)
         output.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(temp / "ortho.jpg", output)
-        shutil.copyfile(output, output_bin)
+        # Replace the runtime file first so an interrupted batch never leaves a
+        # truncated tile where the streamer expects a complete one.
+        output_tmp = output.with_name(output.name + ".tmp")
+        bin_tmp = output_bin.with_name(output_bin.name + ".tmp")
+        shutil.copyfile(temp / "ortho.jpg", output_tmp)
+        shutil.copyfile(temp / "ortho.jpg", bin_tmp)
+        os.replace(bin_tmp, output_bin)
+        os.replace(output_tmp, output)
         return True
     finally:
         shutil.rmtree(temp, ignore_errors=True)
