@@ -1,8 +1,8 @@
 # Aircraft art pass — believable 3D models, PBR textures and cockpits
 
-**Status:** in progress — first vertical slice delivered on branch
-`feature/aircraft-art-pass` in worktree
-`~/.local/share/opencode/worktree/b8d884/aircraft-art-pass`.
+**Status:** implementation log for spec
+[`specs/0002-aircraft-art-pass.md`](specs/0002-aircraft-art-pass.md). The first vertical
+slice is merged; this file keeps the detailed build notes and is not the current plan.
 
 ## Delivered so far
 

@@ -6,8 +6,10 @@ This directory is the **living plan** for active work.
 Linux and Windows, with single-player and authoritative multiplayer, engineering-grade
 6-DOF flight dynamics, and persistent maps generated from real, openly licensed geodata.
 The current workstream goal is a convincing 4,000 km European theatre; see
-[`0001-continental-terrain.md`](0001-continental-terrain.md). The product goal and scope
-are in [`../SPEC.md`](../SPEC.md); the milestone backlog is in
+[`0001-continental-terrain.md`](0001-continental-terrain.md). The aircraft art workstream
+runs in parallel and is tracked in
+[`0002-aircraft-art-pass.md`](0002-aircraft-art-pass.md). The product goal and scope are
+in [`../SPEC.md`](../SPEC.md); the milestone backlog is in
 [`../ROADMAP.md`](../ROADMAP.md). A spec is not a design document: it records what is
 being changed now, how it will be verified, and what remains.
 
@@ -77,6 +79,6 @@ Ordered next steps for the next session. Keep this honest; it is the resume poin
 | Spec | Status | Area | Summary |
 | --- | --- | --- | --- |
 | [0001 — Continental terrain detail](0001-continental-terrain.md) | **active** | terrain | Finish the 4,000 km theatre: continental imagery, tile I/O, floating origin, vector detail. |
+| [0002 — Aircraft art pass](0002-aircraft-art-pass.md) | **active** | rendering, art, tools | Reference-locked silhouettes, PBR detail, cockpits, damage, authored LODs and the P-51D. |
 
-Proposed next numbers (do not create until the work starts): `0002` for the first
-post-terrain workstream chosen from `0001`’s remaining list.
+Next number: `0003` (do not create until the work starts).
