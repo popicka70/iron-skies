@@ -1,6 +1,6 @@
 # Terrain, maps and persistence
 
-> **Current workstream:** [specs/0001-continental-terrain.md](../specs/0001-continental-terrain.md) — remaining continental imagery and vector detail; tile I/O and floating origin are implemented. This page describes the implemented system.
+> **Status:** [specs/0001-continental-terrain.md](../specs/0001-continental-terrain.md) is complete — full continental 120 m/30 m imagery, async tile I/O, floating origin, streamed OSM vector detail, packaging and telemetry. This page describes the implemented system.
 
 ## 1. Principles
 

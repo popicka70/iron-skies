@@ -10,7 +10,7 @@ current.
 | --- | --- |
 | [`SPEC.md`](SPEC.md) | Product goal, scope, technology decisions, 1.0 acceptance. |
 | [`specs/README.md`](specs/README.md) | Living-spec convention, template and index. |
-| [`specs/0001-continental-terrain.md`](specs/0001-continental-terrain.md) | **Active workstream:** continental height/imagery, tile I/O, floating origin, vector detail. |
+| [`specs/0001-continental-terrain.md`](specs/0001-continental-terrain.md) | **Done:** full continental height/imagery, floating origin, streamed OSM, packaging, telemetry. |
 | [`specs/0002-aircraft-art-pass.md`](specs/0002-aircraft-art-pass.md) | **Active art workstream:** silhouettes, PBR detail, cockpits, damage, LODs, fleet expansion. |
 | [`ROADMAP.md`](ROADMAP.md) | Milestone backlog (M0–M5). Use for “what comes later.” |
 

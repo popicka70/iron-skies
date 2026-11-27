@@ -51,11 +51,15 @@ def fill_gaps(array: np.ndarray) -> tuple[np.ndarray, int]:
             fillnodata(
                 filled[..., band].astype(np.float32),
                 mask=mask,
-                max_search_distance=10000.0,
+                max_search_distance=100000.0,
                 smoothing_iterations=0,
             ),
             0, 255,
         ).astype(np.uint8)
+    # fillnodata can leave the far side of a wide missing MGRS window empty;
+    # a neutral sea colour is better than a black hole at the tile edge.
+    remaining = filled.max(axis=2) < 8
+    filled[remaining] = SEA_FILL
     return filled, count
 
 

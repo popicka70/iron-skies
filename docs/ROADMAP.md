@@ -64,11 +64,12 @@ simulation runs at 240 Hz with a stable 60 FPS render; CI is green on both OSes.
 - [x] Europe-wide 250 m detail layer
 - [x] Major European rivers as flowing water surfaces (Natural Earth 1:10m + river shader)
 - [x] Local OSM waterway patch and carved river channels (airfield clear zone excluded)
+- [x] Streamed OSM 16 km tiles (roads/water/woods/buildings, near/mid/far LOD, 100 km corridor)
 - [x] Streamed 90 m GLO-90 height near-field (3×3 tiles, ~9 MB)
 - [x] Streamed 30 m compressed GLO-30 height tiles (~78 MB ring)
 - [x] Sentinel-2 ortho tiles on the 64 km grid (regional 30 m, 192 km inset)
 - [x] 120 m Sentinel-2 fallback ring and mixed-resolution stitching
-- [x] Continental ortho coverage (source evaluation + resumable batch; full 120 m set is a local run)
+- [x] Continental ortho coverage (full 120 m set + 30 m rings for all 17 ranges)
 - [x] Floating-origin rebasing (ADR-0006)
 - [x] Async terrain/ortho tile loading (remove 64 km transition hitches)
 - [ ] In-engine telemetry graphs

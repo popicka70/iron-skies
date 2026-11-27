@@ -63,20 +63,7 @@ _COLUMNS = {1: "ABCDEFGH", 2: "JKLMNPQR", 0: "STUVWXYZ"}
 _ROWS = "ABCDEFGHJKLMNPQRSTUV"
 
 
-def mgrs_tile_id(lon: float, lat: float) -> str:
-    """Return the 100 km MGRS tile id (e.g. ``32ULB``) for a WGS84 point.
-
-    The S2GM product names a tile with the latitude band that contains the
-    tile *centre*, not the point being looked up. A 100 km row that straddles
-    a band boundary therefore belongs to the next band: the top row of band R
-    at zone 31 is published as ``31S..R``, and ``31R..R`` does not exist.
-    Deriving the band from the point instead leaves the northern few
-    kilometres of every such game tile without a source tile (the black
-    no-data bands this function used to produce).
-    """
-    if not (-80.0 <= lat < 84.0):
-        raise ValueError(f"latitude outside MGRS coverage: {lat}")
-
+def _zone_for(lon: float, lat: float) -> int:
     zone = int((lon + 180.0) // 6.0) + 1
     # Norway and Svalbard exceptions from the MGRS standard.
     if 56.0 <= lat < 64.0 and 3.0 <= lon < 12.0:
@@ -90,6 +77,36 @@ def mgrs_tile_id(lon: float, lat: float) -> str:
             zone = 35
         elif 33.0 <= lon < 42.0:
             zone = 37
+    return zone
+
+
+def _central_meridian(zone: int) -> float:
+    return (zone - 1) * 6.0 - 180.0 + 3.0
+
+
+def mgrs_tile_id(
+    lon: float, lat: float, zone: int | None = None
+) -> str | None:
+    """Return the 100 km MGRS tile id (e.g. ``32ULB``) for a WGS84 point.
+
+    The S2GM product names a tile with the latitude band that contains the
+    tile *centre*, not the point being looked up. A 100 km row that straddles
+    a band boundary therefore belongs to the next band: the top row of band R
+    at zone 31 is published as ``31S..R``, and ``31R..R`` does not exist.
+    Deriving the band from the point instead leaves the northern few
+    kilometres of every such game tile without a source tile (the black
+    no-data bands this function used to produce).
+
+    ``zone`` overrides the standard zone assignment. Tiles are not clipped at
+    zone boundaries, so a game tile near 0°E or 18°E is often covered by a
+    neighbouring zone's tile; querying only the point's own zone left whole
+    columns of real land imagery missing. ``None`` is returned when the point
+    falls outside that zone's 100 km column range.
+    """
+    if not (-80.0 <= lat < 84.0):
+        raise ValueError(f"latitude outside MGRS coverage: {lat}")
+    if zone is None:
+        zone = _zone_for(lon, lat)
 
     epsg = (32600 if lat >= 0.0 else 32700) + zone
     easting, northing = transform(
@@ -98,6 +115,8 @@ def mgrs_tile_id(lon: float, lat: float) -> str:
     easting, northing = float(easting[0]), float(northing[0])
 
     column = int(easting // 100_000)
+    if not 1 <= column <= 8:
+        return None
     row = int(northing // 100_000)
     centre_e = (column + 0.5) * 100_000.0
     centre_n = (row + 0.5) * 100_000.0
@@ -112,20 +131,34 @@ def mgrs_tile_id(lon: float, lat: float) -> str:
 
 
 def intersecting_tiles(
-    west: float, south: float, east: float, north: float, samples: int = 9
+    west: float, south: float, east: float, north: float, samples: int = 33
 ) -> list[str]:
     """MGRS 100 km tiles that intersect a WGS84 bounding box.
 
     Sampling a grid is cheap and avoids depending on a full MGRS library. A
-    64 km game tile can touch at most four 100 km tiles, and a 9×9 sample
-    catches all of them with margin.
+    64 km game tile can touch several 100 km tiles when the source zones are
+    rotated against the theatre's UTM zone; 33 samples (≈2 km at tile scale)
+    catches thin corner slivers that a coarse grid missed. Points in the outer
+    2° of a zone also query the neighbouring zone, whose tiles overlap the
+    boundary and hold the imagery the boundary zone does not publish.
     """
     tiles: set[str] = set()
     for j in range(samples):
         lat = south + (north - south) * j / (samples - 1)
         for i in range(samples):
             lon = west + (east - west) * i / (samples - 1)
-            tiles.add(mgrs_tile_id(lon, lat))
+            zone = _zone_for(lon, lat)
+            zones = {zone}
+            meridian = _central_meridian(zone)
+            # A 100 km tile reaches ≈2° past a zone boundary at high latitude.
+            if lon < meridian - 1.0:
+                zones.add(zone - 1)
+            elif lon > meridian + 1.0:
+                zones.add(zone + 1)
+            for candidate in zones:
+                tile = mgrs_tile_id(lon, lat, candidate)
+                if tile is not None:
+                    tiles.add(tile)
     return sorted(tiles)
 
 
@@ -228,24 +261,98 @@ def _read_band(
     return destination, mask > 0
 
 
-def _fill_uncovered(mosaic: dict[str, np.ndarray], covered: np.ndarray) -> None:
-    """Inpaint narrow no-data seams from the nearest valid pixels.
+# Reflectance used only if a sea gap has no covered sea pixel to sample.
+SEA_REFLECTANCE = {"B02": 0.030, "B03": 0.020, "B04": 0.012, "B08": 0.010}
 
-    The quarterly mosaic can leave a one-pixel gap where two MGRS tiles meet.
-    GDAL's fillnodata turns that into a continuous edge instead of the flat
-    green fallback colour, which would be visible as a seam at 192 km.
+
+def _load_land_mask(height_file: Path | None, size: int) -> np.ndarray | None:
+    """Return a ``size × size`` land mask from the streamed height tile.
+
+    ``build_height_tiles`` does not write an all-ocean tile, so a missing file
+    means the whole tile is sea. The height tile is north-up with a one-sample
+    overlap, matching the ortho row order.
+    """
+    if height_file is None:
+        return None
+    if not height_file.exists():
+        return np.zeros((size, size), dtype=bool)
+    import zlib
+
+    payload = height_file.read_bytes()
+    raw = zlib.decompress(payload) if height_file.suffix == ".r16z" else payload
+    stride = int(round((len(raw) / 2) ** 0.5)) - 1
+    heights = np.frombuffer(raw, dtype="<i2").reshape(stride + 1, stride + 1)
+    step = max(1, stride // (size - 1))
+    sampled = heights[::step, ::step][:size, :size]
+    if sampled.shape != (size, size):
+        raise ValueError(
+            f"height tile {height_file.name} does not match {size}² ortho grid"
+        )
+    # Copernicus is land-only; the generator fills ocean with -100 m.
+    return sampled > 0
+
+
+def _fill_uncovered(
+    mosaic: dict[str, np.ndarray],
+    covered: np.ndarray,
+    land: np.ndarray | None = None,
+) -> None:
+    """Fill no-data gaps without ever leaving black pixels.
+
+    Two kinds of gap occur: a narrow seam where two MGRS tiles meet, and a
+    whole 100 km source tile missing from the quarter (mostly open sea, where
+    the mosaic has no valid observations). Sea gaps get the tile's own median
+    sea reflectance; land gaps are inpainted from the nearest valid pixels.
+    The final guard replaces any pixel the inpaint could not reach, so a
+    missing source tile can never become a black band in the streamed inset.
     """
     if covered.all():
         return
-    from rasterio.fill import fillnodata
 
-    mask = covered.astype(np.uint8)
-    for band in BANDS:
-        mosaic[band] = fillnodata(
-            mosaic[band].astype(np.float32),
-            mask=mask,
-            max_search_distance=128.0,
-            smoothing_iterations=0,
+    filled = covered.copy()
+    uncovered = ~filled
+    if land is not None:
+        sea_gap = uncovered & ~land
+        if sea_gap.any():
+            covered_sea = filled & ~land
+            for band in BANDS:
+                values = mosaic[band][covered_sea]
+                sea = float(np.median(values)) if values.size else SEA_REFLECTANCE[band]
+                mosaic[band][sea_gap] = sea
+            filled |= sea_gap
+
+    if not filled.all():
+        from rasterio.fill import fillnodata
+
+        mask = filled.astype(np.uint8)
+        for band in BANDS:
+            mosaic[band] = fillnodata(
+                mosaic[band].astype(np.float32),
+                mask=mask,
+                # A 64 km tile is under 600 px at 120 m; a large search
+                # distance keeps a missing source tile from staying black.
+                max_search_distance=4096.0,
+                smoothing_iterations=1,
+            )
+
+    empty = (
+        (mosaic["B04"] == 0.0)
+        & (mosaic["B03"] == 0.0)
+        & (mosaic["B02"] == 0.0)
+    )
+    if empty.any():
+        for band in BANDS:
+            values = mosaic[band][~empty]
+            colour = (
+                float(np.median(values))
+                if values.size
+                else SEA_REFLECTANCE[band]
+            )
+            mosaic[band][empty] = colour
+        print(
+            f"  s2gm: filled {int(empty.sum())} unreachable pixels with a "
+            f"neighbour median",
+            file=sys.stderr,
         )
 
 
@@ -317,8 +424,14 @@ def render_tile(
     meta: dict,
     size: int,
     quarter: str = DEFAULT_QUARTER,
+    height_file: Path | None = None,
 ) -> dict:
-    """Render one 64 km tile from the S2GM mosaic. Returns updated metadata."""
+    """Render one 64 km tile from the S2GM mosaic. Returns updated metadata.
+
+    ``height_file`` is the streamed height tile for the same grid cell. It is
+    optional: without it, sea gaps are inpainted from their neighbours, which
+    is acceptable but can spread coastal land colour into open water.
+    """
     start = time.time()
     dst_crs = CRS.from_string(theatre["geodesy"]["crs"])
     half = float(meta["halfExtentMeters"])
@@ -386,7 +499,8 @@ def render_tile(
             f"no S2GM pixels for {quarter} ({', '.join(tiles)})"
         )
 
-    _fill_uncovered(mosaic, covered)
+    land = _load_land_mask(height_file, size)
+    _fill_uncovered(mosaic, covered, land)
 
     # Reflectance is int16 x 10000 in the COG; numpy reads it as float32 here.
     rgb = np.stack(

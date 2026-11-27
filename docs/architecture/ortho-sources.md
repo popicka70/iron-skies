@@ -81,20 +81,20 @@ MGRS helper against known tiles.
 
 ## Current generated set (local, not committed)
 
-The **full continental fallback is generated**: 2,037 tiles (2,010 at 120 m, 27 at
-30 m), 152.8 MiB of `.bin` data, all passing `check_ortho_tiles.py` with
-`mean edge seam ≤ 24` and no holes. The 120 m batch built 1,955 new tiles in 8,826 s
-with eight workers; `fix_ortho_gaps.py` then filled 2.67 M no-data pixels and blended
-3,707 shared edges.
+The **full continental fallback is generated**: 2,043 tiles (1,884 at 120 m, 159 at
+30 m), 281.8 MiB of `.bin` data, all passing `check_ortho_tiles.py` with
+`mean edge seam ≤ 24`, no flat-fill holes and no near-black bands. The 120 m batch built
+1,955 new tiles in 8,826 s with eight workers; `fix_ortho_gaps.py` filled no-data pixels
+and blended shared edges in two passes (3.7 M pixel fills, 3,565 edge blends).
 
 | Set | Tiles | Resolution |
 | --- | --- | --- |
-| Continental fallback (all land tiles) | 2,010 | 120 m |
+| Continental fallback (all land tiles) | 1,884 | 120 m |
 | Rhine demo priority | 9 | 30 m |
-| Alps / Scandes 30 m rings | 18 | 30 m |
+| 17 mountain-range rings | 150 | 30 m |
 
-Generated bundles stay git-ignored. The 120 m output is ~153 MiB, small enough to ship
-in the optional bundle rather than the core installer.
+Generated bundles stay git-ignored. The 120 m output is ~153 MiB and the 30 m range set
+~129 MiB; both fit the optional bundle distribution.
 
 ## Range imagery
 
