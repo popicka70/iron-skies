@@ -276,6 +276,8 @@ measured; the art budget is the schedule risk, not the code.
 
 ## Changelog
 
+- 2026-11-27 — `34ab626` — Bf 109 and Ju 88 orthographic silhouette sheets; spans exact,
+  Bf 109 5 cm over 9.02 m, Ju 88 length exact.
 - 2026-11-27 — `788f44f` — Spitfire cockpit structural pass (eight-gauge panel, seat,
   harness, gunsight, canopy rails, bevel), adjustable eye point and cockpit fill light;
   22,812 tris.
