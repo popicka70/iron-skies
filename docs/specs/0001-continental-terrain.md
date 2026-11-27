@@ -53,11 +53,12 @@ at most 128 tiles in full mode (~1.2 GB).
   - 120 m fallback tiles (535², ~0.1 MB each), built by the batch runner.
   - The runtime stitches a 3×3 ring into a 192 km inset: 30 m-only → 6,409²
     (117.5 MB), 120 m-only → 1,603² (7.4 MB), mixed → finest present.
-- Local coverage: 83 tiles (74 at 120 m, 9 at 30 m), 16.3 MiB, covering the Rhine demo,
-  the Normandy airfield, the Alps and the southern Scandes. Every tile passes
-  `tools/check_ortho_tiles.py` (fill ≤2%, mean edge seam ≤24). Outside that area the
-  engine falls back to Blue Marble/regional orthos. The 10 m Normandy airfield inset
-  still wins locally.
+- Local coverage: 83 tiles (56 at 120 m, 27 at 30 m), 35.6 MiB, covering the Rhine demo,
+  the Normandy airfield and 3×3 30 m rings around the Alps and southern Scandes. Every
+  tile passes `tools/check_ortho_tiles.py` (fill ≤2%, mean edge seam ≤24). Outside that
+  area the engine falls back to Blue Marble/regional orthos. The 10 m Normandy airfield
+  inset still wins locally. `tools/build_range_ortho.py` is the resumable batch for the
+  other 14 ranges (≈153 30 m tiles, ≈184 MiB if all are generated).
 
 ### Streaming and runtime
 
@@ -167,11 +168,16 @@ Each numbered item is a branch/step sequence; each commit is pushed.
      north corridor is the documented `--region 700,5420,16000,80000` batch. EU-Hydro
      was evaluated and deferred (compatible licence, EU Login basin downloads).
 
-5. [ ] **Imagery refinement**
+5. [x] **Imagery refinement** *(done 2026-11-27)*
    - 10 m Sentinel-2 near-ring or 30 m ortho for the 17 ranges, chosen by measured
      visual gain vs VRAM/package cost.
    - Acceptance: low-altitude imagery in priority regions is visibly sharper; the
      30 m/120 m fallback hierarchy is unchanged elsewhere.
+   - Result: 30 m chosen over a 10 m near-ring (a 3×3 10 m ring would be 19,225² and
+     >1 GiB VRAM; the 30 m ring stays 6,409²/117.5 MB). 3×3 30 m rings generated for the
+     Alps and southern Scandes (18 tiles, 20.7 MiB); `tools/build_range_ortho.py` is the
+     resumable batch for the other 14 ranges (~153 tiles, ~184 MiB). The checker reports
+     0 holes/seams and the Alpine top view shows the sharper imagery.
 
 6. [ ] **Package and distribution strategy**
    - Optional terrain bundles, stronger compression, and an installer/first-run
@@ -248,13 +254,12 @@ Each numbered item is a branch/step sequence; each commit is pushed.
 
 Recommended order for the next session:
 
-1. Imagery refinement: 30 m Sentinel-2 tiles around the 17 ranges (plan item 5), using
-   `tools/build_ortho_batch.py --region <range>,1 --resolution 30`.
-2. Package and distribution strategy (plan item 6): optional/minimal terrain bundles,
+1. Package and distribution strategy (plan item 6): optional/minimal terrain bundles,
    first-run bundle import/download, Windows sidecar PCK checks.
-3. Run the full continental 120 m batch with `tools/build_ortho_batch.py --all`
+2. Run the full continental 120 m batch with `tools/build_ortho_batch.py --all`
    (resumable, local, ~3–4 h with four workers); 30 m stays priority-region only.
-4. Extend the streaming instrumentation into CI/nightly guards (plan item 7).
+3. Extend the streaming instrumentation into CI/nightly guards (plan item 7).
+4. Generate the remaining 14 range rings with `tools/build_range_ortho.py` as needed.
 
 Do not start a full continental 30 m batch: the measured 1.2 MB/tile would add ~2.5 GB
 and the 120 m fallback is the intended continental tier.
