@@ -20,7 +20,7 @@
   },
   "expected_span_m": 9.92,
   "expected_length_m": 9.02,
-  "triangles": 18292,
+  "triangles": 19264,
   "objects": 31,
   "meshes": 25,
   "materials": [
@@ -30,6 +30,7 @@
     "dark",
     "gauge_face",
     "glass",
+    "harness",
     "interior",
     "leather",
     "metal",

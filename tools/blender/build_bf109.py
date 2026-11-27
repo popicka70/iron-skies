@@ -428,45 +428,100 @@ def build_cockpit(cockpit, mats):
     metal = mats["metal"]
     leather = mats["leather"]
     face = mats["gauge_face"]
+    harness = mats["harness"]
 
     box("CockpitFloor", (0.0, -0.05, -0.08), (0.76, 1.55, 0.05), cockpit, interior)
     box("CockpitWallL", (-0.39, -0.05, 0.25), (0.05, 1.55, 0.62), cockpit, interior)
     box("CockpitWallR", (0.39, -0.05, 0.25), (0.05, 1.55, 0.62), cockpit, interior)
     box("CockpitRear", (0.0, -0.80, 0.25), (0.80, 0.06, 0.64), cockpit, interior)
-    box("CockpitFront", (0.0, 0.72, 0.25), (0.80, 0.06, 0.64), cockpit, interior)
+    box("CockpitFront", (0.0, 0.76, 0.25), (0.80, 0.06, 0.64), cockpit, interior)
 
-    box("InstrumentPanel", (0.0, 0.78, 0.38), (0.82, 0.07, 0.40), cockpit, dark,
+    # Coaming, sill rails and sidewall ribs.
+    box("CoamingFront", (0.0, 0.76, 0.60), (0.84, 0.10, 0.07), cockpit, leather,
         rotation=(math.radians(-8.0), 0.0, 0.0))
-    box("PanelFace", (0.0, 0.745, 0.38), (0.74, 0.02, 0.34), cockpit, face,
-        rotation=(math.radians(-8.0), 0.0, 0.0))
-    for i in range(6):
-        x = (-1.0 + 2.0 * (i % 3)) * 0.21
-        z = 0.44 - (i // 3) * 0.14
-        cylinder(f"Gauge{i}", (x, 0.73, z), 0.056, 0.02, cockpit, metal,
-                 axis=(0.0, 1.0, 0.0), vertices=18)
-        cylinder(f"GaugeFace{i}", (x, 0.72, z), 0.045, 0.018, cockpit, face,
-                 axis=(0.0, 1.0, 0.0), vertices=18)
+    box("CoamingL", (-0.41, -0.05, 0.60), (0.07, 1.60, 0.06), cockpit, leather)
+    box("CoamingR", (0.41, -0.05, 0.60), (0.07, 1.60, 0.06), cockpit, leather)
+    for side, suffix in ((-1.0, "L"), (1.0, "R")):
+        box(f"CanopySill{suffix}", (side * 0.375, -0.05, 0.575),
+            (0.03, 1.40, 0.022), cockpit, metal)
+        for index, y in enumerate((-0.62, -0.30, 0.02, 0.34, 0.62)):
+            box(f"SidewallRib{suffix}{index}", (side * 0.395, y, 0.28),
+                (0.022, 0.04, 0.44), cockpit, interior)
 
+    # Three-section panel with two rows of four gauges, switches and compass.
+    tilt = math.radians(-8.0)
+    box("InstrumentPanel", (0.0, 0.67, 0.43), (0.48, 0.06, 0.40), cockpit, dark,
+        rotation=(tilt, 0.0, 0.0))
+    box("PanelFace", (0.0, 0.638, 0.43), (0.44, 0.02, 0.34), cockpit, face,
+        rotation=(tilt, 0.0, 0.0))
+    for side, suffix in ((-1.0, "L"), (1.0, "R")):
+        box(f"PanelSide{suffix}", (side * 0.30, 0.68, 0.43),
+            (0.20, 0.05, 0.32), cockpit, dark,
+            rotation=(tilt, 0.0, side * math.radians(24.0)))
+        box(f"SwitchBlock{suffix}", (side * 0.30, 0.651, 0.40),
+            (0.13, 0.02, 0.14), cockpit, face,
+            rotation=(tilt, 0.0, side * math.radians(24.0)))
+        for index in range(3):
+            cylinder(f"Switch{suffix}{index}",
+                     (side * (0.26 + 0.04 * index), 0.642, 0.415),
+                     0.007, 0.03, cockpit, metal, axis=(0.0, 1.0, 0.0),
+                     vertices=10)
+    box("GlareShield", (0.0, 0.69, 0.635), (0.82, 0.14, 0.03), cockpit, leather,
+        rotation=(math.radians(-14.0), 0.0, 0.0))
+
+    for i in range(8):
+        x = (-1.5 + (i % 4)) * 0.095
+        z = 0.515 - (i // 4) * 0.115
+        cylinder(f"Gauge{i}", (x, 0.628, z), 0.044, 0.018, cockpit, metal,
+                 axis=(0.0, 1.0, 0.0), vertices=18)
+        cylinder(f"GaugeFace{i}", (x, 0.620, z), 0.035, 0.016, cockpit, face,
+                 axis=(0.0, 1.0, 0.0), vertices=18)
+    cylinder("Compass", (0.0, 0.624, 0.60), 0.025, 0.02, cockpit, dark,
+             axis=(0.0, 1.0, 0.0), vertices=14)
+
+    # Seat, cushions, armour, headrest and harness.
     box("SeatPan", (0.0, -0.28, 0.02), (0.40, 0.38, 0.08), cockpit, leather)
+    box("SeatCushion", (0.0, -0.26, 0.07), (0.34, 0.30, 0.04), cockpit, leather)
     box("SeatBack", (0.0, -0.50, 0.30), (0.40, 0.09, 0.50), cockpit, leather)
+    box("BackCushion", (0.0, -0.455, 0.32), (0.32, 0.04, 0.38), cockpit, leather)
     box("SeatArmour", (0.0, -0.57, 0.32), (0.44, 0.04, 0.56), cockpit, dark)
-    box("Headrest", (0.0, -0.52, 0.60), (0.18, 0.09, 0.13), cockpit, leather)
+    box("Headrest", (0.0, -0.515, 0.60), (0.17, 0.09, 0.12), cockpit, leather)
+    for side, suffix in ((-1.0, "L"), (1.0, "R")):
+        box(f"Harness{suffix}", (side * 0.10, -0.44, 0.35),
+            (0.045, 0.028, 0.40), cockpit, harness,
+            rotation=(math.radians(7.0), 0.0, 0.0))
+        box(f"HarnessBuckle{suffix}", (side * 0.10, -0.405, 0.17),
+            (0.065, 0.04, 0.05), cockpit, metal)
+    box("LapBelt", (0.0, -0.35, 0.10), (0.32, 0.045, 0.04), cockpit, harness)
 
+    # Control column, grip, boot and pedals.
     cylinder_between("ControlColumn", (0.0, 0.38, -0.05), (0.0, 0.33, 0.25),
                      0.025, cockpit, metal)
-    box("ControlGrip", (0.0, 0.32, 0.30), (0.08, 0.11, 0.11), cockpit, dark)
-    for side in (-1.0, 1.0):
-        box(f"Pedal{'L' if side < 0 else 'R'}",
-            (side * 0.15, 0.68, -0.04), (0.15, 0.06, 0.19), cockpit, metal)
+    box("ControlBoot", (0.0, 0.38, -0.01), (0.10, 0.12, 0.07), cockpit, dark)
+    box("ControlGrip", (0.0, 0.325, 0.295), (0.075, 0.10, 0.10), cockpit, dark)
+    cylinder("ControlButton", (0.0, 0.31, 0.345), 0.011, 0.018, cockpit, metal,
+             axis=(0.0, 0.0, 1.0), vertices=10)
+    for side, suffix in ((-1.0, "L"), (1.0, "R")):
+        box(f"Pedal{suffix}", (side * 0.15, 0.68, -0.035),
+            (0.14, 0.05, 0.18), cockpit, metal,
+            rotation=(math.radians(18.0), 0.0, 0.0))
 
-    box("ThrottleBase", (-0.30, 0.42, 0.18), (0.11, 0.30, 0.08), cockpit, dark)
-    cylinder_between("ThrottleLever", (-0.30, 0.44, 0.20), (-0.30, 0.36, 0.34),
+    # Throttle and mixture on the left wall.
+    box("ThrottleBase", (-0.31, 0.42, 0.18), (0.09, 0.30, 0.07), cockpit, dark)
+    cylinder_between("ThrottleLever", (-0.31, 0.44, 0.20), (-0.31, 0.36, 0.34),
                      0.018, cockpit, metal)
-    box("ThrottleGrip", (-0.30, 0.35, 0.37), (0.05, 0.07, 0.05), cockpit, dark)
+    box("ThrottleGrip", (-0.31, 0.345, 0.365), (0.04, 0.07, 0.04), cockpit, dark)
+    box("MixtureBase", (-0.32, 0.28, 0.17), (0.06, 0.14, 0.05), cockpit, dark)
+    box("MixtureGrip", (-0.32, 0.24, 0.23), (0.04, 0.055, 0.03), cockpit, dark)
 
-    # Revi gunsight.
-    box("ReviBase", (0.0, 0.64, 0.56), (0.12, 0.13, 0.08), cockpit, dark)
-    box("ReviGlass", (0.0, 0.62, 0.64), (0.14, 0.01, 0.11), cockpit, mats["glass"])
+    # Revi gunsight with a sun shade.
+    box("ReviBase", (0.0, 0.57, 0.57), (0.11, 0.12, 0.08), cockpit, dark)
+    box("ReviArm", (0.0, 0.56, 0.615), (0.045, 0.05, 0.07), cockpit, metal)
+    box("ReviGlass", (0.0, 0.55, 0.67), (0.14, 0.01, 0.12), cockpit,
+        mats["glass"])
+    box("ReviShade", (0.0, 0.535, 0.705), (0.16, 0.08, 0.022), cockpit, dark)
+
+    box("MapPocket", (0.355, -0.36, 0.22), (0.018, 0.22, 0.18), cockpit, interior)
 
 
 def fuselage_station_at(y):
@@ -658,6 +713,13 @@ def consolidate(exterior, cockpit):
     if cockpit_root is not None:
         cockpit_meshes = [obj for obj in descendants(cockpit_root) if obj.type == "MESH"]
         join_meshes("CockpitStatic", cockpit_meshes, cockpit)
+        cockpit_static = bpy.data.objects.get("CockpitStatic")
+        if cockpit_static is not None:
+            bevel = cockpit_static.modifiers.new("CockpitBevel", "BEVEL")
+            bevel.width = 0.004
+            bevel.segments = 2
+            bevel.limit_method = "ANGLE"
+            bevel.angle_limit = math.radians(40.0)
 
 
 def main():
@@ -686,6 +748,7 @@ def main():
                           double_sided=True),
         "interior": material("interior", (0.085, 0.095, 0.085), 0.85, 0.02),
         "leather": material("leather", (0.10, 0.07, 0.045), 0.90, 0.0),
+        "harness": material("harness", (0.22, 0.19, 0.11), 0.92, 0.0),
         "gauge_face": material("gauge_face", (0.045, 0.055, 0.045), 0.55, 0.05),
         "panel_line": material("panel_line", (0.035, 0.040, 0.035), 0.90, 0.02),
         "cross_white": material("cross_white", (0.82, 0.82, 0.78), 0.62, 0.0,
