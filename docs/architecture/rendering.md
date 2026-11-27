@@ -24,6 +24,11 @@ Godot 4.7 Vulkan Forward+ with:
 - physically based sky shader with sun/moon and atmospheric scattering,
 - shadow cascades + contact shadows for cockpit detail,
 - TAA and FSR 2.2 upscaling; MSAA off in favour of post AA.
+- Camera depth range: 0.05 m near in the cockpit, 1.0 m externally, both against a
+  120 km far plane. Keep far/near below roughly 3×10⁶: the clustered light culler
+  intersects the frustum planes in float, and the former 6,000 km far plane (1.2×10⁸
+  with a 0.05 m near) degenerated it (`create_frustum_points`) and blanked cockpit view.
+  `tools/cockpit_smoke_test.sh` is the guard.
 
 ## 3. Atmosphere and weather
 

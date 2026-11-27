@@ -53,6 +53,13 @@ public partial class Main : Node3D
     private Camera3D _camera = null!;
     private Label _hud = null!;
 
+    // 120 km is beyond the fog horizon and keeps the far/near ratio at ~2.4e6
+    // with the 0.05 m cockpit near plane. A 6,000 km far plane (the old
+    // heightmap half-extent times three) gave a 1.2e8 ratio, which degenerated
+    // the light culler's float frustum planes (`create_frustum_points`) and
+    // blanked the cockpit view.
+    private const float MaxViewDistance = 120_000.0f;
+
     private sealed class Bomber
     {
         public required AircraftSimulator Sim { get; init; }
@@ -1881,7 +1888,7 @@ public partial class Main : Node3D
         {
             Fov = 72.0f,
             Near = 1.0f,
-            Far = Mathf.Max(250_000.0f, (float)_heightmap.HalfExtent * 3.0f),
+            Far = MaxViewDistance,
         };
         AddChild(_camera);
         _camera.MakeCurrent();

@@ -51,6 +51,9 @@ public sealed partial class MultiplayerMain : Node3D
     private CombatVisual _combat = null!;
     private Camera3D _camera = null!;
     private Label _hud = null!;
+
+    // See Main.MaxViewDistance: keep the float depth range valid in cockpit view.
+    private const float MaxViewDistance = 120_000.0f;
     private Label _crosshair = null!;
     private Label _message = null!;
     private readonly StringBuilder _hudText = new(512);
@@ -701,7 +704,7 @@ public sealed partial class MultiplayerMain : Node3D
         {
             Fov = 72.0f,
             Near = 1.0f,
-            Far = Mathf.Max(250_000.0f, (float)_map.HalfExtent * 3.0f),
+            Far = MaxViewDistance,
         };
         AddChild(_camera);
         _camera.GlobalPosition = new Vector3(0.0f, 2000.0f, 3000.0f);
