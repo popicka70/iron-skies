@@ -154,11 +154,19 @@ where it keeps review manageable. Push every commit.
      smoke test still passes.
 
 5. [ ] **Authored LODs, shadows and performance.**
-   - Author LOD1/LOD2, shadow LOD and a distance imposter; set visibility ranges and verify
-     no popping in a 2 km pass.
-   - Add a perf scene with 1/3/6 aircraft; log tri count, draw calls, VRAM and frame time.
+   - [x] Render-cost telemetry and a reproducible 1/6-aircraft measurement *(done
+     2026-11-27)*: the per-second JSONL now carries draw calls, primitives, objects,
+     video memory and texture memory; `tools/aircraft_perf_test.sh` runs a solo and a
+     six-aircraft sortie and `tools/check_render_perf.py` enforces the budgets.
+   - [ ] Author LOD1/LOD2, shadow LOD and a distance imposter; set visibility ranges and
+     verify no popping in a 2 km pass.
    - Acceptance: 1080p/60 on the target GPU at “high” with six aircraft; no LOD pop in a
      normal chase view; the numbers are in the spec changelog.
+   - Current result (RX 9060 XT, 1600×900, 160 Hz VSync cap): solo 358 draw calls /
+     233k primitives / 6.25 ms / 1,749 MB VRAM; six aircraft (player + 3 wingmen +
+     2 bandits) 981 draw calls / 326k primitives / 6.25 ms / 1,755 MB VRAM. Both pass
+     the draw-call, primitive, VRAM and 16.6 ms budgets; the GTX 1060-class run and the
+     authored LOD pop test remain.
 
 6. [ ] **Fleet expansion.**
    - Add the P-51D-25 (the SPEC 1.0 third flyable) and then the agreed AI types, reusing
@@ -186,6 +194,7 @@ godot --headless --path game scenes/Main.tscn -- --mission-test   # landed=1
 ./tools/net_smoke_test.sh 7801                                    # server + 2 clients
 ./tools/cockpit_smoke_test.sh spitfire-mk9                        # no frustum errors
 ./tools/cockpit_smoke_test.sh bf109-g6
+./tools/aircraft_perf_test.sh                                     # 1/6-aircraft budgets
 ```
 
 Cockpit review (needs a display):
@@ -276,6 +285,9 @@ measured; the art budget is the schedule risk, not the code.
 
 ## Changelog
 
+- 2026-11-27 — `c1f74e6` — renderer cost fields in telemetry, 1/6-aircraft perf script
+  and budget check; solo 358 draws / 6.25 ms, six aircraft 981 draws / 6.25 ms on the
+  RX 9060 XT.
 - 2026-11-27 — `34ab626` — Bf 109 and Ju 88 orthographic silhouette sheets; spans exact,
   Bf 109 5 cm over 9.02 m, Ju 88 length exact.
 - 2026-11-27 — `788f44f` — Spitfire cockpit structural pass (eight-gauge panel, seat,
