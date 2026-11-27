@@ -118,13 +118,15 @@ writes `ortho/tile_XX_YY.jpg` into the 30 m bundle.
 - **120 m fallback:** `--resolution 120` renders 535² tiles on the same grid. Four
   scenes per 120 m tile take ≈4 min; two scenes are much faster but leave visible
   gaps, so regional rings use four. The runtime stitches mixed 30 m/120 m rings,
-  upscaling the coarser neighbours to the finest tile present. A 5×5 ring around the
-  30 m demo area (≈16 extra tiles) gives a 320 km fallback at 4× the Blue Marble
-  resolution.
+  upscaling the coarser neighbours to the finest tile present. A 7×7 ring around the
+  30 m demo area (40 extra tiles, ≈30 MB) gives a 448 km fallback at 4× the Blue Marble
+  resolution; a 120 m-only 3×3 stitches to 1,603² (≈7.4 MB), while the 30 m set
+  stitches to 6,409² (≈117.5 MB).
 - **Coverage:** generating every European 30 m tile is a multi-day batch; 120 m is
   still hours. The generator is resumable and works per tile/region. Missing tiles
   fall back to Blue Marble / regional imagery. The local build has a 3×3 30 m set
-  (9 tiles, ≈25 MB) around the Rhine–Frankfurt lowland plus a 5×5 120 m ring.
+  (9 tiles, ≈25 MB) around the Rhine–Frankfurt lowland plus a 7×7 120 m ring
+  (49 tiles total, ≈30 MB).
 - **Exports:** generated `ortho/*.jpg` files are included when present; they are small
   enough to add a region without resizing the package much.
 

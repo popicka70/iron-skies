@@ -120,7 +120,7 @@ renders 64 km tiles on the same grid, and the runtime stitches the centre 3×3 i
 30 m tiles take 5–8 minutes each; a 120 m fallback (`--resolution 120 --scenes 4`)
 takes ~4 minutes and produces a 1,603² stitched texture, four times sharper than Blue
 Marble. The current local build has a 3×3 30 m set (tile 39,27, Rhine–Frankfurt) plus a
-5×5 120 m ring around it. Generate more with `--around-east/--around-north --radius`.
+7×7 120 m ring around it (49 tiles, ≈30 MB). Generate more with `--around-east/--around-north --radius`.
 
 ![Sentinel-2 ortho tile](docs/media/m0-europe-ortho.jpg)
 
@@ -145,7 +145,7 @@ python3 tools/check_height_tiles.py \
 python3 tools/build_ortho_tiles.py \
     --around-east 500000 --around-north 250000 --radius 1
 python3 tools/build_ortho_tiles.py \
-    --around-east 500000 --around-north 250000 --radius 2 \
+    --around-east 500000 --around-north 250000 --radius 3 \
     --resolution 120 --scenes 4
 ```
 
