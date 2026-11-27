@@ -44,7 +44,7 @@ Measured blockout state (LOD0, Godot auto-LOD enabled on import):
 | Aircraft | Tris | Span / length | GLB | Materials | Notes |
 | --- | --- | --- | --- | --- | --- |
 | Spitfire LF Mk IX | 22,812 | 11.23 / 9.55 m | 1.86 MB | 15 | elliptical wing, roundels, RAF camo, detailed cockpit |
-| Bf 109 G-6 | 18,292 | 9.92 / 9.07 m | 1.5 MB | 13 | Erla canopy, cowl bulges, RLM 74/75 |
+| Bf 109 G-6 | 19,264 | 9.92 / 9.07 m | 1.58 MB | 14 | Erla canopy, cowl bulges, RLM 74/75, structural cockpit |
 | Ju 88 A-4 | 18,056 | 20.10 / 14.36 m | 1.2 MB | 10 | twin nacelles, greenhouse, gondola |
 
 Known gaps:
@@ -56,10 +56,10 @@ Known gaps:
   model-only sheets; their reference overlays are still to do.
 - Surface detail is geometry panel lines plus a triplanar camo map; no rivets, access
   panels, fabric rib tapes, exhaust staining, chipped paint or oil streaks.
-- The Spitfire cockpit has a structural pass: tub, cushioned seat, harness and buckles,
-  armoured headrest, pedals, control column and grip, throttle/mixture, three-section
-  eight-gauge panel, compass, canopy rails and sidewall ribs, beveled edges and a warm
-  fill light. The Bf 109 and Ju 88 interiors are still blockout, and the 3D gauge needles
+- Both flyable fighters have a structural cockpit pass: tub, cushioned seat, harness and
+  buckles, armoured headrest, pedals, control column and grip, throttle/mixture,
+  three-section eight-gauge panel, compass, canopy rails and sidewall ribs, beveled edges
+  and a warm fill light. The Ju 88 is AI-only and keeps its blockout. The 3D gauge needles
   are not driven (the 2D `CockpitPanel` stays authoritative).
 - Damage is a smoke emitter anchored at the engine; no bullet holes, missing panels or
   scorch decals.
@@ -137,13 +137,15 @@ where it keeps review manageable. Push every commit.
      eight-gauge panel, compass, gunsight with sun shade, canopy rails, sidewall ribs and
      a bevel; the eye point is adjustable with PageUp/PageDown or `--seat-height`
      (0.58–0.86 m) and a warm fill light is active only in cockpit view.
-   - [ ] Drive the 3D gauge needles from `AircraftSimulator` telemetry; the Bf 109 cockpit
-     follows the same layout.
+   - [x] Bf 109 structural interior *(done 2026-11-27)*: the same layout adapted to the
+     narrower Erla cockpit, with a Revi sight and sun shade; 19,264 tris.
+   - [ ] Drive the 3D gauge needles from `AircraftSimulator` telemetry.
    - Acceptance: a cockpit screenshot shows the panel and canopy frame, the eye point is
      adjustable, and the 2D `CockpitPanel` remains the readable fallback.
-   - Current result: `docs/media/aircraft/spitfire-mk9-cockpit.jpg` shows the canopy
-     frame, gunsight, coaming and 3D panel over the rendered world, with the live 2D panel
-     below; the eye height changes the framing. Gauge needles remain 2D-only.
+   - Current result: `docs/media/aircraft/spitfire-mk9-cockpit.jpg` and
+     `bf109-g6-cockpit.jpg` show the canopy frame, gunsight, coaming and 3D panel over the
+     rendered world, with the live 2D panel below; the eye height changes the framing.
+     Gauge needles remain 2D-only.
 
 4. [ ] **Damage, wear and markings.**
    - Bullet-hole and missing-panel decals, scorch/oil/exhaust masks, chipped paint on
@@ -274,8 +276,8 @@ Recommended order for the next session:
 2. Repeat for the Bf 109 and Ju 88; update the reference register with any new source.
 3. Step 2 on the Spitfire: bake pipeline and surface detail, then evaluate VRAM/texel
    density before applying it to the other two.
-4. Step 3: the renderer blocker and the Spitfire structural interior are done; wire the
-   3D gauge needles to sim telemetry, then build the Bf 109 cockpit from the same layout.
+4. Step 3: the renderer blocker and both fighter structural interiors are done; wire the
+   3D gauge needles to sim telemetry. The Ju 88 is AI-only and needs no cockpit.
 5. Step 4 damage/wear, then step 5 LOD/perf; do not start step 5 before the texture
    atlas/VRAM decision.
 6. Step 6 P-51D only after the three current aircraft pass the art review.
@@ -285,6 +287,8 @@ measured; the art budget is the schedule risk, not the code.
 
 ## Changelog
 
+- 2026-11-27 — `dff9ddf` — Bf 109 structural cockpit (Erla tub adapted from the Spitfire
+  layout, Revi sight, 19,264 tris) with a review screenshot.
 - 2026-11-27 — `c1f74e6` — renderer cost fields in telemetry, 1/6-aircraft perf script
   and budget check; solo 358 draws / 6.25 ms, six aircraft 981 draws / 6.25 ms on the
   RX 9060 XT.
