@@ -50,6 +50,7 @@ public sealed partial class TerrainWorld : Node3D
     private ShaderMaterial _material = null!;
     private MeshInstance3D _baseNode = null!;
     private MountainPatchManager? _patchManager;
+    private RenderOrigin? _renderOrigin;
     private string _textureDirectory = "";
     private Vector3 _focus;
     private double _updateTimer;
@@ -511,7 +512,7 @@ public sealed partial class TerrainWorld : Node3D
         return mesh;
     }
 
-    private static ShaderMaterial CreateMaterial(ITerrainSource map, string directory)
+    private ShaderMaterial CreateMaterial(ITerrainSource map, string directory)
     {
         var shader = GD.Load<Shader>("res://assets/shaders/terrain.gdshader");
         var material = new ShaderMaterial { Shader = shader };
@@ -528,9 +529,37 @@ public sealed partial class TerrainWorld : Node3D
             material.SetShaderParameter("landcover_tex", landcover);
         }
 
-        float half = (float)map.HalfExtent;
-        material.SetShaderParameter("map_rect", new Vector4(-half, -half, 2.0f * half, 2.0f * half));
+        material.SetShaderParameter("map_rect", MapRect());
         return material;
+    }
+
+    /// <summary>
+    /// Shifts every world-space rect the terrain shader uses into render space. The
+    /// mesh vertices stay in absolute ENU; the single world-root parent carries the
+    /// floating-origin translation, so a rebase only updates these uniforms.
+    /// </summary>
+    public void SetRenderOrigin(RenderOrigin origin)
+    {
+        _renderOrigin = origin;
+        if (_material is null)
+        {
+            return;
+        }
+
+        _material.SetShaderParameter("map_rect", MapRect());
+        // Force the inset pass to re-apply its rects instead of early-returning on
+        // the unchanged inset key.
+        _insetKey = "";
+        UpdateInsets();
+        ApplyDetailOrtho();
+    }
+
+    private Vector4 MapRect()
+    {
+        float half = (float)_mapHalfMeters;
+        float ox = (float)(_renderOrigin?.East ?? 0.0);
+        float oz = (float)(_renderOrigin?.North ?? 0.0);
+        return new Vector4(-half - ox, -half + oz, 2.0f * half, 2.0f * half);
     }
 
     private void ConfigureInsets()
@@ -699,8 +728,12 @@ public sealed partial class TerrainWorld : Node3D
             return;
         }
 
+        Vector4 rect = _patchManager.DetailOrthoRect;
+        float ox = (float)(_renderOrigin?.East ?? 0.0);
+        float oz = (float)(_renderOrigin?.North ?? 0.0);
         _material.SetShaderParameter("detail_tex", _patchManager.DetailOrthoTexture);
-        _material.SetShaderParameter("detail_rect", _patchManager.DetailOrthoRect);
+        _material.SetShaderParameter(
+            "detail_rect", new Vector4(rect.X - ox, rect.Y + oz, rect.Z, rect.W));
         _material.SetShaderParameter("detail_enabled", 1.0f);
     }
 
@@ -714,8 +747,10 @@ public sealed partial class TerrainWorld : Node3D
 
         TerrainLayer layer = inset.Layer;
         float half = (float)layer.Map.HalfExtent;
-        float centerX = (float)layer.OffsetEast;
-        float centerZ = (float)(-layer.OffsetNorth);
+        float ox = (float)(_renderOrigin?.East ?? 0.0);
+        float oz = (float)(_renderOrigin?.North ?? 0.0);
+        float centerX = (float)layer.OffsetEast - ox;
+        float centerZ = (float)(-layer.OffsetNorth) + oz;
         _material.SetShaderParameter($"{prefix}_tex", inset.Texture);
         _material.SetShaderParameter(
             $"{prefix}_rect",

@@ -1,6 +1,6 @@
 # Terrain, maps and persistence
 
-> **Current workstream:** [specs/0001-continental-terrain.md](../specs/0001-continental-terrain.md) — remaining continental imagery, tile I/O, floating origin and vector detail. This page describes the implemented system.
+> **Current workstream:** [specs/0001-continental-terrain.md](../specs/0001-continental-terrain.md) — remaining continental imagery and vector detail; tile I/O and floating origin are implemented. This page describes the implemented system.
 
 ## 1. Principles
 
@@ -241,7 +241,8 @@ No application-level rewrite is expected; only the repository implementation cha
   at 4096² (optionally 8192²); the runtime keeps the same 10 km detailed ring.
 - Continental baseline: 4,000 × 4,000 km, 2001² ETOPO1 samples at 2 km, NASA Blue Marble
   at 4096² (≈1 km/px), with the 400 km/40 km layers composited on top. Floating-origin
-  rebasing is required before low-level flight at the map edges.
+  rebasing (ADR-0006) is implemented; `--precision-test` reports the worst float32
+  round-trip error at the map corners and must stay below 10 mm.
 - Alpine baseline: 400 × 400 km, 8001² Copernicus GLO-30 samples at 50 m, Blue Marble
   ortho at 4096², offset over the Europe base; height range −7…4,532 m.
 - Visual: side-by-side screenshots vs. reference photos at 6 landmark locations.

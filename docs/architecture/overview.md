@@ -57,13 +57,16 @@ decoupled and interpolated.
 
 ## Coordinate systems
 
-- **Simulation:** local east-north-up (ENU) tangent frame anchored at a 4 km origin
-  cell. All sim math is double precision.
-- **Rendering:** Godot world space (float32), rebased to the camera-relative origin.
-- **Floating origin:** when the player is more than 4 km from the origin, the origin
-  shifts by whole cells; static transforms are re-based in a single deferred pass,
-  entities keep local offsets, and the change is invisible to physics because the sim
-  works in origin-relative doubles.
+- **Simulation:** absolute east-north-up (ENU) double precision, anchored to the
+  theatre origin. At 2,000 km the double frame is still sub-millimetre.
+- **Rendering:** Godot world space (float32), relative to a 4 km `RenderOrigin` cell.
+- **Floating origin:** `RenderOrigin` snaps to the 4 km cell containing the player.
+  All static world geometry (terrain, OSM, airfield, rivers, clouds, combat targets)
+  lives under one `WorldRoot` node that moves by the cell delta; dynamic visuals
+  subtract the origin each frame through `SimBridge.ToGodot(..., origin)`; the terrain
+  shader rects are re-expressed in render space. No mesh is rebuilt and the sim/server
+  stays in absolute doubles. Network snapshots keep their per-recipient anchor and are
+  converted to render space only on the client.
 - **Geodesy:** conversions between WGS-84 lat/lon and ENU use a documented ellipsoid
   model (shared geodesy module, M4), used by the map pipeline and runtime spawn points.
 

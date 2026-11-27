@@ -29,6 +29,17 @@ physics and networking all need consistent coordinates.
   from origin. Rejected.
 - **Rebase every frame:** unnecessary churn and float32 rounding noise in static geometry.
 
+## Implementation note (2026-11-27)
+
+The accepted implementation keeps the simulation and authoritative server in
+**absolute double ENU** (double precision is still sub-millimetre at 2,000 km) and
+applies the 4 km cell only to rendering. All static world geometry sits under one
+`WorldRoot` node that moves by the cell delta; the terrain shader's map/inset/detail
+rects are re-expressed in render space; dynamic visuals subtract the origin through
+`SimBridge.ToGodot(..., origin)`. Network snapshots already carry a per-recipient
+anchor, so the wire format did not change. `--precision-test` reports 0.0252 mm worst
+float32 round-trip error at ±2,000 km (budget 10 mm).
+
 ## Consequences
 
 - Every system that stores world positions must use the origin-relative API; a lint rule

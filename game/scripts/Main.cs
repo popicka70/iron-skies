@@ -38,6 +38,8 @@ public partial class Main : Node3D
     private ITerrainSource _heightmap = null!;
     private IGroundSurface _ground = null!;
     private TerrainWorld _terrain = null!;
+    private Node3D _worldRoot = null!;
+    private readonly RenderOrigin _renderOrigin = new();
     private MountainPatchManager? _patchManager;
     private AircraftVisual _aircraft = null!;
     private DamageSmoke _playerSmoke = null!;
@@ -84,6 +86,8 @@ public partial class Main : Node3D
     private bool _bomberStart;
     private double _downTimer;
 
+    private bool _snapCamera = true;
+    private bool _quitAfterInit;
     private double _throttle = 0.75;
     private double _brake;
     private double _radiator = 0.5;
@@ -156,6 +160,14 @@ public partial class Main : Node3D
         GameSettings.Load();
         GameSettings.ApplyAudio();
         GameSettings.ApplyDisplay();
+        if (HasUserFlag("--precision-test"))
+        {
+            GD.Print(RenderOrigin.PrecisionReport());
+            _quitAfterInit = true;
+            GetTree().Quit();
+            return;
+        }
+
         _screenshotPath = ReadUserOption("--screenshot");
         _recordPath = ReadUserOption("--record");
         _replayPath = ReadUserOption("--replay");
@@ -336,7 +348,7 @@ public partial class Main : Node3D
         BuildAircraft();
         _combat = new CombatVisual();
         _combat.Build();
-        AddChild(_combat);
+        _worldRoot.AddChild(_combat);
         BuildCamera();
         BuildHud();
         _hud.Scale = new Vector2(GameSettings.HudScale, GameSettings.HudScale);
@@ -349,6 +361,11 @@ public partial class Main : Node3D
 
     public override void _PhysicsProcess(double delta)
     {
+        if (_quitAfterInit)
+        {
+            return;
+        }
+
         HotasInput.Update();
 
         if (_replaying)
@@ -495,14 +512,17 @@ public partial class Main : Node3D
             steps++;
         }
 
-        _aircraft.GlobalTransform = SimBridge.ToGodot(_sim.State.Orientation, _sim.State.Position);
+        UpdateRenderOrigin();
+        _aircraft.GlobalTransform = SimBridge.ToGodot(
+            _sim.State.Orientation, _sim.State.Position, _renderOrigin);
         _aircraft.UpdateFrom(_sim, delta);
         _playerSmoke.Update(_sim.Damage.Smoke, _sim.Damage.Fire);
         foreach (Enemy enemy in _enemies)
         {
             enemy.Smoke.Update(enemy.Sim.Damage.Smoke, enemy.Sim.Damage.Fire);
             enemy.Visual.GlobalTransform = SimBridge.ToGodot(
-                enemy.Sim.State.Orientation, enemy.Sim.State.Position);
+                enemy.Sim.State.Orientation, enemy.Sim.State.Position,
+                _renderOrigin);
             enemy.Visual.UpdateFrom(enemy.Sim, delta);
             enemy.Visual.Visible = !enemy.Sim.Destroyed
                 || enemy.Sim.State.Position.Z > _heightmap.HeightAt(
@@ -516,8 +536,9 @@ public partial class Main : Node3D
         foreach (Bomber bomber in _bombers)
         {
             bomber.Smoke.Update(bomber.Sim.Damage.Smoke, bomber.Sim.Damage.Fire);
-            bomber.Visual.SetExternalTransform(
-                bomber.Sim.State.Position, bomber.Sim.State.Orientation);
+            bomber.Visual.GlobalTransform = SimBridge.ToGodot(
+                bomber.Sim.State.Orientation, bomber.Sim.State.Position,
+                _renderOrigin);
             bomber.Visual.UpdateExternal(
                 bomber.Sim.EngineRpm, bomber.Sim.FlapPosition, bomber.Sim.GearPosition, delta);
             bomber.Visual.Visible = !bomber.Sim.Destroyed
@@ -533,7 +554,8 @@ public partial class Main : Node3D
         {
             wingman.Smoke.Update(wingman.Sim.Damage.Smoke, wingman.Sim.Damage.Fire);
             wingman.Visual.GlobalTransform = SimBridge.ToGodot(
-                wingman.Sim.State.Orientation, wingman.Sim.State.Position);
+                wingman.Sim.State.Orientation, wingman.Sim.State.Position,
+                _renderOrigin);
             wingman.Visual.UpdateFrom(wingman.Sim, delta);
             wingman.Visual.Visible = !wingman.Sim.Destroyed
                 || wingman.Sim.State.Position.Z > _heightmap.HeightAt(
@@ -543,7 +565,7 @@ public partial class Main : Node3D
         _hud.Visible = _hudVisible;
         _crosshair.Visible = _hudVisible;
         _cockpitPanel.Visible = _hudVisible && _cameraMode == CameraMode.Cockpit;
-        _terrain.SetFocus(_aircraft.GlobalPosition);
+        _terrain.SetFocus(SimBridge.ToGodot(_sim.State.Position));
         UpdateCamera(delta);
 
         if (_takeoffTest)
@@ -613,6 +635,11 @@ public partial class Main : Node3D
 
     public override void _Process(double delta)
     {
+        if (_quitAfterInit)
+        {
+            return;
+        }
+
         // The HUD is not a hot path: update it at 10 Hz and reuse one builder.
         _hudTimer += delta;
         if (_hudTimer < 0.1)
@@ -1285,6 +1312,11 @@ public partial class Main : Node3D
             _sim.SetGearAndFlaps(0.0, 0.0);
         }
 
+        // Place the world in the new origin cell before the initial enemies and
+        // wingmen are created, so their first transforms are already relative.
+        UpdateRenderOrigin(force: true);
+        _snapCamera = true;
+
         GD.Print($"[start] {startLocation?.Id ?? "custom"} east={east:0} north={north:0} "
                  + $"airborne={airborne} gear={_sim.GearPosition:0.00}");
 
@@ -1381,7 +1413,8 @@ public partial class Main : Node3D
             var smoke = new DamageSmoke();
             visual.GetSmokeAnchor().AddChild(smoke);
             smoke.Build();
-            visual.SetExternalTransform(state.Position, state.Orientation);
+            visual.GlobalTransform = SimBridge.ToGodot(
+                state.Orientation, state.Position, _renderOrigin);
 
             _bombers.Add(new Bomber
             {
@@ -1461,7 +1494,8 @@ public partial class Main : Node3D
             var smoke = new DamageSmoke();
             visual.GetSmokeAnchor().AddChild(smoke);
             smoke.Build();
-            visual.GlobalTransform = SimBridge.ToGodot(state.Orientation, state.Position);
+            visual.GlobalTransform = SimBridge.ToGodot(
+                state.Orientation, state.Position, _renderOrigin);
 
             _wingmen.Add(new Wingman
             {
@@ -1588,7 +1622,8 @@ public partial class Main : Node3D
             var smoke = new DamageSmoke();
             visual.GetSmokeAnchor().AddChild(smoke);
             smoke.Build();
-            visual.GlobalTransform = SimBridge.ToGodot(state.Orientation, state.Position);
+            visual.GlobalTransform = SimBridge.ToGodot(
+                state.Orientation, state.Position, _renderOrigin);
 
             _sim.AddTarget(target);
             sim.AddTarget(_playerTarget);
@@ -1712,22 +1747,27 @@ public partial class Main : Node3D
         GD.Print($"Theatre: {theatreId}");
         var timer = Stopwatch.StartNew();
         _ground = new AirfieldSurface(_heightmap);
+        // All static world geometry shares one parent. A floating-origin rebase
+        // moves this node instead of touching every mesh or instance.
+        _worldRoot = new Node3D { Name = "WorldRoot" };
+        AddChild(_worldRoot);
         _terrain = new TerrainWorld();
         _terrain.Build(_heightmap, directory, _patchManager);
-        AddChild(_terrain);
+        _terrain.SetRenderOrigin(_renderOrigin);
+        _worldRoot.AddChild(_terrain);
 
         var osm = new OsmDetail();
         osm.Build(_heightmap, osmPath);
-        AddChild(osm);
+        _worldRoot.AddChild(osm);
         var airfield = new Airfield();
         airfield.Build(_heightmap);
-        AddChild(airfield);
+        _worldRoot.AddChild(airfield);
         var clouds = new Cloudscape();
         clouds.Build();
-        AddChild(clouds);
+        _worldRoot.AddChild(clouds);
 
         var rivers = new RiverNetwork();
-        AddChild(rivers);
+        _worldRoot.AddChild(rivers);
         rivers.Build(_heightmap, riverData);
 
         timer.Stop();
@@ -1892,6 +1932,39 @@ public partial class Main : Node3D
         }
     }
 
+    /// <summary>
+    /// Rebases the render frame when the player crosses a 4 km cell. Static geometry
+    /// moves with one parent node; the terrain shader rects are re-expressed in the
+    /// new render space; the chase camera is shifted with the same delta so smoothing
+    /// stays continuous.
+    /// </summary>
+    private void UpdateRenderOrigin(bool force = false)
+    {
+        double oldEast = _renderOrigin.East;
+        double oldNorth = _renderOrigin.North;
+        bool changed = _renderOrigin.Update(
+            _sim.State.Position.X, _sim.State.Position.Y);
+        if (!changed && !force)
+        {
+            return;
+        }
+
+        if (_worldRoot is not null)
+        {
+            _worldRoot.Position = _renderOrigin.WorldNodePosition;
+        }
+
+        _terrain?.SetRenderOrigin(_renderOrigin);
+
+        if (changed && _camera is not null)
+        {
+            _camera.GlobalPosition += new Vector3(
+                (float)(oldEast - _renderOrigin.East),
+                0.0f,
+                (float)(_renderOrigin.North - oldNorth));
+        }
+    }
+
     private void UpdateCamera(double delta)
     {
         _camera.Near = _cameraMode == CameraMode.Cockpit ? 0.05f : 1.0f;
@@ -1899,7 +1972,7 @@ public partial class Main : Node3D
 
         if (_cameraMode == CameraMode.Top)
         {
-            Vector3 target = SimBridge.ToGodot(_sim.State.Position);
+            Vector3 target = SimBridge.ToGodot(_sim.State.Position, _renderOrigin);
             _camera.GlobalPosition = target + new Vector3(0.0f, 700.0f, 0.0f);
             _camera.LookAt(target, new Vector3(0.0f, 0.0f, -1.0f));
             return;
@@ -1908,7 +1981,8 @@ public partial class Main : Node3D
         if (_cameraMode == CameraMode.Cockpit)
         {
             var cockpitBasis = SimBridge.ToGodot(_sim.State.Orientation);
-            Vector3 aircraft = SimBridge.ToGodot(_sim.State.Position);
+            Vector3 aircraft = SimBridge.ToGodot(
+                _sim.State.Position, _renderOrigin);
             Vector3 eye = aircraft + cockpitBasis.Y * 0.66f - cockpitBasis.Z * 0.05f;
             Basis look = cockpitBasis.Rotated(Vector3.Up, _lookYaw);
             look = look.Rotated(look.X, _lookPitch);
@@ -1916,7 +1990,7 @@ public partial class Main : Node3D
             return;
         }
 
-        Vector3 position = SimBridge.ToGodot(_sim.State.Position);
+        Vector3 position = SimBridge.ToGodot(_sim.State.Position, _renderOrigin);
         var basis = SimBridge.ToGodot(_sim.State.Orientation);
         Vector3 forward = -basis.Z;
         Vector3 up = basis.Y;
@@ -1926,12 +2000,19 @@ public partial class Main : Node3D
         Vector3 desired = position
             + backDir * (_chaseDistance * Mathf.Cos(pitchRad))
             + up * (_chaseDistance * Mathf.Sin(pitchRad));
-        double ground = _heightmap.HeightAt(desired.X, -desired.Z);
+        double ground = _heightmap.HeightAt(
+            _renderOrigin.AbsoluteEast(desired.X),
+            _renderOrigin.AbsoluteNorth(desired.Z));
         desired.Y = Mathf.Max(desired.Y, (float)ground + 3.0f);
 
         float smoothing = 1.0f - Mathf.Exp(-6.0f * (float)delta);
-        Vector3 smoothed = _camera.GlobalPosition.Lerp(desired, smoothing);
-        double smoothedGround = _heightmap.HeightAt(smoothed.X, -smoothed.Z);
+        Vector3 smoothed = _snapCamera
+            ? desired
+            : _camera.GlobalPosition.Lerp(desired, smoothing);
+        _snapCamera = false;
+        double smoothedGround = _heightmap.HeightAt(
+            _renderOrigin.AbsoluteEast(smoothed.X),
+            _renderOrigin.AbsoluteNorth(smoothed.Z));
         smoothed.Y = Mathf.Max(smoothed.Y, (float)smoothedGround + 2.0f);
         _camera.GlobalPosition = smoothed;
         _camera.LookAt(position + forward * 8.0f, up);
