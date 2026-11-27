@@ -64,7 +64,16 @@ _ROWS = "ABCDEFGHJKLMNPQRSTUV"
 
 
 def mgrs_tile_id(lon: float, lat: float) -> str:
-    """Return the 100 km MGRS tile id (e.g. ``32ULB``) for a WGS84 point."""
+    """Return the 100 km MGRS tile id (e.g. ``32ULB``) for a WGS84 point.
+
+    The S2GM product names a tile with the latitude band that contains the
+    tile *centre*, not the point being looked up. A 100 km row that straddles
+    a band boundary therefore belongs to the next band: the top row of band R
+    at zone 31 is published as ``31S..R``, and ``31R..R`` does not exist.
+    Deriving the band from the point instead leaves the northern few
+    kilometres of every such game tile without a source tile (the black
+    no-data bands this function used to produce).
+    """
     if not (-80.0 <= lat < 84.0):
         raise ValueError(f"latitude outside MGRS coverage: {lat}")
 
@@ -82,7 +91,6 @@ def mgrs_tile_id(lon: float, lat: float) -> str:
         elif 33.0 <= lon < 42.0:
             zone = 37
 
-    band = _BANDS[int((lat + 80.0) // 8.0)]
     epsg = (32600 if lat >= 0.0 else 32700) + zone
     easting, northing = transform(
         "EPSG:4326", f"EPSG:{epsg}", [lon], [lat]
@@ -91,6 +99,13 @@ def mgrs_tile_id(lon: float, lat: float) -> str:
 
     column = int(easting // 100_000)
     row = int(northing // 100_000)
+    centre_e = (column + 0.5) * 100_000.0
+    centre_n = (row + 0.5) * 100_000.0
+    _, centre_lat = transform(
+        f"EPSG:{epsg}", "EPSG:4326", [centre_e], [centre_n]
+    )
+    band_index = int((float(centre_lat[0]) + 80.0) // 8.0)
+    band = _BANDS[max(0, min(len(_BANDS) - 1, band_index))]
     column_letter = _COLUMNS[zone % 3][column - 1]
     row_letter = _ROWS[(row + (5 if zone % 2 == 0 else 0)) % 20]
     return f"{zone:02d}{band}{column_letter}{row_letter}"

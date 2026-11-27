@@ -66,6 +66,9 @@ python3 tools/build_ortho_batch.py \
 # Plan the full continental fallback without building
 python3 tools/build_ortho_batch.py --all --resolution 120 --dry-run
 
+# Fill no-data gaps and average shared edges after a continental batch
+python3 tools/fix_ortho_gaps.py game/assets/terrain/europe-30m-tiles-1944
+
 # Check every generated tile for holes and edge seams
 python3 tools/check_ortho_tiles.py game/assets/terrain/europe-30m-tiles-1944
 ```
@@ -78,20 +81,20 @@ MGRS helper against known tiles.
 
 ## Current generated set (local, not committed)
 
-83 tiles, 35.6 MiB of `.bin` data, all passing `check_ortho_tiles.py` with
-`fill ≤ 2%`, `mean edge seam ≤ 24`:
+The **full continental fallback is generated**: 2,037 tiles (2,010 at 120 m, 27 at
+30 m), 152.8 MiB of `.bin` data, all passing `check_ortho_tiles.py` with
+`mean edge seam ≤ 24` and no holes. The 120 m batch built 1,955 new tiles in 8,826 s
+with eight workers; `fix_ortho_gaps.py` then filled 2.67 M no-data pixels and blended
+3,707 shared edges.
 
-| Region | Tiles | Resolution |
+| Set | Tiles | Resolution |
 | --- | --- | --- |
-| Rhine demo (36–42 × 23–30) | 47 | 120 m |
-| Rhine demo priority (38–40 × 26–28) | 9 | 30 m |
-| Normandy airfield (30–32 × 30–32) | 9 | 120 m |
-| Alps (42–44 × 33–35) | 9 | 30 m |
-| Scandes south (37–39 × 8–10) | 9 | 30 m |
+| Continental fallback (all land tiles) | 2,010 | 120 m |
+| Rhine demo priority | 9 | 30 m |
+| Alps / Scandes 30 m rings | 18 | 30 m |
 
-A full continental 120 m set is ~2,037 land tiles: roughly 3–4 h with four workers and
-~165 MiB of output. It is a resumable local batch, not a single session, and the
-generated bundle stays git-ignored.
+Generated bundles stay git-ignored. The 120 m output is ~153 MiB, small enough to ship
+in the optional bundle rather than the core installer.
 
 ## Range imagery
 
