@@ -261,6 +261,8 @@ and the 120 m fallback is the intended continental tier.
 
 ## Changelog
 
+- 2026-11-27 — `1282fb4` — streamed 16 km OSM tiles with near/mid/far LOD, chunked
+  builds and a 48 km generated Normandy ring; EU-Hydro evaluated and deferred.
 - 2026-11-27 — `f7990d3` — 4 km floating-origin rendering with one world root and
   camera-relative visuals; `--precision-test` at 0.0252 mm, rendered reposes aligned.
 - 2026-11-27 — `7632302` — S2GM quarterly cloudless mosaic adopted; resumable ortho batch
