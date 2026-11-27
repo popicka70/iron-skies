@@ -239,6 +239,11 @@ git. Hand-painting in Blender is the fallback for hero details.
 
 ### Phase D — cockpit
 
+- Renderer prerequisite (done 2026-11-27): the cockpit near plane is 0.05 m, so the
+  camera far plane is capped at 120 km. The old 6,000 km far plane made the far/near
+  ratio 1.2×10⁸ and the clustered light culler's float frustum degenerated
+  (`create_frustum_points`), leaving the 3D view blank. `tools/cockpit_smoke_test.sh`
+  runs a non-headless cockpit sortie and fails on that error.
 - Cockpit tub with correct side-wall structure, floor, rudder pedals, control column,
   throttle quadrant, seat, armour, harness, canopy rails, gunsight and instrument
   panel.

@@ -56,9 +56,11 @@ Known gaps:
 - Damage is a smoke emitter anchored at the engine; no bullet holes, missing panels or
   scorch decals.
 - LODs are Godot-generated; no authored LOD1/2, shadow LOD or imposter.
-- Cockpit view currently renders empty on the development machine, both on `main` and
-  this branch, with a Godot `create_frustum_points` error. This is a pre-existing
-  camera/renderer issue, not caused by the art pass, but it blocks cockpit acceptance.
+- Cockpit view now renders (canopy frame, gunsight, panel and world) after fixing the
+  depth-range bug: the camera kept a 6,000 km far plane against a 0.05 m cockpit near
+  plane (ratio 1.2×10⁸), which degenerated Godot's float light-culler frustum
+  (`create_frustum_points`) and blanked the 3D view. The far plane is now 120 km, and
+  `tools/cockpit_smoke_test.sh` guards it. The interior itself is still the blockout.
 - The 150k–300k LOD0 target in the rendering architecture is not reached; the blockout
   is 18–22k and the detail must come from subdivision/bevel plus normal/AO bakes.
 
@@ -108,13 +110,17 @@ where it keeps review manageable. Push every commit.
      texture/VRAM numbers are recorded.
 
 3. [ ] **Cockpit repair and interior pass.**
-   - First fix the pre-existing cockpit camera/renderer failure (`create_frustum_points`)
-     with a reproducible test; do not hide it under the art change.
-   - Then build the final tub, seat/harness, armoured headrest, throttle, pedals, control
+   - [x] Fix the pre-existing cockpit camera/renderer failure (`create_frustum_points`)
+     with a reproducible test *(done 2026-11-27)*: the 6,000 km far plane was lowered to
+     120 km, and `tools/cockpit_smoke_test.sh` fails on the engine error for both
+     fighters.
+   - [ ] Build the final tub, seat/harness, armoured headrest, throttle, pedals, control
      column, gunsight, canopy rails and instrument panel; drive gauge needles from
      `AircraftSimulator` telemetry.
    - Acceptance: a cockpit screenshot shows the panel and canopy frame, the eye point is
      adjustable, and the 2D `CockpitPanel` remains the readable fallback.
+   - Current result: the screenshot now shows the canopy frame, gunsight and panel over
+     the rendered world; the interior is still the blockout, so acceptance is not met.
 
 4. [ ] **Damage, wear and markings.**
    - Bullet-hole and missing-panel decals, scorch/oil/exhaust masks, chipped paint on
@@ -155,6 +161,8 @@ python3 tools/check_licenses.py
 godot --headless --path game scenes/Main.tscn -- --takeoff-test   # 832 m
 godot --headless --path game scenes/Main.tscn -- --mission-test   # landed=1
 ./tools/net_smoke_test.sh 7801                                    # server + 2 clients
+./tools/cockpit_smoke_test.sh spitfire-mk9                        # no frustum errors
+./tools/cockpit_smoke_test.sh bf109-g6
 ```
 
 Per-model validation (repeat for `spitfire-mk9`, `bf109-g6`, `ju88-a4`):
@@ -193,9 +201,12 @@ numeric threshold alone. Record the reviewer, date and any accepted deviations.
 - **150k–300k LOD0 is a target, not a starting point.** The current blockout is 18–22k.
   Add detail through high-poly bevels/panel cages and normal/AO bakes, then measure VRAM
   and frame time before increasing density. Godot’s auto-LOD is a temporary bridge.
-- **Cockpit view is a pre-existing blocker.** The `create_frustum_points` failure is
-  reproducible on `main`; fix it as its own commit before judging cockpit art. Do not
-  mask it by keeping the 2D overlay only.
+- **Camera depth range is a rendering constraint.** The cockpit needs a 0.05 m near
+  plane, so the far plane must stay well under a 6,000 km map diagonal. Godot's clustered
+  light culler intersects the float frustum planes and degenerates past a far/near ratio
+  near 1×10⁸ (`create_frustum_points`); 120 km works and is already beyond the fog
+  horizon. Keep `tools/cockpit_smoke_test.sh` in the per-change checks when touching the
+  camera or fog.
 - **Triplanar camouflage is a blockout shortcut.** It avoids seams today but cannot carry
   per-face decals, stencils and weathering cleanly. The final pass moves to a UV atlas +
   decal masks; do not build the damage/wear layer on triplanar coordinates.
@@ -217,8 +228,8 @@ Recommended order for the next session:
 2. Repeat for the Bf 109 and Ju 88; update the reference register with any new source.
 3. Step 2 on the Spitfire: bake pipeline and surface detail, then evaluate VRAM/texel
    density before applying it to the other two.
-4. Step 3: fix the cockpit camera/renderer bug, then build the Spitfire cockpit; the
-   Bf 109 cockpit follows the same layout.
+4. Step 3: the renderer blocker is fixed; build the Spitfire cockpit interior (tub, seat,
+   harness, panel, gunsight, gauge needles); the Bf 109 cockpit follows the same layout.
 5. Step 4 damage/wear, then step 5 LOD/perf; do not start step 5 before the texture
    atlas/VRAM decision.
 6. Step 6 P-51D only after the three current aircraft pass the art review.
@@ -228,6 +239,8 @@ measured; the art budget is the schedule risk, not the code.
 
 ## Changelog
 
+- 2026-11-27 — `8352d1c` — cockpit depth-range fix (far plane 120 km) and a reproducible
+  cockpit render smoke test; the interior remains the blockout.
 - 2026-11-27 — `4fddee6` / merge `f0ca7d4` — first blockout slice: three models, camo
   generators, validator, turntable and `AircraftVisual`; this spec records the remaining
   path.
