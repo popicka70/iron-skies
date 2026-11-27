@@ -20,6 +20,7 @@ current.
 | --- | --- |
 | [`architecture/overview.md`](architecture/overview.md) | High-level runtime and data flow. |
 | [`architecture/terrain-and-maps.md`](architecture/terrain-and-maps.md) | Height layers, ortho insets, streaming, map generation. |
+| [`architecture/ortho-sources.md`](architecture/ortho-sources.md) | Ortho source measurements, batch runner and continental coverage plan. |
 | [`architecture/flight-model.md`](architecture/flight-model.md) | 6-DOF model, determinism, validation. |
 | [`architecture/rendering.md`](architecture/rendering.md) | Rendering, LOD, lighting, post. |
 | [`architecture/networking.md`](architecture/networking.md) | Authoritative server, prediction, snapshots. |

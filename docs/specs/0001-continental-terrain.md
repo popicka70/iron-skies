@@ -45,14 +45,19 @@ at most 128 tiles in full mode (~1.2 GB).
 
 - Blue Marble base at 488 m/px in the 500 m bundle; regional orthos for France,
   Normandy and the 17 ranges.
-- Sentinel-2 ortho tiles on the same 64 km grid:
-  - 30 m regional tiles (2,137², ~1.5 MB each), generated with four scenes.
-  - 120 m fallback tiles (535², ~0.1 MB each), generated with four scenes.
+- Sentinel-2 ortho tiles on the same 64 km grid, rendered from the ESA
+  `S2MSI_L3__MCQ` **quarterly cloudless mosaic** (10 m, 2024 Q3) via its anonymous
+  Source Cooperative mirror. See [`../architecture/ortho-sources.md`](../architecture/ortho-sources.md)
+  and [ADR-0008](../adr/0008-ortho-imagery-source.md).
+  - 30 m priority tiles (2,137², ~1.2 MB each), built by the batch runner.
+  - 120 m fallback tiles (535², ~0.1 MB each), built by the batch runner.
   - The runtime stitches a 3×3 ring into a 192 km inset: 30 m-only → 6,409²
     (117.5 MB), 120 m-only → 1,603² (7.4 MB), mixed → finest present.
-- Local coverage: 3×3 30 m + 7×7 120 m around the Rhine–Frankfurt demo (tile 39,27),
-  49 tiles, ~30 MB. Outside that area the engine falls back to Blue Marble/regional
-  orthos. The 10 m Normandy airfield inset still wins locally.
+- Local coverage: 83 tiles (74 at 120 m, 9 at 30 m), 16.3 MiB, covering the Rhine demo,
+  the Normandy airfield, the Alps and the southern Scandes. Every tile passes
+  `tools/check_ortho_tiles.py` (fill ≤2%, mean edge seam ≤24). Outside that area the
+  engine falls back to Blue Marble/regional orthos. The 10 m Normandy airfield inset
+  still wins locally.
 
 ### Streaming and runtime
 
@@ -112,13 +117,17 @@ Each numbered item is a branch/step sequence; each commit is pushed.
    - Acceptance: a 64 km transition has no main-thread stall >50 ms; measured with a
      timer/instrumentation log; all smoke tests still pass.
 
-2. [ ] **Continental ortho coverage strategy**
+2. [x] **Continental ortho coverage strategy** *(done 2026-11-27)*
    - Measure the cost/quality of: per-tile Sentinel-2 STAC (current), a pre-mosaicked
      open source (e.g. Copernicus/ESA mosaic), and a 120 m-only continental batch.
    - Build a resumable batch runner with per-tile logs and a hard memory/worker budget;
      generate at least a multi-region 120 m set; 30 m remains priority-region only.
    - Acceptance: every land tile has a documented source or a deliberate fallback; the
      package growth is measured; no seams at ring boundaries.
+   - Result: S2GM quarterly cloudless mosaic adopted (ADR-0008) over STAC 120 m;
+     `tools/build_ortho_batch.py` and `tools/check_ortho_tiles.py` added; 83 tiles across
+     four regions (16.3 MiB), zero holes/seams. Full continental 120 m: ~3–4 h at four
+     workers, ~165 MiB, resumable.
 
 3. [ ] **Floating-origin rebasing (ADR-0006)**
    - Introduce a render-origin offset at 4 km cells; shift terrain/world nodes and all
@@ -155,17 +164,24 @@ Each numbered item is a branch/step sequence; each commit is pushed.
 - The baseline suite above stays green after every step.
 - Terrain changes run the relevant generator, `check_height_tiles.py`, and a mountain
   start (`--start-location scandes-south`) with gear up.
+- Ortho coverage changes run `tools/check_ortho_tiles.py <bundle>` and must report zero
+  holes/seams; `tools/build_ortho_batch.py --dry-run` documents the planned tile count,
+  time and size before a long batch.
 - Visual changes attach a screenshot to the commit/PR and update the spec.
 - Performance/streaming changes log measured numbers, not just “looks smooth”.
 - Exports are rebuilt and the exported Linux client is launched at least once.
 
 ## Risks and decisions
 
-- **Continental 30 m imagery is a multi-day batch.** 30 m tiles cost 5–8 min each with
-  four scenes; 2,037 tiles are not a single-session task. A 120 m fallback (≈4 min/tile,
-  535²) is the practical continental tier; 30 m stays regional until a pre-mosaicked
-  source or a scene-reuse batch makes it cheap. Do not start a full 30 m batch without a
-  measured plan and disk/network budget.
+- **The 120 m fallback is now a tractable batch.** The quarterly cloudless mosaic
+  renders a 120 m tile in 3–64 s (median ≈25 s) and a 30 m tile in 41–87 s, with no
+  holes. A full continental 120 m set is ~2,037 tiles: ~3–4 h with four workers and
+  ~165 MiB, resumable with `tools/build_ortho_batch.py`. 30 m stays priority-region only
+  (~1.2 MB/tile); a full 30 m set would be ~2.5 GB and is not planned.
+- **Per-tile STAC is retained only as a fallback.** Its 120 m output left 40–45% of the
+  airfield/demo tiles on the flat fill colour and produced 30 m seams; do not use
+  `--source stac` for new continental coverage unless the S2GM mirror lacks a region or
+  quarter.
 - **Ortho upload moves to the loader thread.** The full 117 MB `ImageTexture` is created
   on the loader thread and the main thread only rebinds it; measured apply is 0 ms on
   Vulkan. Re-check the exported Windows/D3D12 build in step 6/7; if a driver uploads
@@ -187,18 +203,21 @@ Each numbered item is a branch/step sequence; each commit is pushed.
 
 Recommended order for the next session:
 
-1. Run a small continental ortho source evaluation, then start a resumable 120 m batch.
-2. Implement floating origin with a render-origin API and precision tests (item 1 is now
-   measured, so the dependency is cleared).
-3. Extend vector detail (OSM/EU-Hydro).
-4. Only then consider 10 m/30 m range imagery and package slimming.
-5. Keep the perf/memory instrumentation from item 1 and extend it into the CI guards
-   (plan item 7).
+1. Implement floating origin with a render-origin API and precision tests (plan item 3;
+   item 1 is measured and item 2's source decision is closed).
+2. Extend vector detail (OSM/EU-Hydro) with LOD and a data budget (plan item 4).
+3. Run the full continental 120 m batch with `tools/build_ortho_batch.py --all`
+   (resumable, local, ~3–4 h with four workers); 30 m stays priority-region only.
+4. Consider 10 m range imagery and package slimming (plan items 5–6).
+5. Extend the streaming instrumentation into CI/nightly guards (plan item 7).
 
-Do not begin a full continental 30 m batch before the source/cost decision in plan item 2.
+Do not start a full continental 30 m batch: the measured 1.2 MB/tile would add ~2.5 GB
+and the 120 m fallback is the intended continental tier.
 
 ## Changelog
 
+- 2026-11-27 — `7632302` — S2GM quarterly cloudless mosaic adopted; resumable ortho batch
+  runner, seam/hole checker, multi-region 120/30 m set; ADR-0008.
 - 2026-11-27 — `e5fe77f` — async height/ortho tile I/O, 8 km next-ring prefetch, and
   focus-update/hitch instrumentation; the 64 km transition is now under the 50 ms budget.
 - 2026-11-27 — `bbcb5a1` / merge `71a4861` — spec system created and merged; this file

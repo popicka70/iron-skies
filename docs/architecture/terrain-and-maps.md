@@ -115,8 +115,12 @@ fetch → clip/reproject → heightmap LOD pyramid → derivatives (normals, slo
   falls back to 90 m otherwise. Release exports include both levels. Optional
   Sentinel-2 ortho tiles on the same 64 km grid are stitched into a 192 km detail
   inset (three shader insets: regional, Sentinel-2, local) with the 10 m airfield
-  winning at the bottom. Mixed 30 m and 120 m tiles are stitched at the finest
-  resolution present, so a 120 m fallback ring blends into the 30 m regional set.
+  winning at the bottom. Tiles come from the ESA `S2MSI_L3__MCQ` quarterly cloudless
+  mosaic (10 m, 2024 Q3) through its anonymous Source Cooperative mirror; the source
+  evaluation and batch procedure are in [`ortho-sources.md`](ortho-sources.md) and
+  [ADR-0008](../adr/0008-ortho-imagery-source.md). Mixed 30 m and 120 m tiles are
+  stitched at the finest resolution present, so a 120 m fallback ring blends into the
+  30 m regional set.
   On the client, one background thread reads and decompresses height tiles and
   stitches the ortho inset; finished work is applied on the main thread. The next
   ring's tiles are prefetched within 8 km of a tile boundary, in the direction of
