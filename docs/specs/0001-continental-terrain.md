@@ -191,10 +191,15 @@ Each numbered item is a branch/step sequence; each commit is pushed.
      pack/install tested). The runtime now checks the heightmap before reporting a
      theatre installed, so a data-less PCK falls back cleanly to Normandy.
 
-7. [ ] **Telemetry, memory and CI guards**
+7. [x] **Telemetry, memory and CI guards** *(done 2026-11-27)*
    - Log tile load times, resident MB, FPS and hitch counts; add a non-flaky budget
      check to CI or a nightly benchmark.
    - Acceptance: regressions in memory/load time are visible in CI output.
+   - Result: `--telemetry` prints one JSONL sample per second (FPS, frame ms, hitches,
+     worst frame/focus, detail/patch/OSM tiles and MB, position/speed). Terrain/OSM
+     already log per-tile latencies. `tools/check_telemetry.py` enforces generous
+     resident/hitch budgets, and CI runs it on the takeoff sortie; local takeoff sample:
+     97.7 MB resident, 0 hitches, 180 ms worst focus (all under budget).
 
 ## Acceptance and verification
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime;
 using System.Text;
+using System.Text.Json;
 using Godot;
 using IronSkies.FlightModel.Aircraft;
 using IronSkies.FlightModel.Combat;
@@ -89,6 +90,8 @@ public partial class Main : Node3D
 
     private bool _snapCamera = true;
     private bool _quitAfterInit;
+    private bool _telemetryEnabled;
+    private double _telemetryTimer;
     private double _throttle = 0.75;
     private double _brake;
     private double _radiator = 0.5;
@@ -195,6 +198,7 @@ public partial class Main : Node3D
         }
 
         _airStart = HasUserFlag("--air-start");
+        _telemetryEnabled = HasUserFlag("--telemetry");
         _missionTest = HasUserFlag("--mission-test") || HasUserFlag("--hunt-test");
         _damageTest = HasUserFlag("--damage-test");
         _takeoffTest = HasUserFlag("--takeoff-test");
@@ -643,12 +647,62 @@ public partial class Main : Node3D
         }
     }
 
+    /// <summary>
+    /// One JSONL sample per second when <c>--telemetry</c> is set. The fields are the
+    /// numbers the CI budget checker and nightly runs care about: frame time, hitches,
+    /// resident terrain/OSM memory and the current flight state.
+    /// </summary>
+    private void EmitTelemetry(double delta)
+    {
+        if (!_telemetryEnabled)
+        {
+            return;
+        }
+
+        _telemetryTimer += delta;
+        if (_telemetryTimer < 1.0)
+        {
+            return;
+        }
+
+        _telemetryTimer = 0.0;
+        double detailMb = _patchManager?.ResidentDetailMegabytes ?? 0.0;
+        double patchMb = _patchManager?.ResidentHeightmapMegabytes ?? 0.0;
+        double osmMb = _osm?.ResidentMegabytes ?? 0.0;
+        double ground = _ground.HeightAt(_sim.State.Position.X, _sim.State.Position.Y);
+        var sample = new Dictionary<string, object>
+        {
+            ["tick"] = _tick,
+            ["fps"] = Math.Round(Engine.GetFramesPerSecond(), 1),
+            ["frameMs"] = Math.Round(delta * 1000.0, 2),
+            ["hitches"] = _terrain.HitchCount,
+            ["worstFrameMs"] = Math.Round(_terrain.WorstFrameMilliseconds, 1),
+            ["focusWorstMs"] = Math.Round(
+                _terrain.WorstFocusUpdateMilliseconds, 1),
+            ["detailTiles"] = _patchManager?.ResidentDetailTileCount ?? 0,
+            ["detailMb"] = Math.Round(detailMb, 1),
+            ["patches"] = _patchManager?.ResidentPatchCount ?? 0,
+            ["patchMb"] = Math.Round(patchMb, 1),
+            ["osmTiles"] = _osm?.ResidentTiles ?? 0,
+            ["osmMb"] = Math.Round(osmMb, 1),
+            ["totalMb"] = Math.Round(detailMb + patchMb + osmMb, 1),
+            ["east"] = Math.Round(_sim.State.Position.X, 1),
+            ["north"] = Math.Round(_sim.State.Position.Y, 1),
+            ["altitude"] = Math.Round(_sim.State.AltitudeMeters, 1),
+            ["agl"] = Math.Round(_sim.State.AltitudeMeters - ground, 1),
+            ["speedMs"] = Math.Round(_sim.Telemetry.SpeedMs, 1),
+        };
+        GD.Print("[telemetry] " + JsonSerializer.Serialize(sample));
+    }
+
     public override void _Process(double delta)
     {
         if (_quitAfterInit)
         {
             return;
         }
+
+        EmitTelemetry(delta);
 
         // The HUD is not a hot path: update it at 10 Hz and reuse one builder.
         _hudTimer += delta;
