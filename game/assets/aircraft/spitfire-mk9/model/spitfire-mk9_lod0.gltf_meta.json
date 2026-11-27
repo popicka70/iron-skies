@@ -1,0 +1,82 @@
+{
+  "id": "spitfire-mk9",
+  "source": "spitfire-mk9_lod0.glb",
+  "bounds": {
+    "min": [
+      -5.615,
+      -5.18,
+      -1.66
+    ],
+    "max": [
+      5.615,
+      4.37,
+      1.66
+    ],
+    "size": [
+      11.23,
+      9.55,
+      3.32
+    ]
+  },
+  "expected_span_m": 11.23,
+  "expected_length_m": 9.47,
+  "triangles": 21752,
+  "objects": 31,
+  "meshes": 25,
+  "materials": [
+    "airframe",
+    "dark",
+    "gauge_face",
+    "glass",
+    "harness",
+    "interior",
+    "leather",
+    "metal",
+    "panel_line",
+    "roundel_blue",
+    "roundel_red",
+    "roundel_white",
+    "spinner",
+    "tyre",
+    "underside"
+  ],
+  "images": [
+    "spitfire_camo_albedo"
+  ],
+  "nodes": [
+    "AileronL",
+    "AileronR",
+    "Canopy",
+    "CockpitInterior",
+    "CockpitStatic",
+    "DamageSmokeAnchor",
+    "ElevatorL",
+    "ElevatorR",
+    "ExteriorStatic",
+    "FlapL",
+    "FlapR",
+    "FuselageCenter",
+    "FuselageFront",
+    "FuselageRear",
+    "GearDoorL",
+    "GearDoorR",
+    "GearHubL",
+    "GearHubR",
+    "GearLegL",
+    "GearLegR",
+    "GearMainL",
+    "GearMainR",
+    "GearTail",
+    "GearTailLeg",
+    "GearTailWheel",
+    "GearWheelL",
+    "GearWheelR",
+    "Propeller",
+    "PropellerBlades",
+    "PropellerRoot",
+    "Rudder"
+  ],
+  "missing_contract_nodes": [],
+  "warnings": [],
+  "failures": []
+}

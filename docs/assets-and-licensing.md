@@ -46,8 +46,29 @@ ODbL 1.0 and carries the OSM attribution.
 | HDRI skies | Poly Haven | CC0 | reference/lighting only |
 | Sound effects (guns, engines, wind) | freesound CC0 filter, in-house recordings | CC0 | keep the original licence file |
 | Aircraft models | in-house Blender | CC BY 4.0 | built from blueprints and references |
+| Camouflage textures | in-house procedural generators | CC BY 4.0 | deterministic scripts in `tools/textures/` |
 | Cockpit instruments | in-house | CC BY 4.0 | no third-party trademarked logos |
 | Music | in-house / CC0 | CC BY 4.0 / CC0 | no "epic trailer" library music |
+
+### Aircraft asset bundles
+
+The three aircraft art bundles are original in-house work. Each ships a glTF
+model and its texture masters; the `.blend` source scenes stay under `art/`
+(outside `game/assets/`) so they are not imported into the game or shipped in
+release packages.
+
+| Path | What | Licence | Notes |
+| --- | --- | --- | --- |
+| `game/assets/aircraft/spitfire-mk9/model/` | Spitfire LF Mk IX LOD0, 2K camo albedo/normal/ORM | CC BY 4.0 | in-house blockout, triplanar camo |
+| `game/assets/aircraft/bf109-g6/model/` | Bf 109 G-6 LOD0, 2K RLM 74/75 camo | CC BY 4.0 | in-house blockout, separate RLM 76 underside |
+| `game/assets/aircraft/ju88-a4/model/` | Ju 88 A-4 LOD0, 2K RLM 70/71 camo | CC BY 4.0 | in-house blockout, greenhouse and gondola |
+| `art/aircraft/<id>/<id>.blend` | Blender source scenes | CC BY 4.0 | Git LFS, not shipped |
+| `tools/blender/build_*.py` | parametric model builders | MIT | code, not an asset |
+| `tools/textures/gen_*_textures.py` | camo/ORM/normal generators | MIT | code; output is CC BY 4.0 |
+
+`game/assets/aircraft/LICENSE` carries the CC BY 4.0 notice for the bundles.
+Reference photographs and drawings are **not** shipped; every source is recorded
+in [art/aircraft-references.md](art/aircraft-references.md).
 
 ### Explicitly avoided
 

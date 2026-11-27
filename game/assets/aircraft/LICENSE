@@ -1,0 +1,17 @@
+Iron Skies aircraft models and textures
+======================================
+
+The glTF models, Blender source scenes and camouflage textures under this
+directory are original work by the Iron Skies contributors.
+
+Licence: Creative Commons Attribution 4.0 International (CC BY 4.0)
+https://creativecommons.org/licenses/by/4.0/
+
+Attribution: "Iron Skies contributors, CC BY 4.0."
+
+No third-party aircraft geometry, game-ripped models or scanned assets are
+included. Reference photographs used while modelling are recorded in
+docs/art/aircraft-references.md and are not shipped.
+
+The procedural texture generators in tools/textures/ are MIT-licensed source
+code; the images they produce are covered by the CC BY 4.0 notice above.
