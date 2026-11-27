@@ -271,16 +271,19 @@ numeric threshold alone. Record the reviewer, date and any accepted deviations.
 
 Recommended order for the next session:
 
-1. Step 1 on the Spitfire: orthographic overlays, silhouette corrections, re-render the
-   review sheet.
-2. Repeat for the Bf 109 and Ju 88; update the reference register with any new source.
-3. Step 2 on the Spitfire: bake pipeline and surface detail, then evaluate VRAM/texel
-   density before applying it to the other two.
-4. Step 3: the renderer blocker and both fighter structural interiors are done; wire the
-   3D gauge needles to sim telemetry. The Ju 88 is AI-only and needs no cockpit.
-5. Step 4 damage/wear, then step 5 LOD/perf; do not start step 5 before the texture
-   atlas/VRAM decision.
-6. Step 6 P-51D only after the three current aircraft pass the art review.
+1. Finish the Bf 109 and Ju 88 reference overlays (the measurements and model-only sheets
+   are done; the multi-panel drawings need cropping/alignment) and record the deviations.
+2. Step 2 on the Spitfire: high-poly detail cage, normal/AO/curvature bake and the UV
+   atlas; measure VRAM/texel density before applying it to the other two. This is the
+   largest remaining visual gap and the gate for step 4's decals.
+3. Step 3: wire the 3D gauge needles to `AircraftSimulator` telemetry. The renderer
+   blocker and both fighter structural interiors are done; the Ju 88 is AI-only.
+4. Step 4 damage/wear after the UV atlas decision; the current triplanar camo cannot carry
+   per-face decals.
+5. Step 5: authored LOD1/2, shadow LOD and a distance imposter, then the GTX 1060-class
+   six-aircraft run (the render-cost script and budgets are in place).
+6. Step 6 P-51D only after the three current aircraft pass the art review, then step 7's
+   final review and documentation.
 
 Do not start a full-fleet detail pass before the Spitfire overlay and bake pipeline are
 measured; the art budget is the schedule risk, not the code.
