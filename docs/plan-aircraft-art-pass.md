@@ -14,6 +14,7 @@ slice is merged; this file keeps the detailed build notes and is not the current
 | Geometry panel lines + national markings | Spitfire roundels, Luftwaffe Balkenkreuz |
 | glTF validation | scale/origin/node/tri/UV checks; metadata JSON per model |
 | Turntable renderer | 8-view review sheets in `docs/media/aircraft/` |
+| Orthographic silhouette review | side/top/front renders plus a metres-to-pixels sidecar (`tools/blender/render_silhouette.py`); Spitfire measured 2026-11-27 |
 | Runtime integration | `AircraftVisual` loads by aircraft id, primitive fallback |
 | In-game verification | Spitfire and Bf 109 screenshots; Ju 88 loads in bomber mission |
 
