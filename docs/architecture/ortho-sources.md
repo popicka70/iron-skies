@@ -78,7 +78,7 @@ MGRS helper against known tiles.
 
 ## Current generated set (local, not committed)
 
-83 tiles, 16.3 MiB of `.bin` data, all passing `check_ortho_tiles.py` with
+83 tiles, 35.6 MiB of `.bin` data, all passing `check_ortho_tiles.py` with
 `fill ≤ 2%`, `mean edge seam ≤ 24`:
 
 | Region | Tiles | Resolution |
@@ -86,9 +86,23 @@ MGRS helper against known tiles.
 | Rhine demo (36–42 × 23–30) | 47 | 120 m |
 | Rhine demo priority (38–40 × 26–28) | 9 | 30 m |
 | Normandy airfield (30–32 × 30–32) | 9 | 120 m |
-| Alps (42–44 × 33–35) | 9 | 120 m |
-| Scandes south (37–39 × 8–10) | 9 | 120 m |
+| Alps (42–44 × 33–35) | 9 | 30 m |
+| Scandes south (37–39 × 8–10) | 9 | 30 m |
 
 A full continental 120 m set is ~2,037 land tiles: roughly 3–4 h with four workers and
 ~165 MiB of output. It is a resumable local batch, not a single session, and the
 generated bundle stays git-ignored.
+
+## Range imagery
+
+`tools/build_range_ortho.py` renders a 3×3 30 m ring around each of the 17 mountain
+ranges (≈9–11 MiB per range, ~184 MiB if all are generated). 30 m was chosen over a
+10 m near-ring: a 3×3 10 m ring would be 19,225² and over 1 GiB of VRAM, while the
+30 m ring stays 6,409² (117.5 MB) and still wins over the 400 km regional ortho at low
+altitude. The Alps and southern Scandes rings are generated locally; the rest are the
+documented batch.
+
+```bash
+python3 tools/build_range_ortho.py --dry-run
+python3 tools/build_range_ortho.py --only alps --only scandes-south --workers 3
+```
