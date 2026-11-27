@@ -100,6 +100,16 @@ files and the adjacent `data_*` directory.
 runs both exports and uploads the artifacts. Normal CI does not download the 1.2 GB
 template pack; it builds and smoke-tests the project instead.
 
+CI also runs the takeoff sortie with `--telemetry` and
+`tools/check_telemetry.py`, which fails on a resident-memory, hitch-count or frame-time
+regression. The same log can be captured locally:
+
+```bash
+godot --headless --path game scenes/Main.tscn -- --takeoff-test --telemetry \
+  > /tmp/telemetry.log
+python3 tools/check_telemetry.py /tmp/telemetry.log
+```
+
 ## Notes
 
 - Windows export from Linux works with the standard templates; resource editing is

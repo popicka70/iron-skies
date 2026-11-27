@@ -84,6 +84,13 @@ jobs:
           echo "$output"
           echo "$output" | grep -q "\[takeoff\] success"
 
+      - name: Streaming telemetry budget
+        run: |
+          godot --headless --path game scenes/Main.tscn \
+            -- --takeoff-test --telemetry > /tmp/telemetry.log 2>&1
+          cat /tmp/telemetry.log
+          python3 tools/check_telemetry.py /tmp/telemetry.log
+
       - name: Multiplayer smoke test (server + 2 clients)
         run: ./tools/net_smoke_test.sh
       - name: Password authentication test
