@@ -278,6 +278,8 @@ and the 120 m fallback is the intended continental tier.
 
 ## Changelog
 
+- 2026-11-27 — `ce17394` — per-second streaming telemetry, CI memory/hitch/frame budget
+  checker on the takeoff sortie.
 - 2026-11-27 — `361c091` — minimal Linux/Windows packages, optional terrain `.tar.xz`
   bundles with a SHA-256 manifest, verified first-run installer path; data-less PCK
   fallback fixed.
