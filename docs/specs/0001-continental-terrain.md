@@ -62,9 +62,9 @@ The 30 m ring is 78.4 MB; the server keeps at most 128 tiles in full mode (~1.2 
 - `TerrainWorld`: three ortho insets (regional, Sentinel-2, local) with feathered edges.
 - Server: full mountain patches for determinism; 30 m tiles lazy-loaded into a bounded
   128-tile LRU; clients stream.
-- Known cost: a centre-tile move decodes nine height tiles and up to nine ortho JPEGs
-  on the main thread, and creates/stitches a large texture. This is the next usability
-  target.
+- Known cost: a centre-tile move queues three new height tiles (the manager loads one
+  per normal focus update), decodes up to nine ortho JPEGs and stitches a large texture
+  on the main thread. This is the next usability target.
 
 ### Verification baseline
 
@@ -182,8 +182,8 @@ before the source/cost decision in item 2.
 
 ## Changelog
 
-- 2026-11-27 — spec created — consolidates the completed height/imagery work and the
-  remaining proposal; records the current local coverage and budgets.
+- 2026-11-27 — `bbcb5a1` / merge `71a4861` — spec system created and merged; this file
+  consolidates the completed height/imagery work and the remaining proposal.
 - 2026-11-27 — `26bb974` — 7×7 120 m ortho ring and mixed stitching documented.
 - 2026-11-27 — `613a41d` — 120 m fallback and mixed-resolution ortho stitching.
 - 2026-11-26 — `027b4cc` — streamed Sentinel-2 ortho tiles (30 m, 192 km inset).
