@@ -232,6 +232,8 @@ and the 120 m fallback is the intended continental tier.
 
 ## Changelog
 
+- 2026-11-27 — `f7990d3` — 4 km floating-origin rendering with one world root and
+  camera-relative visuals; `--precision-test` at 0.0252 mm, rendered reposes aligned.
 - 2026-11-27 — `7632302` — S2GM quarterly cloudless mosaic adopted; resumable ortho batch
   runner, seam/hole checker, multi-region 120/30 m set; ADR-0008.
 - 2026-11-27 — `e5fe77f` — async height/ortho tile I/O, 8 km next-ring prefetch, and
