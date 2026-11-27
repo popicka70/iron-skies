@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Godot;
 
 namespace IronSkies.Game.World;
@@ -24,6 +25,8 @@ public sealed partial class TerrainWorld : Node3D
     private const int MaxBaseQuads = 200;
     private const float ChunkLiftMeters = 0.35f;
     private const int BuildsPerUpdate = 8;
+    private const double HitchThresholdSeconds = 0.05;
+    private const double SlowFocusUpdateMilliseconds = 16.0;
 
     private sealed class Chunk
     {
@@ -56,6 +59,10 @@ public sealed partial class TerrainWorld : Node3D
     private int _chunksPerAxis = 40;
     private int _baseStepMeters = 200;
     private string _insetKey = "";
+    private long _startedTimestamp;
+    private int _hitchCount;
+    private double _worstFrameMs;
+    private double _worstFocusUpdateMs;
 
     public void Build(
         ITerrainSource map, string textureDirectory,
@@ -91,7 +98,19 @@ public sealed partial class TerrainWorld : Node3D
         AddChild(_baseNode);
 
         AddWaterPlane();
+        _startedTimestamp = Stopwatch.GetTimestamp();
         _ready = true;
+    }
+
+    /// <summary>Measured main-thread frame stalls (&gt; 50 ms) since the last reset.</summary>
+    public int HitchCount => _hitchCount;
+    public double WorstFrameMilliseconds => _worstFrameMs;
+    public double WorstFocusUpdateMilliseconds => _worstFocusUpdateMs;
+
+    public override void _ExitTree()
+    {
+        _patchManager?.Detail?.Dispose();
+        _patchManager = null;
     }
 
     /// <summary>Builds every chunk around a position immediately (used at spawn).</summary>
@@ -123,8 +142,21 @@ public sealed partial class TerrainWorld : Node3D
 
         if (_patchManager is not null)
         {
+            long start = Stopwatch.GetTimestamp();
             bool changed = _patchManager.SetFocus(
                 focus.X, -focus.Z, immediatePatches);
+            double elapsedMs = ElapsedMilliseconds(start);
+            if (elapsedMs > _worstFocusUpdateMs)
+            {
+                _worstFocusUpdateMs = elapsedMs;
+            }
+
+            if (elapsedMs > SlowFocusUpdateMilliseconds)
+            {
+                GD.Print($"[stream] focus update {elapsedMs:0.0} ms "
+                         + $"(changed={changed})");
+            }
+
             if (changed)
             {
                 OnTerrainSetChanged();
@@ -133,6 +165,9 @@ public sealed partial class TerrainWorld : Node3D
 
         UpdateInsets();
     }
+
+    private static double ElapsedMilliseconds(long startTimestamp) =>
+        (Stopwatch.GetTimestamp() - startTimestamp) * 1000.0 / Stopwatch.Frequency;
 
     /// <summary>
     /// Re-syncs inset textures, rebuilds the far mesh and invalidates affected near
@@ -267,6 +302,19 @@ public sealed partial class TerrainWorld : Node3D
         if (!_ready)
         {
             return;
+        }
+
+        if (delta > HitchThresholdSeconds)
+        {
+            _hitchCount++;
+            _worstFrameMs = Math.Max(_worstFrameMs, delta * 1000.0);
+            if (!DisplayServer.GetName().Equals("headless", StringComparison.OrdinalIgnoreCase)
+                && (_hitchCount <= 5 || _hitchCount % 25 == 0))
+            {
+                GD.Print($"[stream] main-thread hitch {_hitchCount}: "
+                         + $"{delta * 1000.0:0} ms since build "
+                         + $"{ElapsedMilliseconds(_startedTimestamp) / 1000.0:0.0} s");
+            }
         }
 
         _updateTimer += delta;

@@ -38,7 +38,8 @@ spec tracks the remaining work and the next session’s resume point.
 
 Generated bundles live under `game/assets/terrain/*-1944/` and are git-ignored. The
 runtime composes **50 m patches → 30 m tiles → 25/50 m local → 250 m → 500 m → 2 km**.
-The 30 m ring is 78.4 MB; the server keeps at most 128 tiles in full mode (~1.2 GB).
+The 30 m ring is 78.4 MB, plus up to three prefetched tiles (~26 MB); the server keeps
+at most 128 tiles in full mode (~1.2 GB).
 
 ### Imagery
 
@@ -62,9 +63,16 @@ The 30 m ring is 78.4 MB; the server keeps at most 128 tiles in full mode (~1.2 
 - `TerrainWorld`: three ortho insets (regional, Sentinel-2, local) with feathered edges.
 - Server: full mountain patches for determinism; 30 m tiles lazy-loaded into a bounded
   128-tile LRU; clients stream.
-- Known cost: a centre-tile move queues three new height tiles (the manager loads one
-  per normal focus update), decodes up to nine ortho JPEGs and stitches a large texture
-  on the main thread. This is the next usability target.
+- Tile I/O is asynchronous since this step: one loader thread reads/decompresses the
+  height tiles and decodes/stitches the 192 km ortho inset; `SetFocus` collects finished
+  work on the main thread. The next ring is prefetched within 8 km of a boundary in the
+  direction of travel, and the last ortho texture stays bound until its replacement is
+  ready.
+- Measured on the RX 9060 XT (Forward+): a 6,409² ring prepares in 0.7–0.8 s on the
+  loader thread and applies in 0 ms on the main thread; a 64 km crossing logs no focus
+  update above 16 ms and no frame above 50 ms. Spawn still loads the 3×3 height ring
+  synchronously (≈0.2 s, ≈0.5 s with a mountain patch) so ground queries are exact
+  before the first frame.
 
 ### Verification baseline
 
@@ -98,7 +106,7 @@ because Godot cannot embed ≥4 GiB.
 
 Each numbered item is a branch/step sequence; each commit is pushed.
 
-1. [ ] **Async tile I/O and transition hitch removal** *(recommended next)*
+1. [x] **Async tile I/O and transition hitch removal** *(done 2026-11-27)*
    - Decode height and ortho tiles off the main thread; preload the next ring at a
      distance threshold; keep the last texture until the new one is ready.
    - Acceptance: a 64 km transition has no main-thread stall >50 ms; measured with a
@@ -158,8 +166,16 @@ Each numbered item is a branch/step sequence; each commit is pushed.
   535²) is the practical continental tier; 30 m stays regional until a pre-mosaicked
   source or a scene-reuse batch makes it cheap. Do not start a full 30 m batch without a
   measured plan and disk/network budget.
-- **Main-thread stitching is the current hitch risk.** Move decode/stitch off the main
-  thread before adding more ortho coverage.
+- **Ortho upload moves to the loader thread.** The full 117 MB `ImageTexture` is created
+  on the loader thread and the main thread only rebinds it; measured apply is 0 ms on
+  Vulkan. Re-check the exported Windows/D3D12 build in step 6/7; if a driver uploads
+  textures synchronously, split the inset into 3×3 subtiles before accepting it there.
+  The loader reads loose files with `System.IO` and packed `res://` data with Godot
+  `FileAccess`, which is thread-safe for packed-file reads.
+- **Mountain patch reads are still synchronous.** A 122 MB patch load can stall the
+  frame that starts it, but it happens on approach at half extent + 75 km, not on a
+  64 km tile boundary. The focus-update timer now records it; move patches onto the same
+  loader thread in a follow-up if the approach hitch is measured above the 50 ms budget.
 - **Floating origin touches everything.** Keep it behind a clear render-origin API,
   shift only render-space nodes, and add precision tests before changing net/replay.
 - **Package size is already ~10 GB.** Any new data must justify its size; prefer
@@ -171,17 +187,20 @@ Each numbered item is a branch/step sequence; each commit is pushed.
 
 Recommended order for the next session:
 
-1. Remove the 64 km tile-transition hitch (async decode/preload) and record numbers.
-2. Run a small continental ortho source evaluation, then start a resumable 120 m batch.
-3. Implement floating origin with a render-origin API and precision tests.
-4. Extend vector detail (OSM/EU-Hydro).
-5. Only then consider 10 m/30 m range imagery and package slimming.
+1. Run a small continental ortho source evaluation, then start a resumable 120 m batch.
+2. Implement floating origin with a render-origin API and precision tests (item 1 is now
+   measured, so the dependency is cleared).
+3. Extend vector detail (OSM/EU-Hydro).
+4. Only then consider 10 m/30 m range imagery and package slimming.
+5. Keep the perf/memory instrumentation from item 1 and extend it into the CI guards
+   (plan item 7).
 
-Do not begin item 3 until item 1 is measured; do not begin a full continental 30 m batch
-before the source/cost decision in item 2.
+Do not begin a full continental 30 m batch before the source/cost decision in plan item 2.
 
 ## Changelog
 
+- 2026-11-27 — `e5fe77f` — async height/ortho tile I/O, 8 km next-ring prefetch, and
+  focus-update/hitch instrumentation; the 64 km transition is now under the 50 ms budget.
 - 2026-11-27 — `bbcb5a1` / merge `71a4861` — spec system created and merged; this file
   consolidates the completed height/imagery work and the remaining proposal.
 - 2026-11-27 — `26bb974` — 7×7 120 m ortho ring and mixed stitching documented.
