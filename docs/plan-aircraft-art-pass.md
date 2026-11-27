@@ -17,7 +17,7 @@ slice is merged; this file keeps the detailed build notes and is not the current
 | Orthographic silhouette review | side/top/front renders plus a metres-to-pixels sidecar (`tools/blender/render_silhouette.py`); all three measured 2026-11-27, Spitfire overlaid, Bf 109/Ju 88 sheets |
 | Runtime integration | `AircraftVisual` loads by aircraft id, primitive fallback |
 | In-game verification | Spitfire and Bf 109 screenshots; Ju 88 loads in bomber mission |
-| Spitfire cockpit structure | tub, cushioned seat/harness, armoured headrest, pedals, stick, throttle/mixture, 8-gauge panel, compass, gunsight, canopy rails, bevel and fill light; adjustable eye point (2026-11-27) |
+| Spitfire + Bf 109 cockpit structure | tub, cushioned seat/harness, armoured headrest, pedals, stick, throttle/mixture, 8-gauge panel, compass, gunsight, canopy rails, bevel and fill light; adjustable eye point (2026-11-27) |
 | Render-cost telemetry | draw calls, primitives, objects, video/texture memory in the per-second JSONL; 1/6-aircraft perf script and budget checker (2026-11-27) |
 
 Delivered budgets: Spitfire 21.8k tris, Bf 109 18.3k tris, Ju 88 18.1k tris at
