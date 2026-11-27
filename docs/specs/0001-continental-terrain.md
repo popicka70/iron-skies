@@ -216,6 +216,8 @@ and the 120 m fallback is the intended continental tier.
 
 ## Changelog
 
+- 2026-11-27 — `7632302` — S2GM quarterly cloudless mosaic adopted; resumable ortho batch
+  runner, seam/hole checker, multi-region 120/30 m set; ADR-0008.
 - 2026-11-27 — `e5fe77f` — async height/ortho tile I/O, 8 km next-ring prefetch, and
   focus-update/hitch instrumentation; the 64 km transition is now under the 50 ms budget.
 - 2026-11-27 — `bbcb5a1` / merge `71a4861` — spec system created and merged; this file
