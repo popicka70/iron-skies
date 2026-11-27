@@ -282,6 +282,8 @@ and the 120 m fallback is the intended continental tier.
 
 ## Changelog
 
+- 2026-11-27 — `bf4d188` — full continental 120 m ortho set (1,955 new tiles, 2,037
+  total / 152.8 MiB, 0 holes/seams after `fix_ortho_gaps.py`); MGRS band-edge fix.
 - 2026-11-27 — `ce17394` — per-second streaming telemetry, CI memory/hitch/frame budget
   checker on the takeoff sortie.
 - 2026-11-27 — `361c091` — minimal Linux/Windows packages, optional terrain `.tar.xz`
