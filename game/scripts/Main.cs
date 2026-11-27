@@ -26,7 +26,7 @@ public partial class Main : Node3D
     {
         public required AircraftSimulator Sim { get; init; }
         public required DamageTarget Target { get; init; }
-        public required SpitfireVisual Visual { get; init; }
+        public required AircraftVisual Visual { get; init; }
         public required DamageSmoke Smoke { get; init; }
         public PursuitPilot Pilot { get; } = new();
         public bool Down;
@@ -39,7 +39,7 @@ public partial class Main : Node3D
     private IGroundSurface _ground = null!;
     private TerrainWorld _terrain = null!;
     private MountainPatchManager? _patchManager;
-    private SpitfireVisual _aircraft = null!;
+    private AircraftVisual _aircraft = null!;
     private DamageSmoke _playerSmoke = null!;
     private EngineAudio _audio = null!;
     private CombatVisual _combat = null!;
@@ -53,7 +53,7 @@ public partial class Main : Node3D
     {
         public required AircraftSimulator Sim { get; init; }
         public required DamageTarget Target { get; init; }
-        public required BomberVisual Visual { get; init; }
+        public required AircraftVisual Visual { get; init; }
         public required DamageSmoke Smoke { get; init; }
         public required BomberPilot Pilot { get; init; }
         public Vec3 Waypoint;
@@ -63,7 +63,7 @@ public partial class Main : Node3D
     private sealed class Wingman
     {
         public required AircraftSimulator Sim { get; init; }
-        public required SpitfireVisual Visual { get; init; }
+        public required AircraftVisual Visual { get; init; }
         public required DamageSmoke Smoke { get; init; }
         public PursuitPilot Pilot { get; } = new();
         public int Side;
@@ -1375,11 +1375,11 @@ public partial class Main : Node3D
             sim.AddTarget(target);
             _sim.AddTarget(target);
 
-            var visual = new BomberVisual();
-            visual.Build(new Color(0.32f, 0.34f, 0.31f));
+            var visual = new AircraftVisual();
+            visual.Build("ju88-a4", new Color(0.32f, 0.34f, 0.31f));
             AddChild(visual);
             var smoke = new DamageSmoke();
-            visual.AddChild(smoke);
+            visual.GetSmokeAnchor().AddChild(smoke);
             smoke.Build();
             visual.SetExternalTransform(state.Position, state.Orientation);
 
@@ -1453,13 +1453,13 @@ public partial class Main : Node3D
                 sim.AddTarget(bomber.Target);
             }
 
-            var visual = new SpitfireVisual();
-            visual.Build(_definition.Id == "bf109-g6"
+            var visual = new AircraftVisual();
+            visual.Build(_definition.Id, _definition.Id == "bf109-g6"
                 ? new Color(0.42f, 0.44f, 0.42f)
                 : new Color(0.20f, 0.27f, 0.17f));
             AddChild(visual);
             var smoke = new DamageSmoke();
-            visual.AddChild(smoke);
+            visual.GetSmokeAnchor().AddChild(smoke);
             smoke.Build();
             visual.GlobalTransform = SimBridge.ToGodot(state.Orientation, state.Position);
 
@@ -1580,13 +1580,13 @@ public partial class Main : Node3D
                 Static = false,
             };
 
-            var visual = new SpitfireVisual();
-            visual.Build(_aiDefinition.Id == "bf109-g6"
+            var visual = new AircraftVisual();
+            visual.Build(_aiDefinition.Id, _aiDefinition.Id == "bf109-g6"
                 ? new Color(0.42f, 0.44f, 0.42f)
                 : new Color(0.20f, 0.27f, 0.17f));
             AddChild(visual);
             var smoke = new DamageSmoke();
-            visual.AddChild(smoke);
+            visual.GetSmokeAnchor().AddChild(smoke);
             smoke.Build();
             visual.GlobalTransform = SimBridge.ToGodot(state.Orientation, state.Position);
 
@@ -1753,13 +1753,13 @@ public partial class Main : Node3D
 
     private void BuildAircraft()
     {
-        _aircraft = new SpitfireVisual();
-        _aircraft.Build(_definition.Id == "bf109-g6"
+        _aircraft = new AircraftVisual();
+        _aircraft.Build(_definition.Id, _definition.Id == "bf109-g6"
             ? new Color(0.42f, 0.44f, 0.42f)
             : new Color(0.20f, 0.27f, 0.17f));
         AddChild(_aircraft);
         _playerSmoke = new DamageSmoke();
-        _aircraft.AddChild(_playerSmoke);
+        _aircraft.GetSmokeAnchor().AddChild(_playerSmoke);
         _playerSmoke.Build();
 
         _audio = new EngineAudio();

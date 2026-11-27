@@ -1,0 +1,80 @@
+{
+  "id": "bf109-g6",
+  "source": "bf109-g6_lod0.glb",
+  "bounds": {
+    "min": [
+      -4.96,
+      -5.07,
+      -1.5
+    ],
+    "max": [
+      4.96,
+      4.0,
+      1.42
+    ],
+    "size": [
+      9.92,
+      9.07,
+      2.92
+    ]
+  },
+  "expected_span_m": 9.92,
+  "expected_length_m": 9.02,
+  "triangles": 18292,
+  "objects": 31,
+  "meshes": 25,
+  "materials": [
+    "airframe",
+    "cross_black",
+    "cross_white",
+    "dark",
+    "gauge_face",
+    "glass",
+    "interior",
+    "leather",
+    "metal",
+    "panel_line",
+    "spinner",
+    "tyre",
+    "underside"
+  ],
+  "images": [
+    "bf109_camo_albedo"
+  ],
+  "nodes": [
+    "AileronL",
+    "AileronR",
+    "Canopy",
+    "CockpitInterior",
+    "CockpitStatic",
+    "DamageSmokeAnchor",
+    "ElevatorL",
+    "ElevatorR",
+    "ExteriorStatic",
+    "FlapL",
+    "FlapR",
+    "FuselageCenter",
+    "FuselageFront",
+    "FuselageRear",
+    "GearDoorL",
+    "GearDoorR",
+    "GearHubL",
+    "GearHubR",
+    "GearLegL",
+    "GearLegR",
+    "GearMainL",
+    "GearMainR",
+    "GearTail",
+    "GearTailLeg",
+    "GearTailWheel",
+    "GearWheelL",
+    "GearWheelR",
+    "Propeller",
+    "PropellerBlades",
+    "PropellerRoot",
+    "Rudder"
+  ],
+  "missing_contract_nodes": [],
+  "warnings": [],
+  "failures": []
+}

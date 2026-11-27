@@ -43,6 +43,30 @@ key bindings, or direct connect.*
 *The chase camera can be orbited with the right mouse button, zoomed with the wheel and
 re-centred with Home; the same axes/buttons can be bound on a HOTAS.*
 
+## Aircraft art pass
+
+The primitive M0 airframes are being replaced by original Blender models with
+procedural PBR camouflage, geometry panel lines and period markings. The runtime
+loads them by aircraft id and falls back to the old primitives if an asset is
+missing.
+
+![Spitfire LF Mk IX art pass](docs/media/aircraft/spitfire-mk9.jpg)
+
+*Spitfire LF Mk IX: elliptical wing, four-blade prop, RAF day-fighter camouflage.*
+
+![Bf 109 G-6 art pass](docs/media/aircraft/bf109-g6.jpg)
+
+*Bf 109 G-6: squared wingtips, Erla canopy, MG 131 cowl bulges, RLM 74/75/76.*
+
+![Ju 88 A-4 art pass](docs/media/aircraft/ju88-a4.jpg)
+
+*Ju 88 A-4: twin Jumo nacelles, greenhouse nose, Bola gondola, RLM 70/71/65.*
+
+The three models are a measured blockout, not a final art pass. The remaining
+work — shape refinement, rivets, cockpit gauges, damage decals, authored LODs and
+perf budgets — is tracked in [docs/plan-aircraft-art-pass.md](docs/plan-aircraft-art-pass.md).
+Reference provenance is in [docs/art/aircraft-references.md](docs/art/aircraft-references.md).
+
 ## Theatres
 
 The repository ships two committed bases:

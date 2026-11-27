@@ -21,7 +21,7 @@ public sealed partial class MultiplayerMain : Node3D
 
     private sealed class RemotePlayer
     {
-        public required SpitfireVisual Visual { get; init; }
+        public required AircraftVisual Visual { get; init; }
         public required DamageSmoke Smoke { get; init; }
         public byte AircraftType;
         public double MaxHealth = 1000.0;
@@ -42,7 +42,7 @@ public sealed partial class MultiplayerMain : Node3D
     private string _terrainDirectory = "res://assets/terrain/normandy-1944";
     private string _terrainOsmPath = "res://assets/terrain/normandy-1944/osm.json";
     private RiverData _riverData = new();
-    private SpitfireVisual _playerVisual = null!;
+    private AircraftVisual _playerVisual = null!;
     private DamageSmoke _playerSmoke = null!;
     private EngineAudio _audio = null!;
     private CombatVisual _combat = null!;
@@ -486,13 +486,14 @@ public sealed partial class MultiplayerMain : Node3D
     {
         if (!_remotes.TryGetValue(state.PlayerId, out RemotePlayer? remote))
         {
-            var visual = new SpitfireVisual();
-            visual.Build(state.AircraftType == 1
+            var visual = new AircraftVisual();
+            visual.Build(state.AircraftType == 1 ? "bf109-g6" : "spitfire-mk9",
+                state.AircraftType == 1
                 ? new Color(0.42f, 0.44f, 0.42f)
                 : new Color(0.20f, 0.27f, 0.17f));
             AddChild(visual);
             var smoke = new DamageSmoke();
-            visual.AddChild(smoke);
+            visual.GetSmokeAnchor().AddChild(smoke);
             smoke.Build();
             remote = new RemotePlayer
             {
@@ -652,14 +653,15 @@ public sealed partial class MultiplayerMain : Node3D
         rivers.Build(_map, _riverData);
         _terrain.Prewarm(new Vector3(0.0f, (float)_map.HeightAt(0, 6000) + 1500.0f, -6000.0f));
 
-        _playerVisual = new SpitfireVisual();
-        _playerVisual.Build(_localType == 1
+        _playerVisual = new AircraftVisual();
+        _playerVisual.Build(_localType == 1 ? "bf109-g6" : "spitfire-mk9",
+            _localType == 1
             ? new Color(0.42f, 0.44f, 0.42f)
             : new Color(0.20f, 0.27f, 0.17f));
         _playerVisual.Visible = false;
         AddChild(_playerVisual);
         _playerSmoke = new DamageSmoke();
-        _playerVisual.AddChild(_playerSmoke);
+        _playerVisual.GetSmokeAnchor().AddChild(_playerSmoke);
         _playerSmoke.Build();
 
         _audio = new EngineAudio();
