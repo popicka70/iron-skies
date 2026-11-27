@@ -5,9 +5,10 @@ This directory is the **living plan** for active work.
 **Project goal:** a free, open-source, photorealistic WW2 combat flight simulator for
 Linux and Windows, with single-player and authoritative multiplayer, engineering-grade
 6-DOF flight dynamics, and persistent maps generated from real, openly licensed geodata.
-The current workstream goal is a convincing 4,000 km European theatre; see
-[`0001-continental-terrain.md`](0001-continental-terrain.md). The aircraft art workstream
-runs in parallel and is tracked in
+The 4,000 km terrain workstream is complete:
+[`0001-continental-terrain.md`](0001-continental-terrain.md) is **done** (full continental
+imagery, floating origin, streamed OSM detail, packaging and telemetry). The active
+workstream is the aircraft art pass in
 [`0002-aircraft-art-pass.md`](0002-aircraft-art-pass.md). The product goal and scope are
 in [`../SPEC.md`](../SPEC.md); the milestone backlog is in
 [`../ROADMAP.md`](../ROADMAP.md). A spec is not a design document: it records what is
@@ -78,7 +79,7 @@ Ordered next steps for the next session. Keep this honest; it is the resume poin
 
 | Spec | Status | Area | Summary |
 | --- | --- | --- | --- |
-| [0001 — Continental terrain detail](0001-continental-terrain.md) | **active** | terrain | Finish the 4,000 km theatre: continental imagery, tile I/O, floating origin, vector detail. |
+| [0001 — Continental terrain detail](0001-continental-terrain.md) | **done** | terrain | Full continental 120 m/30 m imagery, async I/O, floating origin, streamed OSM, packaging, telemetry. |
 | [0002 — Aircraft art pass](0002-aircraft-art-pass.md) | **active** | rendering, art, tools | Reference-locked silhouettes, PBR detail, cockpits, damage, authored LODs and the P-51D. |
 
 Next number: `0003` (do not create until the work starts).

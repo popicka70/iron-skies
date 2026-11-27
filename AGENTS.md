@@ -158,20 +158,21 @@ launch of the exported Linux build. Windows uses a sidecar `.pck`; keep both fil
   50 m for 17 mountain ranges, 25/50 m France/Normandy.
 - Imagery: Blue Marble base; ESA `S2MSI_L3__MCQ` quarterly cloudless S2GM (10 m, 2024
   Q3) via Source Cooperative for 30 m/120 m tiles; the runtime stitches a 192 km inset.
-  Local set: 83 tiles (56 at 120 m, 27 at 30 m), 35.6 MiB, over the Rhine demo, Normandy
-  airfield, Alps and southern Scandes; `tools/build_range_ortho.py` fills the other
-  ranges. Source evaluation in `docs/architecture/ortho-sources.md`, ADR-0008.
+  Local set: **2,043 tiles (1,884 at 120 m, 159 at 30 m), 281.8 MiB** — full continental
+  120 m coverage plus 30 m rings around all 17 ranges and the Rhine demo. Source
+  evaluation in `docs/architecture/ortho-sources.md`, ADR-0008.
 - Streaming: async height/ortho I/O with next-ring prefetch; 4 km floating-origin render
   rebasing (`RenderOrigin`/`WorldRoot`, ADR-0006); streamed OSM 16 km tiles on a 3×3 ring
-  with near/mid/far LOD; bounded mountain patches and server 128-tile LRU.
+  with near/mid/far LOD (33 tiles / 19.2 MiB, 100 km corridor); bounded mountain patches
+  and server 128-tile LRU.
 - Packaging: minimal/full Linux+Windows presets, optional terrain `.tar.xz` bundles with
   a SHA-256 manifest and a verified `fetch_terrain_bundle.py` installer path.
 - Telemetry: per-second JSONL (`--telemetry`) and a CI budget check on the takeoff run.
 - Tests: 115 unit tests, 832 m takeoff, mission lands, multiplayer smoke test,
   `--precision-test` PASS.
-- Active work and next step: [`docs/specs/0001-continental-terrain.md`](docs/specs/0001-continental-terrain.md)
-  — run the full continental 120 m batch, fill the remaining range rings, publish the
-  optional bundle manifest.
+- Active work and next step: spec 0001 (continental terrain) is **done**. The parallel
+  art workstream continues in [`docs/specs/0002-aircraft-art-pass.md`](docs/specs/0002-aircraft-art-pass.md);
+  product milestones are in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Tone for agents
 

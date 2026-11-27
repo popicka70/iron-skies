@@ -1,6 +1,6 @@
 # 0001 — Continental terrain detail
 
-**Status:** active
+**Status:** done
 **Updated:** 2026-11-27
 **Area:** terrain, rendering, streaming, tools
 **Goal owner:** world/terrain
@@ -53,13 +53,13 @@ at most 128 tiles in full mode (~1.2 GB).
   - 120 m fallback tiles (535², ~0.1 MB each), built by the batch runner.
   - The runtime stitches a 3×3 ring into a 192 km inset: 30 m-only → 6,409²
     (117.5 MB), 120 m-only → 1,603² (7.4 MB), mixed → finest present.
-- Coverage: the full continental fallback is generated — **2,037 tiles (2,010 at
-  120 m, 27 at 30 m), 152.8 MiB** — so every land tile on the 64 km grid has Sentinel-2
-  imagery. The 30 m set is the Rhine demo plus 3×3 rings around the Alps and southern
-  Scandes; `tools/build_range_ortho.py` fills the remaining ranges. After the full
-  batch, `tools/fix_ortho_gaps.py` filled 2.67 M no-data pixels and blended 3,707 shared
-  edges; `tools/check_ortho_tiles.py` reports **0 holes/seams**. The 10 m Normandy
-  airfield inset still wins locally.
+- Coverage: the full continental fallback is generated — **2,043 tiles (1,884 at
+  120 m, 159 at 30 m), 281.8 MiB** — so every land tile on the 64 km grid has Sentinel-2
+  imagery. 30 m covers the Rhine demo and 3×3 rings around all 17 mountain ranges
+  (`tools/build_range_ortho.py`; 150 range tiles, a few unavailable source tiles were
+  skipped). `tools/fix_ortho_gaps.py` filled no-data and blended shared edges;
+  `tools/check_ortho_tiles.py` reports **0 holes/nodata/seams** after the final pass.
+  The 10 m Normandy airfield inset still wins locally.
 
 ### Streaming and runtime
 
@@ -166,11 +166,10 @@ Each numbered item is a branch/step sequence; each commit is pushed.
      vector data fits the agreed package/streaming budget.
    - Result: `fetch_osm_tiles.py` writes resumable 16 km tiles + manifest and
      `OsmDetail` streams a 3×3 ring with near/mid/far LOD and ≈4 ms build chunks. The
-     generated Normandy ring is 9 tiles / 10.6 MiB with ≈12 MB resident. The 100 km
-     north corridor (`--region 700,5420,16000,80000`) was attempted but public Overpass
-     throttling stopped it partway; rerun the resumable command when the service is
-     available. EU-Hydro was evaluated and deferred (compatible licence, EU Login basin
-     downloads).
+     100 km north corridor is generated: **33 tiles, 19.2 MiB**, with continuous roads,
+     waterways and woods; the far corridor was fetched without buildings to avoid
+     Overpass limits, while the 9-tile spawn ring keeps buildings/trees. EU-Hydro was
+     evaluated and deferred (compatible licence, EU Login basin downloads).
 
 5. [x] **Imagery refinement** *(done 2026-11-27)*
    - 10 m Sentinel-2 near-ring or 30 m ortho for the 17 ranges, chosen by measured
@@ -178,10 +177,10 @@ Each numbered item is a branch/step sequence; each commit is pushed.
    - Acceptance: low-altitude imagery in priority regions is visibly sharper; the
      30 m/120 m fallback hierarchy is unchanged elsewhere.
    - Result: 30 m chosen over a 10 m near-ring (a 3×3 10 m ring would be 19,225² and
-     >1 GiB VRAM; the 30 m ring stays 6,409²/117.5 MB). 3×3 30 m rings generated for the
-     Alps and southern Scandes (18 tiles, 20.7 MiB); `tools/build_range_ortho.py` is the
-     resumable batch for the other 14 ranges (~153 tiles, ~184 MiB). The checker reports
-     0 holes/seams and the Alpine top view shows the sharper imagery.
+     >1 GiB VRAM; the 30 m ring stays 6,409²/117.5 MB). **All 17 ranges** now have 3×3
+     30 m rings (150 tiles), in addition to the 9-tile demo; `tools/build_range_ortho.py`
+     regenerates them. The final checker reports 0 holes/nodata/seams and the Alpine top
+     view shows the sharper imagery.
 
 6. [x] **Package and distribution strategy** *(done 2026-11-27)*
    - Optional terrain bundles, stronger compression, and an installer/first-run
@@ -228,17 +227,16 @@ Each numbered item is a branch/step sequence; each commit is pushed.
 
 ## Risks and decisions
 
-- **The 120 m fallback is now a tractable batch.** The quarterly cloudless mosaic
-  renders a 120 m tile in 3–64 s (median ≈25 s) and a 30 m tile in 41–87 s, with no
-  holes. A full continental 120 m set is ~2,037 tiles: ~3–4 h with four workers and
-  ~165 MiB, resumable with `tools/build_ortho_batch.py`. 30 m stays priority-region only
-  (~1.2 MB/tile); a full 30 m set would be ~2.5 GB and is not planned.
+- **The ortho fallback is complete and refreshable.** The full set is 2,043 tiles /
+  281.8 MiB; the 1,955-tile continental batch took 8,826 s with eight workers and the
+  final checker reports 0 holes/nodata/seams. A refresh is a resumable local batch; 30 m
+  stays priority-region/range only (a full 30 m set would be ~2.5 GB).
 - **OSM sourcing is the fragile part.** Public Overpass instances throttle and 502
-  regularly; the 100 km corridor attempt hit repeated 429/502 responses. The tool
-  retries across three mirrors, resumes existing tiles, and can omit buildings
-  (`--no-buildings`) for far corridor tiles; rerun it later. Generated tiles are ODbL
-  and local; `OsmDetail` keeps only a 48 km ring and prunes to the largest 1,500
-  buildings per tile.
+  regularly, but the 100 km corridor is now generated (33 tiles / 19.2 MiB). The far
+  corridor was fetched without buildings to avoid the limits; the spawn ring has them.
+  The tool retries mirrors, resumes, and supports `--no-buildings`; a later refresh can
+  fill buildings. Generated tiles are ODbL and local; `OsmDetail` keeps a 48 km ring and
+  prunes to the largest 1,500 buildings per tile.
 - **OSM build chunks are amortized, not free.** The first road/hedge chunks on the
   densest tiles can still take ~50–60 ms; a future pass should parse/geometry-build on
   a worker if that proves visible. The terrain/ortho async path is unaffected.
@@ -268,20 +266,26 @@ Each numbered item is a branch/step sequence; each commit is pushed.
 
 ## Remaining work
 
-Recommended order for the next session:
+The plan is complete: full continental 120 m coverage, all 17 range 30 m rings, the
+100 km OSM corridor, floating origin, async I/O, packaging and CI telemetry are in
+place. Optional follow-ups, not blockers:
 
-1. Extend the streaming instrumentation into CI/nightly guards (plan item 7).
-2. Run the full continental 120 m batch with `tools/build_ortho_batch.py --all`
-   (resumable, local, ~3–4 h with four workers); 30 m stays priority-region only.
-3. Generate the remaining 14 range rings with `tools/build_range_ortho.py` as needed.
-4. Publish the optional bundle manifest and wire the installer/first-run helper to the
-   hosting URL.
+1. Publish the optional bundle manifest and point the installer/first-run helper at the
+   hosting URL (`tools/package_terrain.py`, `tools/fetch_terrain_bundle.py`).
+2. Refresh individual low-coverage coastal/MGRS-edge tiles with
+   `build_ortho_batch.py --tile X,Y --refresh` and re-run `fix_ortho_gaps.py` if the
+   checker reports one.
+3. Add buildings to the far OSM corridor when Overpass rate limits allow
+   (`fetch_osm_tiles.py --region 700,5420,16000,80000 --refresh`).
+4. EU-Hydro remains a future option if a no-login bulk mirror appears.
 
 Do not start a full continental 30 m batch: the measured 1.2 MB/tile would add ~2.5 GB
 and the 120 m fallback is the intended continental tier.
 
 ## Changelog
 
+- 2026-11-27 — `50beb03` — final data completion: 2,043 tiles / 281.8 MiB (full 120 m
+  + all 17 range 30 m rings), 33-tile OSM corridor, 0 checker issues; spec done.
 - 2026-11-27 — `bf4d188` — full continental 120 m ortho set (1,955 new tiles, 2,037
   total / 152.8 MiB, 0 holes/seams after `fix_ortho_gaps.py`); MGRS band-edge fix.
 - 2026-11-27 — `ce17394` — per-second streaming telemetry, CI memory/hitch/frame budget

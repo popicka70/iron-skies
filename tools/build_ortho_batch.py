@@ -180,8 +180,18 @@ def _run_job(data: dict) -> dict:
                 }
                 (temp / "heightmap.r16").write_bytes(bytes(8))
                 (temp / "meta.json").write_text(json.dumps(meta, indent=2))
+                # The streamed height tile gives the sea/land mask that keeps a
+                # whole missing MGRS source tile from becoming a black band.
+                height_file = (
+                    bundle / "tiles" / f"tile_{job.x:02d}_{job.y:02d}.r16z"
+                )
+                if not height_file.exists():
+                    plain = bundle / "tiles" / f"tile_{job.x:02d}_{job.y:02d}.r16"
+                    if plain.exists():
+                        height_file = plain
                 updated = ortho_s2gm.render_tile(
-                    local, temp, meta, job.size, quarter=job.quarter
+                    local, temp, meta, job.size, quarter=job.quarter,
+                    height_file=height_file,
                 )
                 coverage = updated.get("s2gm", {}).get("coveragePercent")
                 # Write the runtime file first: an interrupted run then still

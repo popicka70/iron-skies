@@ -44,10 +44,26 @@ def fill_percent(array: np.ndarray) -> float:
     return float((difference <= 12).mean() * 100.0)
 
 
+def nodata_stats(array: np.ndarray) -> tuple[int, int, float]:
+    """Return edge black-band rows/columns and the near-black percentage.
+
+    A missing source tile used to render as a whole black row or column band
+    at the tile edge, while genuine dark water is scattered and never fills a
+    full row. Reporting both keeps a real band from passing as sea.
+    """
+    black = array.max(axis=2) < 8
+    rows = int((black.mean(axis=1) > 0.5).sum())
+    cols = int((black.mean(axis=0) > 0.5).sum())
+    return rows, cols, float(black.mean() * 100.0)
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("bundle", type=Path)
     parser.add_argument("--max-fill-percent", type=float, default=2.0)
+    parser.add_argument("--max-nodata-percent", type=float, default=5.0,
+                        help="maximum near-black fraction per tile (a whole "
+                             "black row/column always fails)")
     parser.add_argument("--max-seam", type=float, default=24.0,
                         help="maximum mean edge difference in 8-bit levels")
     parser.add_argument("--verbose", action="store_true")
@@ -71,13 +87,18 @@ def main(argv: list[str]) -> int:
     for key, (path, array) in sorted(tiles.items()):
         by_size.setdefault(array.shape[0], {})[key] = array
         holes = fill_percent(array)
+        band_rows, band_cols, nodata = nodata_stats(array)
         status = "ok"
-        if holes > args.max_fill_percent:
+        if band_rows or band_cols or nodata > args.max_nodata_percent:
+            status = "NODATA"
+            failures += 1
+        elif holes > args.max_fill_percent:
             status = "HOLES"
             failures += 1
         if args.verbose or status != "ok":
             print(f"{status:5} tile {key[0]},{key[1]} "
-                  f"{array.shape[0]}² fill {holes:.2f}%")
+                  f"{array.shape[0]}² fill {holes:.2f}% nodata {nodata:.2f}%"
+                  f" bands {band_rows}×{band_cols}")
         if path.with_name(path.name + ".tmp").exists():
             print(f"STALE tile {key[0]},{key[1]} has a .tmp file")
             failures += 1
@@ -113,7 +134,7 @@ def main(argv: list[str]) -> int:
                        for size, group in sorted(by_size.items()))
     print(f"Checked {len(tiles)} tiles ({widths}), "
           f"{failures} issue(s), thresholds fill≤{args.max_fill_percent:g}% "
-          f"seam≤{args.max_seam:g}")
+          f"nodata≤{args.max_nodata_percent:g}% seam≤{args.max_seam:g}")
     return 1 if failures else 0
 
 
