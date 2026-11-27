@@ -164,9 +164,11 @@ Each numbered item is a branch/step sequence; each commit is pushed.
      vector data fits the agreed package/streaming budget.
    - Result: `fetch_osm_tiles.py` writes resumable 16 km tiles + manifest and
      `OsmDetail` streams a 3×3 ring with near/mid/far LOD and ≈4 ms build chunks. The
-     generated Normandy ring is 9 tiles / 10.6 MiB with ≈12 MB resident; the 100 km
-     north corridor is the documented `--region 700,5420,16000,80000` batch. EU-Hydro
-     was evaluated and deferred (compatible licence, EU Login basin downloads).
+     generated Normandy ring is 9 tiles / 10.6 MiB with ≈12 MB resident. The 100 km
+     north corridor (`--region 700,5420,16000,80000`) was attempted but public Overpass
+     throttling stopped it partway; rerun the resumable command when the service is
+     available. EU-Hydro was evaluated and deferred (compatible licence, EU Login basin
+     downloads).
 
 5. [x] **Imagery refinement** *(done 2026-11-27)*
    - 10 m Sentinel-2 near-ring or 30 m ortho for the 17 ranges, chosen by measured
@@ -230,11 +232,11 @@ Each numbered item is a branch/step sequence; each commit is pushed.
   ~165 MiB, resumable with `tools/build_ortho_batch.py`. 30 m stays priority-region only
   (~1.2 MB/tile); a full 30 m set would be ~2.5 GB and is not planned.
 - **OSM sourcing is the fragile part.** Public Overpass instances throttle and 502
-  regularly; `fetch_osm_tiles.py` retries across three mirrors, resumes existing tiles,
-  and can omit buildings (`--no-buildings`) for far corridor tiles. A full 100 km
-  corridor is a background batch, not a single request. Generated tiles are ODbL and
-  local; `OsmDetail` keeps only a 48 km ring and prunes to the largest 1,500 buildings
-  per tile.
+  regularly; the 100 km corridor attempt hit repeated 429/502 responses. The tool
+  retries across three mirrors, resumes existing tiles, and can omit buildings
+  (`--no-buildings`) for far corridor tiles; rerun it later. Generated tiles are ODbL
+  and local; `OsmDetail` keeps only a 48 km ring and prunes to the largest 1,500
+  buildings per tile.
 - **OSM build chunks are amortized, not free.** The first road/hedge chunks on the
   densest tiles can still take ~50–60 ms; a future pass should parse/geometry-build on
   a worker if that proves visible. The terrain/ortho async path is unaffected.
