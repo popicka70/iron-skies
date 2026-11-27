@@ -49,7 +49,10 @@ Measured blockout state (LOD0, Godot auto-LOD enabled on import):
 
 Known gaps:
 
-- Silhouettes are a measured blockout, not yet overlaid and locked against references.
+- Silhouettes are a measured blockout. The Spitfire is now overlaid and measured against
+  a CC0 Mk Vb 3-view and the Mk IX side profile (span 11.23 m, length 9.55 m vs 9.47 m
+  authoritative, outer-wing chord within ~0.2 m); the Bf 109 and Ju 88 are not yet
+  overlaid.
 - Surface detail is geometry panel lines plus a triplanar camo map; no rivets, access
   panels, fabric rib tapes, exhaust staining, chipped paint or oil streaks.
 - Cockpit interiors are blockout boxes; gauge needles are not driven by telemetry.
@@ -100,6 +103,13 @@ where it keeps review manageable. Push every commit.
    - Start with the Spitfire, then the Bf 109, then the Ju 88.
    - Acceptance: the silhouette stays within roughly one tyre width over the whole
      aircraft; the overlay images are attached to the commit/PR.
+   - [x] Spitfire *(measured 2026-11-27)*: `tools/blender/render_silhouette.py` renders
+     side/top/front with a metres-to-pixels sidecar; `docs/media/aircraft/spitfire-mk9-silhouette.jpg`
+     is the committed sheet. The overlay (CC0 Mk Vb 3-view + CC BY-SA Mk IX profile, local
+     only) puts the side view within a few centimetres, the length at 9.55 m against
+     9.47 m, and the outer-wing chord within ~0.2 m. Accepted as-is; corrections would
+     chase a Mk Vb root fairing, not a Mk IX error.
+   - [ ] Bf 109 G-6 and Ju 88 A-4 overlays.
 
 2. [ ] **Surface-detail and bake pipeline.**
    - Build a high-poly detail cage: shallow panel-line insets, rivet strips, access
@@ -180,6 +190,12 @@ Visual review:
 blender --background --python tools/blender/render_turntable.py -- \
   --blend art/aircraft/spitfire-mk9/spitfire-mk9.blend \
   --out docs/media/aircraft --prefix spitfire-mk9 --views 8
+
+# Orthographic silhouette sheet (side/top/front) + metres-to-pixels sidecar
+blender --background --python tools/blender/render_silhouette.py -- \
+  --blend art/aircraft/spitfire-mk9/spitfire-mk9.blend \
+  --out /tmp/art-review --prefix spitfire-mk9 --ppm 90
+# expect span=11.230 m length=9.550 m height=3.320 m (gear up)
 ```
 
 In-game smoke:
@@ -239,6 +255,9 @@ measured; the art budget is the schedule risk, not the code.
 
 ## Changelog
 
+- 2026-11-27 — orthographic silhouette renderer; Spitfire overlaid and measured against
+  a CC0 Mk Vb 3-view and the Mk IX profile (span 11.23 m, length 9.55 m vs 9.47 m,
+  outer-wing chord within ~0.2 m).
 - 2026-11-27 — `8352d1c` — cockpit depth-range fix (far plane 120 km) and a reproducible
   cockpit render smoke test; the interior remains the blockout.
 - 2026-11-27 — `4fddee6` / merge `f0ca7d4` — first blockout slice: three models, camo

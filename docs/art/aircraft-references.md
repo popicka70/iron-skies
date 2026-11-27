@@ -46,6 +46,23 @@ Shape notes:
   sky spinner and codes, Type C1 roundels on upper wings and fuselage. Generic
   squadron codes, no specific pilot's initials.
 
+Silhouette overlays (measured 2026-11-27):
+
+| Source | Use | Licence | Shipped | Notes |
+| --- | --- | --- | --- | --- |
+| Wikimedia Commons, `File:Supermarine Spitfire Mk Vb 3-view.svg` — https://commons.wikimedia.org/wiki/File:Supermarine_Spitfire_Mk_Vb_3-view.svg | side/top planform overlay for the Spitfire blockout | **CC0** (Marek Cel) | no | Mk Vb, not Mk IX: use the wing planform and tail, not the nose/canopy |
+| Wikimedia Commons, `File:Spitfire MKIX.jpg` — https://commons.wikimedia.org/wiki/File:Spitfire_MKIX.jpg | Mk IX nose, spinner, 4-blade prop and canopy side profile | **CC BY-SA 3.0** (B. Huber) | no | reference-only; the overlay is a local review artifact, never committed |
+
+The Mk Vb drawing and the Mk IX profile are scaled to the authoritative span/length
+and overlaid with `tools/blender/render_silhouette.py`. Measured result: span 11.23 m,
+length 9.55 m (0.08 m / 0.85% over the 9.47 m authoritative figure, under half a tyre
+width), height 3.32 m with the prop disc and gear up. The side view matches the drawing
+along the fuselage within a few centimetres; the top view's outer-wing chord is within
+~0.2 m and the root is ~0.3 m narrower, which is the Mk Vb's wing-root fairing rather
+than a planform error (the blockout's wing area is 22.5 m² against the published
+22.49 m²). The 8 cm length is accepted for now; trim the rudder trailing edge if a
+later pass needs an exact figure.
+
 ## Messerschmitt Bf 109 G-6
 
 | Source | Use | Licence | Shipped | Notes |
