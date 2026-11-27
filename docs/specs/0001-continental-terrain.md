@@ -273,6 +273,9 @@ and the 120 m fallback is the intended continental tier.
 
 ## Changelog
 
+- 2026-11-27 — `361c091` — minimal Linux/Windows packages, optional terrain `.tar.xz`
+  bundles with a SHA-256 manifest, verified first-run installer path; data-less PCK
+  fallback fixed.
 - 2026-11-27 — `23022c1` — 30 m S2GM rings for the mountain ranges (Alps/Scandes
   generated, range batch tool); 83 tiles / 35.6 MiB, 0 holes/seams.
 - 2026-11-27 — `1282fb4` — streamed 16 km OSM tiles with near/mid/far LOD, chunked
