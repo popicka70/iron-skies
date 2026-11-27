@@ -53,12 +53,13 @@ at most 128 tiles in full mode (~1.2 GB).
   - 120 m fallback tiles (535², ~0.1 MB each), built by the batch runner.
   - The runtime stitches a 3×3 ring into a 192 km inset: 30 m-only → 6,409²
     (117.5 MB), 120 m-only → 1,603² (7.4 MB), mixed → finest present.
-- Local coverage: 83 tiles (56 at 120 m, 27 at 30 m), 35.6 MiB, covering the Rhine demo,
-  the Normandy airfield and 3×3 30 m rings around the Alps and southern Scandes. Every
-  tile passes `tools/check_ortho_tiles.py` (fill ≤2%, mean edge seam ≤24). Outside that
-  area the engine falls back to Blue Marble/regional orthos. The 10 m Normandy airfield
-  inset still wins locally. `tools/build_range_ortho.py` is the resumable batch for the
-  other 14 ranges (≈153 30 m tiles, ≈184 MiB if all are generated).
+- Coverage: the full continental fallback is generated — **2,037 tiles (2,010 at
+  120 m, 27 at 30 m), 152.8 MiB** — so every land tile on the 64 km grid has Sentinel-2
+  imagery. The 30 m set is the Rhine demo plus 3×3 rings around the Alps and southern
+  Scandes; `tools/build_range_ortho.py` fills the remaining ranges. After the full
+  batch, `tools/fix_ortho_gaps.py` filled 2.67 M no-data pixels and blended 3,707 shared
+  edges; `tools/check_ortho_tiles.py` reports **0 holes/seams**. The 10 m Normandy
+  airfield inset still wins locally.
 
 ### Streaming and runtime
 
@@ -142,9 +143,10 @@ Each numbered item is a branch/step sequence; each commit is pushed.
    - Acceptance: every land tile has a documented source or a deliberate fallback; the
      package growth is measured; no seams at ring boundaries.
    - Result: S2GM quarterly cloudless mosaic adopted (ADR-0008) over STAC 120 m;
-     `tools/build_ortho_batch.py` and `tools/check_ortho_tiles.py` added; 83 tiles across
-     four regions (16.3 MiB), zero holes/seams. Full continental 120 m: ~3–4 h at four
-     workers, ~165 MiB, resumable.
+     `tools/build_ortho_batch.py`, `tools/check_ortho_tiles.py` and
+     `tools/fix_ortho_gaps.py` added. The **full continental 120 m batch** built 1,955
+     tiles in 8,826 s with eight workers; the bundle is 2,037 tiles / 152.8 MiB and
+     passes the hole/seam checker with **0 issues** after gap fill and edge blending.
 
 3. [x] **Floating-origin rebasing (ADR-0006)** *(done 2026-11-27)*
    - Introduce a render-origin offset at 4 km cells; shift terrain/world nodes and all
