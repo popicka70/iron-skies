@@ -17,14 +17,15 @@ slice is merged; this file keeps the detailed build notes and is not the current
 | Orthographic silhouette review | side/top/front renders plus a metres-to-pixels sidecar (`tools/blender/render_silhouette.py`); Spitfire measured 2026-11-27 |
 | Runtime integration | `AircraftVisual` loads by aircraft id, primitive fallback |
 | In-game verification | Spitfire and Bf 109 screenshots; Ju 88 loads in bomber mission |
+| Spitfire cockpit structure | tub, cushioned seat/harness, armoured headrest, pedals, stick, throttle/mixture, 8-gauge panel, compass, gunsight, canopy rails, bevel and fill light; adjustable eye point (2026-11-27) |
 
 Delivered budgets: Spitfire 21.8k tris, Bf 109 18.3k tris, Ju 88 18.1k tris at
 LOD0 (Godot generates mesh LODs on import). Each GLB embeds one 2K camo texture;
 undersides use a separate solid RLM/sea-grey material.
 
 Still to do for a full art pass: shape refinement against reference overlays,
-rivets and access panels, final cockpit interiors and gauge needles, damage
-decals, explicit LOD1/2 review, and perf/VRAM measurement with six aircraft.
+rivets and access panels, the Bf 109/Ju 88 cockpit interiors and 3D gauge needles,
+damage decals, explicit LOD1/2 review, and perf/VRAM measurement with six aircraft.
 
 ## Why
 
@@ -245,6 +246,13 @@ git. Hand-painting in Blender is the fallback for hero details.
   ratio 1.2×10⁸ and the clustered light culler's float frustum degenerated
   (`create_frustum_points`), leaving the 3D view blank. `tools/cockpit_smoke_test.sh`
   runs a non-headless cockpit sortie and fails on that error.
+- Structural pass (done 2026-11-27): a three-section eight-gauge panel with a glare
+  shield and compass, cushioned seat with harness and buckles, armoured headrest,
+  rudder pedals, control column and grip, throttle/mixture, gunsight with sun shade,
+  canopy rails and sidewall ribs; the joined mesh gets a 4 mm bevel. `Main.cs` adds a
+  warm fill light only in cockpit view and an eye point adjustable with PageUp/PageDown
+  or `--seat-height` (0.58–0.86 m). `docs/media/aircraft/spitfire-mk9-cockpit.jpg` is the
+  review shot.
 - Cockpit tub with correct side-wall structure, floor, rudder pedals, control column,
   throttle quadrant, seat, armour, harness, canopy rails, gunsight and instrument
   panel.

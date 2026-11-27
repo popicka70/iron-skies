@@ -53,6 +53,12 @@ public partial class Main : Node3D
     private Camera3D _camera = null!;
     private Label _hud = null!;
 
+    // Cockpit eye point, adjustable with PageUp/PageDown (metres above the CoG).
+    private float _seatHeight = 0.72f;
+    private bool _prevSeatUp;
+    private bool _prevSeatDown;
+    private OmniLight3D? _cockpitLight;
+
     // 120 km is beyond the fog horizon and keeps the far/near ratio at ~2.4e6
     // with the 0.05 m cockpit near plane. A 6,000 km far plane (the old
     // heightmap half-extent times three) gave a 1.2e8 ratio, which degenerated
@@ -142,7 +148,7 @@ public partial class Main : Node3D
     private CameraMode _cameraMode = CameraMode.Chase;
     private bool _prevCameraKey;
     private float _lookYaw;
-    private float _lookPitch;
+    private float _lookPitch = -0.10f;
     private float _chaseYaw;
     private float _chasePitch = 15.0f;
     private float _chaseDistance = 26.0f;
@@ -318,6 +324,11 @@ public partial class Main : Node3D
         if (float.TryParse(ReadUserOption("--look-pitch"), out float lookPitch))
         {
             _lookPitch = Mathf.Clamp(lookPitch, -0.9f, 0.9f);
+        }
+
+        if (float.TryParse(ReadUserOption("--seat-height"), out float seatHeight))
+        {
+            _seatHeight = Mathf.Clamp(seatHeight, 0.58f, 0.86f);
         }
 
         if (float.TryParse(ReadUserOption("--chase-yaw"), out float chaseYaw))
@@ -960,7 +971,7 @@ public partial class Main : Node3D
         _hudText.Append("Chunks    ").Append(_terrain.ResidentChunks).Append("   FPS ")
             .Append(Engine.GetFramesPerSecond()).Append('\n');
         _hudText.Append("Tick      ").Append(_tick).Append("\n\n");
-        _hudText.Append("W/S throttle  B brakes  SPACE fire  C view  RMB look  F flaps  G gear  K/L radiator  , . trim  X extinguish  ↑/↓ pitch  ←/→ roll  A/D rudder");
+        _hudText.Append("W/S throttle  B brakes  SPACE fire  C view  RMB look  PgUp/PgDn seat  F flaps  G gear  K/L radiator  , . trim  X extinguish  ↑/↓ pitch  ←/→ roll  A/D rudder");
         _hud.Text = _hudText.ToString();
     }
 
@@ -1183,6 +1194,19 @@ public partial class Main : Node3D
         }
 
         _prevHudKey = hudKey;
+
+        bool seatUp = Input.IsPhysicalKeyPressed(Key.Pageup);
+        bool seatDown = Input.IsPhysicalKeyPressed(Key.Pagedown);
+        if (seatUp && !_prevSeatUp)
+        {
+            _seatHeight = Mathf.Clamp(_seatHeight + 0.03f, 0.58f, 0.86f);
+        }
+        if (seatDown && !_prevSeatDown)
+        {
+            _seatHeight = Mathf.Clamp(_seatHeight - 0.03f, 0.58f, 0.86f);
+        }
+        _prevSeatUp = seatUp;
+        _prevSeatDown = seatDown;
 
         double cameraYaw = HotasInput.IsAxisAvailable(HotasAxis.CameraYaw)
             ? HotasInput.GetAxis(HotasAxis.CameraYaw) : 0.0;
@@ -1873,6 +1897,19 @@ public partial class Main : Node3D
             ? new Color(0.42f, 0.44f, 0.42f)
             : new Color(0.20f, 0.27f, 0.17f));
         AddChild(_aircraft);
+
+        // Warm fill light for the enclosed cockpit, visible only in cockpit view.
+        _cockpitLight = new OmniLight3D
+        {
+            LightEnergy = 0.30f,
+            OmniRange = 1.6f,
+            LightColor = new Color(1.0f, 0.92f, 0.80f),
+            ShadowEnabled = false,
+            Visible = false,
+        };
+        _cockpitLight.Position = new Vector3(0.0f, 0.52f, -0.30f);
+        _aircraft.AddChild(_cockpitLight);
+
         _playerSmoke = new DamageSmoke();
         _aircraft.GetSmokeAnchor().AddChild(_playerSmoke);
         _playerSmoke.Build();
@@ -1983,10 +2020,11 @@ public partial class Main : Node3D
     private void ResetView()
     {
         _lookYaw = 0.0f;
-        _lookPitch = 0.0f;
+        _lookPitch = _cameraMode == CameraMode.Cockpit ? -0.10f : 0.0f;
         _chaseYaw = 0.0f;
         _chasePitch = 15.0f;
         _chaseDistance = 26.0f;
+        _seatHeight = 0.72f;
     }
 
     private void ApplyCameraLook(double yaw, double pitch)
@@ -2044,6 +2082,10 @@ public partial class Main : Node3D
     {
         _camera.Near = _cameraMode == CameraMode.Cockpit ? 0.05f : 1.0f;
         _aircraft.SetCockpitView(_cameraMode == CameraMode.Cockpit);
+        if (_cockpitLight is not null)
+        {
+            _cockpitLight.Visible = _cameraMode == CameraMode.Cockpit;
+        }
 
         if (_cameraMode == CameraMode.Top)
         {
@@ -2058,7 +2100,8 @@ public partial class Main : Node3D
             var cockpitBasis = SimBridge.ToGodot(_sim.State.Orientation);
             Vector3 aircraft = SimBridge.ToGodot(
                 _sim.State.Position, _renderOrigin);
-            Vector3 eye = aircraft + cockpitBasis.Y * 0.66f - cockpitBasis.Z * 0.05f;
+            Vector3 eye = aircraft + cockpitBasis.Y * _seatHeight
+                - cockpitBasis.Z * 0.05f;
             Basis look = cockpitBasis.Rotated(Vector3.Up, _lookYaw);
             look = look.Rotated(look.X, _lookPitch);
             _camera.GlobalTransform = new Transform3D(look, eye);
