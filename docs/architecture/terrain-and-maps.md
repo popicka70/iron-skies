@@ -1,5 +1,7 @@
 # Terrain, maps and persistence
 
+> **Current workstream:** [specs/0001-continental-terrain.md](../specs/0001-continental-terrain.md) — remaining continental imagery, tile I/O, floating origin and vector detail. This page describes the implemented system.
+
 ## 1. Principles
 
 1. **The map is data, not a scene.** Nothing about a theatre lives in a Godot `.tscn`.

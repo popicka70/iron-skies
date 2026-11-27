@@ -1,12 +1,14 @@
 # Europe-wide height detail — plan
 
-**Status:** height detail through the streamed 30 m near-field and the Sentinel-2
-ortho-tile pipeline (steps 1–7) are done. Continental ortho coverage, floating origin
-and OSM remain (step 8).
-Each numbered implementation step is its own commit/push.
+> **Implementation log / archive.** The current source of truth is
+> [specs/0001-continental-terrain.md](specs/0001-continental-terrain.md). This file
+> records the detailed 500 m → 250 m → tiled build history; update the spec for new work.
+
+**Status:** archive — completed implementation log. Each numbered step below was its
+own commit/push.
 **Goal:** high-quality relief across the whole continent, not only the mountain ranges.
 
-## Current state
+## Starting state (historical)
 
 - 4,000 km Europe base: NOAA ETOPO1 at **2 km** (≈8 MB), Blue Marble imagery.
 - 17 mountain patches: Copernicus GLO-30 at **50 m**, 400 km each (≈2.1 GB total).

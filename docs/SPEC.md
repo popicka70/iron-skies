@@ -3,6 +3,14 @@
 > Status: **Draft / accepted as the initial direction.** Changes require an ADR
 > (see [adr/](adr/)) once implementation has started.
 
+> **Living specs.** This document is the product goal and scope. Start at
+> [`../AGENTS.md`](../AGENTS.md) for the agent workflow and [`README.md`](README.md) for
+> the documentation map. Active implementation is tracked in
+> [specs/](specs/README.md). The current workstream is
+> [specs/0001-continental-terrain.md](specs/0001-continental-terrain.md): a convincing
+> 4,000 km European theatre (height, Sentinel-2 imagery, precision, vector detail),
+> followed by floating-origin rebasing and OSM/EU-Hydro detail.
+
 ---
 
 ## 1. Global goal

@@ -35,6 +35,18 @@ game only).
 6. **Every irreversible choice gets an ADR** in `docs/adr/`, dated, with alternatives
    and consequences.
 
+## Specs, branches and AI agents
+
+Active work is tracked as a living spec in [`docs/specs/`](docs/specs/README.md). Start
+with [`AGENTS.md`](AGENTS.md): it defines the read order, the spec template, and the
+required branch/commit workflow for AI sessions. Humans should follow the same shape.
+
+- One spec per workstream (`docs/specs/NNNN-kebab-case.md`), updated in place.
+- Work on `feature/<spec-number>-<short-step>`, never directly on `main`.
+- Commit and push after each step; keep one logical change per commit.
+- Update the spec’s checklist, acceptance notes and changelog in the same change.
+- Merge with `--no-ff` once the local checks and CI are green.
+
 ## Pull requests
 
 - Keep changes scoped; one logical change per PR.
