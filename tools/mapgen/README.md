@@ -14,7 +14,9 @@ read over HTTP, and the bundle is written to disk.
 **OSM roads and hedges** are implemented for a 10 km patch around the spawn.
 `fetch_osm_objects.py` adds **woods and extruded buildings** for a smaller 2 km patch
 through the OSM API (a fallback while the public Overpass instances are saturated).
-**Next:** larger OSM coverage, water and object placement.
+`fetch_osm_tiles.py` now writes the streamed 16 km tiles used by `OsmDetail` (roads,
+hedges, buildings, woods, streams + manifest, resumable, prune/dedupe). **Next:**
+broader OSM object coverage and EU-Hydro rivers.
 
 ## Planned usage
 
@@ -28,6 +30,10 @@ python3 tools/mapgen/mapgen.py --theatre france-northwest-1944 \
     --resolution 50 --ortho-size 4096
 python3 tools/mapgen/fetch_osm_objects.py \
     --theatre france-northwest-1944 --radius 6000
+
+# Streamed 16 km OSM tiles for the runtime 3×3 ring
+python3 tools/mapgen/fetch_osm_tiles.py --theatre normandy-1944 \
+    --region 700,5420,16000,16000 --tile-size 16000
 ```
 
 Large bundles can take tens of minutes because the imagery mosaic reads several

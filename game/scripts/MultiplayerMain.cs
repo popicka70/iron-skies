@@ -38,6 +38,7 @@ public sealed partial class MultiplayerMain : Node3D
     private byte _localType;
 
     private TerrainWorld _terrain = null!;
+    private OsmDetail _osm = null!;
     private Node3D _worldRoot = null!;
     private readonly RenderOrigin _renderOrigin = new();
     private MountainPatchManager? _patchManager;
@@ -255,6 +256,15 @@ public sealed partial class MultiplayerMain : Node3D
         _playerSmoke.Update(_localSim.Damage.Smoke, _localSim.Damage.Fire);
         _audio.UpdateFrom(_localSim, _throttle);
         _terrain.SetFocus(SimBridge.ToGodot(_localSim.State.Position));
+        ulong osmStart = Time.GetTicksUsec();
+        _osm.SetFocus(
+            _localSim.State.Position.X, _localSim.State.Position.Y);
+        double osmMilliseconds = (Time.GetTicksUsec() - osmStart) / 1000.0;
+        if (osmMilliseconds > 16.0)
+        {
+            GD.Print($"[stream] OSM focus update {osmMilliseconds:0.0} ms");
+        }
+
         UpdateCamera(delta);
     }
 
@@ -346,6 +356,8 @@ public sealed partial class MultiplayerMain : Node3D
                 state.Orientation, state.Position, _renderOrigin);
             _combat.Bind(_localSim);
             _terrain.Prewarm(SimBridge.ToGodot(state.Position));
+            _osm.SetFocus(
+                state.Position.X, state.Position.Y, immediate: true);
             _camera.GlobalPosition = SimBridge.ToGodot(state.Position, _renderOrigin)
                 + new Vector3(0, 12, 40);
             _snapCamera = true;
@@ -651,9 +663,9 @@ public sealed partial class MultiplayerMain : Node3D
         _terrain.Build(_map, _terrainDirectory, _patchManager);
         _terrain.SetRenderOrigin(_renderOrigin);
         _worldRoot.AddChild(_terrain);
-        var osm = new OsmDetail();
-        osm.Build(_map, _terrainOsmPath);
-        _worldRoot.AddChild(osm);
+        _osm = new OsmDetail();
+        _osm.Build(_map, _terrainOsmPath);
+        _worldRoot.AddChild(_osm);
         var airfield = new Airfield();
         airfield.Build(_map);
         _worldRoot.AddChild(airfield);
