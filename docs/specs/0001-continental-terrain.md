@@ -199,7 +199,7 @@ Do not begin a full continental 30 m batch before the source/cost decision in pl
 
 ## Changelog
 
-- 2026-11-27 — `7db4e7d` — async height/ortho tile I/O, 8 km next-ring prefetch, and
+- 2026-11-27 — `e5fe77f` — async height/ortho tile I/O, 8 km next-ring prefetch, and
   focus-update/hitch instrumentation; the 64 km transition is now under the 50 ms budget.
 - 2026-11-27 — `bbcb5a1` / merge `71a4861` — spec system created and merged; this file
   consolidates the completed height/imagery work and the remaining proposal.
