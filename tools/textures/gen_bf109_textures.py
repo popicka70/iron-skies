@@ -16,6 +16,8 @@ import os
 import numpy as np
 from PIL import Image
 
+from texture_common import add_wear
+
 
 def periodic_noise(size: int, sigma: float, rng: np.random.Generator) -> np.ndarray:
     white = rng.standard_normal((size, size))
@@ -51,7 +53,7 @@ def build_albedo(size: int, rng: np.random.Generator) -> np.ndarray:
     variation = 0.96 + 0.08 * periodic_noise(size, size / 240.0, rng)
     base = rlm74[None, None, :] * (1.0 - mask[..., None]) + rlm75[None, None, :] * mask[..., None]
     base = base * variation[..., None]
-    return np.clip(base, 0.0, 1.0)
+    return add_wear(base, size, rng)
 
 
 def build_height(size: int, rng: np.random.Generator) -> np.ndarray:

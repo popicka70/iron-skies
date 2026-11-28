@@ -23,6 +23,8 @@ import os
 import numpy as np
 from PIL import Image
 
+from texture_common import add_wear
+
 
 def periodic_noise(size: int, sigma: float, rng: np.random.Generator) -> np.ndarray:
     """Gaussian-smoothed white noise with wrap-around (tileable)."""
@@ -65,7 +67,7 @@ def build_albedo(size: int, rng: np.random.Generator) -> np.ndarray:
 
     base = dark_green[None, None, :] * (1.0 - mask[..., None]) + ocean_grey[None, None, :] * mask[..., None]
     base = base * variation[..., None] * grime[..., None]
-    return np.clip(base, 0.0, 1.0)
+    return add_wear(base, size, rng)
 
 
 def build_height(size: int, rng: np.random.Generator) -> np.ndarray:

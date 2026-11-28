@@ -120,11 +120,9 @@ public sealed partial class AircraftVisual : Node3D
 
                 if (material.ResourceName.Contains("airframe", StringComparison.OrdinalIgnoreCase))
                 {
-                    // The glTF carries a UV-mapped texture. Triplanar projection keeps
-                    // the camouflage continuous across the joined/segmented meshes.
-                    material.Uv1Triplanar = true;
-                    material.Uv1Scale = new Vector3(0.14f, 0.14f, 0.14f);
-                    material.Uv1TriplanarSharpness = 1.0f;
+                    // The model now ships a packed UV atlas with baked normal/AO/ORM
+                    // maps, so the material must sample UVs. Triplanar would
+                    // misalign those UV-space maps (it was a blockout shortcut).
                     material.CullMode = BaseMaterial3D.CullModeEnum.Back;
                 }
             }

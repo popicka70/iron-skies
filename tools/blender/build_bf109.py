@@ -747,7 +747,7 @@ def main():
             "airframe",
             os.path.join(texture_dir, "bf109_camo_albedo.png"),
             os.path.join(texture_dir, "bf109_camo_normal.png"),
-            roughness=0.58, metallic=0.05, uv_scale=0.16,
+            roughness=0.58, metallic=0.05, uv_scale=1.0,
             orm_path=os.path.join(texture_dir, "bf109_camo_orm.png"),
         ),
         "underside": material("underside", (0.52, 0.60, 0.64), 0.62, 0.03),
