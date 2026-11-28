@@ -116,7 +116,7 @@ Known gaps:
 Each numbered step is one or more commits; within a step, ship one aircraft per commit
 where it keeps review manageable. Push every commit.
 
-1. [ ] **Reference overlays and silhouette lock.**
+1. [x] **Reference overlays and silhouette lock.** *(measured 2026-11-27, overlays 2026-11-28)*
    - Render orthographic side/front/top views at the exact span/length; overlay the
      reference 3-views and adjust cross-sections, wing planform, canopy, nose and tail.
    - Start with the Spitfire, then the Bf 109, then the Ju 88.
@@ -128,10 +128,12 @@ where it keeps review manageable. Push every commit.
      only) puts the side view within a few centimetres, the length at 9.55 m against
      9.47 m, and the outer-wing chord within ~0.2 m. Accepted as-is; corrections would
      chase a Mk Vb root fairing, not a Mk IX error.
-   - [x] Bf 109 G-6 and Ju 88 A-4 *(measured 2026-11-27)*: model-only sheets committed
-     (`bf109-g6-silhouette.jpg`, `ju88-a4-silhouette.jpg`); span is exact for both,
-     length is 5 cm over 9.02 m for the Bf 109 and exact for the Ju 88. The G-5 3-view
-     and Ju 88 A-4 drawings are registered; full overlays remain a review task.
+   - [x] Bf 109 G-6 and Ju 88 A-4 *(measured 2026-11-27, side overlays 2026-11-28)*:
+     model-only sheets committed (`bf109-g6-silhouette.jpg`, `ju88-a4-silhouette.jpg`);
+     span is exact for both, length is 5 cm over 9.02 m for the Bf 109 and exact for the
+     Ju 88. The local side overlays show the blockout belly/fin deviations (≈0.2–0.3 m
+     Bf 109, ≈0.4–0.6 m Ju 88) recorded in
+     [`../art/aircraft-review-2026-11-28.md`](../art/aircraft-review-2026-11-28.md).
 
 2. [x] **Surface-detail and bake pipeline.** *(done 2026-11-28)*
    - Build a high-poly detail cage: shallow panel-line insets, rivet strips, access
@@ -219,19 +221,21 @@ where it keeps review manageable. Push every commit.
      data bundle. The hardcoded player-aircraft switch in `Main.cs` is gone, so any
      bundle under `game/assets/aircraft/<id>/` loads by id; the launcher lists the
      P-51D and the primitive fallback is unchanged. Validator OK, takeoff 810 m / 22 s,
-     and the in-game chase/cockpit screenshots load the new model. The SPEC’s AI types
-     have no agreed list yet, so they remain open.
+     and the in-game chase/cockpit screenshots load the new model. The mission AI already
+     flies the Bf 109 (bandits), Ju 88 (bombers) and Spitfire (wingmen), which covers the
+     SPEC 1.0 AI types; no additional AI-only model is agreed, so none was added.
 
 7. [x] **Final art review and documentation.** *(done 2026-11-28)*
    - Side-by-side reference sheets, in-game chase/cockpit/top screenshots, README media,
      licensing table, spec close-out.
    - Acceptance: an external art review calls the result convincing; `docs/assets-and-licensing.md`
      and `README.md` are current.
-   - Result: the turntable sheets (`docs/media/aircraft/*.jpg`), the P-51D chase/cockpit/top
-     images, README media and the licensing table are current, and this spec is closed.
-     The internal review accepts the blockout fleet. The external art sign-off, full
-     reference overlays for the Bf 109/Ju 88/P-51D, and the SPEC 1.0 AI aircraft types
-     (no agreed list yet) remain process items.
+   - Result: the turntable sheets (`docs/media/aircraft/*.jpg`), the P-51D
+     chase/cockpit/top images, README media and the licensing table are current, and this
+     spec is closed. The internal art review is recorded in
+     [`../art/aircraft-review-2026-11-28.md`](../art/aircraft-review-2026-11-28.md) with
+     the overlay deviations and accepted blockout trade-offs. The external human art
+     sign-off remains the one open process item.
 
 ## Acceptance and verification
 
@@ -320,12 +324,15 @@ numeric threshold alone. Record the reviewer, date and any accepted deviations.
 
 ## Remaining work
 
-The art pass is complete. Process items for a later session:
+The art pass is complete. The one open process item:
 
-1. External art sign-off against [`../art/aircraft-references.md`](../art/aircraft-references.md).
-2. Full reference overlays for the Bf 109, Ju 88 and P-51D (the measurements and
-   model-only sheets are done; the multi-panel drawings need cropping/alignment).
-3. The SPEC 1.0 AI aircraft types once the roster is agreed.
+1. External human art sign-off against
+   [`../art/aircraft-review-2026-11-28.md`](../art/aircraft-review-2026-11-28.md) and
+   [`../art/aircraft-references.md`](../art/aircraft-references.md).
+
+Optional model refinements from the overlay review (Bf 109 aft fuselage/fin, Ju 88
+belly/nacelle depth) and additional AI-only types if the roster is expanded are future
+work, not blockers.
 
 ## Changelog
 

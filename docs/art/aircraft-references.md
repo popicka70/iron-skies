@@ -1,5 +1,8 @@
 # Aircraft reference register
 
+The measured review record (overlays, deviations and the internal sign-off) is
+[`aircraft-review-2026-11-28.md`](aircraft-review-2026-11-28.md).
+
 Every reference used for shape, colour or markings is recorded here **before** it
 informs a committed asset. Reference images are not shipped. The register keeps the
 provenance and licence clear so the original model can be published under CC BY 4.0
@@ -155,5 +158,6 @@ straight leading edge, belly radiator/oil-cooler scoop, four-blade Hamilton Stan
 prop, wide-track main gear, USAAF olive-drab upper / neutral-grey lower with
 star-and-bar insignia. The blockout measured span 11.28 m, length 9.96 m (0.13 m over
 the 9.83 m authoritative figure) and height 3.67 m with the prop disc. The model-only
-silhouette is `docs/media/aircraft/p51d-25-silhouette.jpg`; the reference overlay is a
-later review task, as with the Bf 109 and Ju 88.
+silhouette is `docs/media/aircraft/p51d-25-silhouette.jpg`; the public-domain NAA 3-view
+is registered in the review record, and its dimensioned callouts need a manual crop
+before a full side overlay can be composed.
