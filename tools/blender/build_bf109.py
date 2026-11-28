@@ -31,6 +31,7 @@ from aircraft_common import (  # noqa: E402
     cylinder_between,
     descendants,
     export_glb,
+    gauge_needle,
     image_material,
     join_meshes,
     loft,
@@ -483,6 +484,13 @@ def build_cockpit(cockpit, mats):
     cylinder("Compass", (0.0, 0.624, 0.60), 0.025, 0.02, cockpit, dark,
              axis=(0.0, 1.0, 0.0), vertices=14)
 
+    needle_names = ("NeedleAirspeed", "NeedleAltimeter", "NeedleRpm",
+                    "NeedleManifold", "NeedleCoolant", "NeedleFuel", "NeedleOil")
+    for index, name in enumerate(needle_names):
+        x = (-1.5 + (index % 4)) * 0.095
+        z = 0.515 - (index // 4) * 0.115
+        gauge_needle(name, (x, 0.607, z), 0.037, cockpit, mats["needle"])
+
     # Seat, cushions, armour, headrest and harness.
     box("SeatPan", (0.0, -0.28, 0.02), (0.40, 0.38, 0.08), cockpit, leather)
     box("SeatCushion", (0.0, -0.26, 0.07), (0.34, 0.30, 0.04), cockpit, leather)
@@ -719,7 +727,8 @@ def consolidate(exterior, cockpit):
 
     cockpit_root = bpy.data.objects.get("CockpitInterior")
     if cockpit_root is not None:
-        cockpit_meshes = [obj for obj in descendants(cockpit_root) if obj.type == "MESH"]
+        cockpit_meshes = [obj for obj in descendants(cockpit_root)
+                              if obj.type == "MESH" and not obj.name.startswith("Needle")]
         join_meshes("CockpitStatic", cockpit_meshes, cockpit)
         cockpit_static = bpy.data.objects.get("CockpitStatic")
         if cockpit_static is not None:
@@ -759,6 +768,7 @@ def main():
         "interior": material("interior", (0.085, 0.095, 0.085), 0.85, 0.02),
         "leather": material("leather", (0.10, 0.07, 0.045), 0.90, 0.0),
         "harness": material("harness", (0.22, 0.19, 0.11), 0.92, 0.0),
+        "needle": material("needle", (0.82, 0.82, 0.76), 0.45, 0.10),
         "gauge_face": material("gauge_face", (0.045, 0.055, 0.045), 0.55, 0.05),
         "panel_line": material("panel_line", (0.035, 0.040, 0.035), 0.90, 0.02),
         "cross_white": material("cross_white", (0.82, 0.82, 0.78), 0.62, 0.0,

@@ -143,7 +143,7 @@ where it keeps review manageable. Push every commit.
      runtime material (triplanar removed). Position-anchored exhaust/walkway stamps are
      approximated by the procedural layer.
 
-3. [ ] **Cockpit repair and interior pass.**
+3. [x] **Cockpit repair and interior pass.** *(done 2026-11-28)*
    - [x] Fix the pre-existing cockpit camera/renderer failure (`create_frustum_points`)
      with a reproducible test *(done 2026-11-27)*: the 6,000 km far plane was lowered to
      120 km, and `tools/cockpit_smoke_test.sh` fails on the engine error for both
@@ -155,13 +155,16 @@ where it keeps review manageable. Push every commit.
      (0.58–0.86 m) and a warm fill light is active only in cockpit view.
    - [x] Bf 109 structural interior *(done 2026-11-27)*: the same layout adapted to the
      narrower Erla cockpit, with a Revi sight and sun shade; 19,264 tris.
-   - [ ] Drive the 3D gauge needles from `AircraftSimulator` telemetry.
+   - [x] Drive the 3D gauge needles from `AircraftSimulator` telemetry: seven needle
+     nodes per fighter (airspeed, altimeter, RPM, manifold, coolant, fuel, oil) rotate
+     every frame in `AircraftVisual.UpdateNeedles`.
    - Acceptance: a cockpit screenshot shows the panel and canopy frame, the eye point is
      adjustable, and the 2D `CockpitPanel` remains the readable fallback.
    - Current result: `docs/media/aircraft/spitfire-mk9-cockpit.jpg` and
-     `bf109-g6-cockpit.jpg` show the canopy frame, gunsight, coaming and 3D panel over the
-     rendered world, with the live 2D panel below; the eye height changes the framing.
-     Gauge needles remain 2D-only.
+     `bf109-g6-cockpit.jpg` show the canopy frame, gunsight, coaming and panel over the
+     rendered world, with the live 2D panel below; the eye height and look change the
+     framing. The 3D needle nodes are visible in the Blender cockpit render and the
+     `--no-hud` view; the 2D panel hides the 3D faces at the default framing.
 
 4. [ ] **Damage, wear and markings.**
    - Bullet-hole and missing-panel decals, scorch/oil/exhaust masks, chipped paint on
@@ -289,16 +292,16 @@ Recommended order for the next session:
 
 1. Finish the Bf 109 and Ju 88 reference overlays (the measurements and model-only sheets
    are done; the multi-panel drawings need cropping/alignment) and record the deviations.
-2. Step 3: wire the 3D gauge needles to `AircraftSimulator` telemetry. The renderer
-   blocker and both fighter structural interiors are done; the Ju 88 is AI-only.
-3. Step 4 damage/wear decals; the packed UV atlas and curvature map are ready for
+2. Step 4 damage/wear decals; the packed UV atlas and curvature map are ready for
    anchored bullet-hole, missing-panel and scorch decals.
-4. Step 5: authored LOD1/2, shadow LOD and a distance imposter, then the GTX 1060-class
+3. Step 5: authored LOD1/2, shadow LOD and a distance imposter, then the GTX 1060-class
    six-aircraft run (the render-cost script and budgets are in place).
-5. Step 6 P-51D, then step 7's final review and documentation.
+4. Step 6 P-51D, then step 7's final review and documentation.
 
 ## Changelog
 
+- 2026-11-28 — `e5bbeb6` — telemetry-driven 3D cockpit needles in both fighters and a
+  `--no-hud` review flag.
 - 2026-11-28 — `96b3632` — step 2 finished: UV sampling replaces triplanar, weathered
   albedos (grime streaks/chips), curvature master; GLBs 4.14 / 3.77 / 3.61 MB.
 - 2026-11-28 — `d2e308b` — ORM roughness/metallic wired and exported as

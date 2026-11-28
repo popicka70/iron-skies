@@ -29,6 +29,7 @@ public sealed partial class AircraftVisual : Node3D
     private Node3D? _canopy;
     private Node3D? _fuselageCentre;
     private Node3D? _cockpitInterior;
+    private readonly Dictionary<string, Node3D> _needles = new();
     private bool _cockpitView;
 
     public void Build(string aircraftId, Color? tint = null)
@@ -89,6 +90,19 @@ public sealed partial class AircraftVisual : Node3D
         _canopy = FindChild("Canopy", true, false) as Node3D;
         _fuselageCentre = FindChild("FuselageCenter", true, false) as Node3D;
         _cockpitInterior = FindChild("CockpitInterior", true, false) as Node3D;
+
+        _needles.Clear();
+        foreach (string name in new[]
+                 {
+                     "NeedleAirspeed", "NeedleAltimeter", "NeedleRpm",
+                     "NeedleManifold", "NeedleCoolant", "NeedleFuel", "NeedleOil",
+                 })
+        {
+            if (FindChild(name, true, false) is Node3D needle)
+            {
+                _needles[name] = needle;
+            }
+        }
 
         // Exterior views should not see the bare cockpit tub through the glass.
         if (_cockpitInterior is not null)
@@ -169,8 +183,44 @@ public sealed partial class AircraftVisual : Node3D
     public Node3D GetSmokeAnchor() =>
         FindChild("DamageSmokeAnchor", true, false) as Node3D ?? this;
 
-    public void UpdateFrom(AircraftSimulator sim, double delta) =>
+    public void UpdateFrom(AircraftSimulator sim, double delta)
+    {
         UpdateExternal(sim.EngineRpm, sim.FlapPosition, sim.GearPosition, delta);
+        UpdateNeedles(sim);
+    }
+
+    /// <summary>
+    /// Drives the 3D gauge needles from sim telemetry. The 2D CockpitPanel stays
+    /// authoritative; these needles only add depth to the 3D interior.
+    /// </summary>
+    private void UpdateNeedles(AircraftSimulator sim)
+    {
+        if (_needles.Count == 0)
+        {
+            return;
+        }
+        SetNeedle("NeedleAirspeed", sim.Telemetry.SpeedMs * 2.23693629, 0.0, 400.0, -135.0f, 270.0f);
+        SetNeedle("NeedleAltimeter", sim.State.AltitudeMeters * 3.2808399 % 1000.0,
+            0.0, 1000.0, -150.0f, 300.0f);
+        SetNeedle("NeedleRpm", sim.EngineRpm, 0.0, 3500.0, -135.0f, 270.0f);
+        SetNeedle("NeedleManifold", sim.ManifoldPressureInHg, 0.0, 70.0, -135.0f, 270.0f);
+        SetNeedle("NeedleCoolant", sim.CoolantC, 0.0, 150.0, -135.0f, 270.0f);
+        SetNeedle("NeedleFuel", sim.State.FuelKg, 0.0, 900.0, -135.0f, 270.0f);
+        SetNeedle("NeedleOil", sim.OilC, 0.0, 120.0, -135.0f, 270.0f);
+    }
+
+    private void SetNeedle(
+        string name, double value, double min, double max,
+        float startDegrees, float sweepDegrees)
+    {
+        if (!_needles.TryGetValue(name, out Node3D? needle))
+        {
+            return;
+        }
+        float fraction = (float)Math.Clamp((value - min) / (max - min), 0.0, 1.0);
+        needle.Rotation = new Vector3(
+            0.0f, 0.0f, Mathf.DegToRad(startDegrees + fraction * sweepDegrees));
+    }
 
     public void UpdateExternal(double rpm, double flapPosition, double gearPosition, double delta)
     {
