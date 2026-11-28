@@ -67,8 +67,9 @@ Known gaps:
   three-section eight-gauge panel, compass, canopy rails and sidewall ribs, beveled edges
   and a warm fill light. The Ju 88 is AI-only and keeps its blockout. The 3D gauge needles
   are not driven (the 2D `CockpitPanel` stays authoritative).
-- Damage is a smoke emitter anchored at the engine; no bullet holes, missing panels or
-  scorch decals.
+- Damage now has smoke/fire emitters anchored at the engine plus bullet-hole and scorch
+  decals on per-aircraft surface anchors (offset 25 mm, capped at 10). Missing-panel
+  deformation and a wider per-aircraft decal vocabulary remain.
 - LODs are Godot-generated; no authored LOD1/2, shadow LOD or imposter.
 - Cockpit view now renders (canopy frame, gunsight, panel and world) after fixing the
   depth-range bug: the camera kept a 6,000 km far plane against a 0.05 m cockpit near
@@ -166,13 +167,21 @@ where it keeps review manageable. Push every commit.
      framing. The 3D needle nodes are visible in the Blender cockpit render and the
      `--no-hud` view; the 2D panel hides the 3D faces at the default framing.
 
-4. [ ] **Damage, wear and markings.**
+4. [x] **Damage, wear and markings.** *(done 2026-11-28)*
    - Bullet-hole and missing-panel decals, scorch/oil/exhaust masks, chipped paint on
      walkways and fasteners, per-aircraft variation.
    - Wire `DamageSmokeAnchor` and fire emitters to the damaged engine/fuel zones; keep
      structural deformation pre-authored, not runtime mesh deformation.
    - Acceptance: damage states read at chase distance; decals do not z-fight; the damage
      smoke test still passes.
+   - Result: `DamageDecals` spawns bullet-hole quads on ten per-aircraft surface anchors
+     (offset 25 mm along the normal, capped at ten, deterministic anchor cycling) and a
+     larger scorch when engine damage/fire crosses the threshold. Chipped paint/walkway
+     wear is the procedural albedo layer from step 2. The smoke/fire emitters are driven
+     by the same `DamageModel`; `docs/media/aircraft/damage-test.jpg` shows the burning
+     aircraft at 24% health.
+   - Remaining nuance: missing-panel deformation and a larger decal vocabulary are
+     deferred; the acceptance criteria are met.
 
 5. [ ] **Authored LODs, shadows and performance.**
    - [x] Render-cost telemetry and a reproducible 1/6-aircraft measurement *(done
@@ -292,14 +301,14 @@ Recommended order for the next session:
 
 1. Finish the Bf 109 and Ju 88 reference overlays (the measurements and model-only sheets
    are done; the multi-panel drawings need cropping/alignment) and record the deviations.
-2. Step 4 damage/wear decals; the packed UV atlas and curvature map are ready for
-   anchored bullet-hole, missing-panel and scorch decals.
-3. Step 5: authored LOD1/2, shadow LOD and a distance imposter, then the GTX 1060-class
+2. Step 5: authored LOD1/2, shadow LOD and a distance imposter, then the GTX 1060-class
    six-aircraft run (the render-cost script and budgets are in place).
-4. Step 6 P-51D, then step 7's final review and documentation.
+3. Step 6 P-51D, then step 7's final review and documentation.
 
 ## Changelog
 
+- 2026-11-28 — `53fa825` — battle-damage decals (bullet holes + scorch on per-aircraft
+  anchors) and a damage-test screenshot.
 - 2026-11-28 — `e5bbeb6` — telemetry-driven 3D cockpit needles in both fighters and a
   `--no-hud` review flag.
 - 2026-11-28 — `96b3632` — step 2 finished: UV sampling replaces triplanar, weathered
