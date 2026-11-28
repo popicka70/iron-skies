@@ -22,11 +22,13 @@ import os
 import sys
 
 import bpy
+from mathutils import Vector
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from aircraft_common import (  # noqa: E402
     airfoil_loop,
+    bake_detail_normal,
     box,
     collection_objects,
     cylinder,
@@ -727,6 +729,40 @@ def build_roundel_wing(name, center_x, center_y, radius, upper, exterior, mats):
         disc_mesh(f"{name}_{suffix}", center, ring, exterior, mats[mat_name])
 
 
+def rivet_strip(name, points, exterior, mat, spacing=0.12, radius=0.018):
+    """Place small octahedral rivets along a polyline for the detail bake.
+
+    These faces use the panel-line material and are removed from the shipped
+    mesh after the normal bake, so they cost bake time only.
+    """
+    verts = []
+    faces = []
+    octahedron = [
+        (0, 2, 4), (2, 1, 4), (1, 3, 4), (3, 0, 4),
+        (2, 0, 5), (1, 2, 5), (3, 1, 5), (0, 3, 5),
+    ]
+    for index in range(len(points) - 1):
+        a = Vector(points[index])
+        b = Vector(points[index + 1])
+        segment = (b - a).length
+        if segment < 1e-6:
+            continue
+        step = 0.0
+        while step < segment:
+            p = a.lerp(b, step / segment)
+            base = len(verts)
+            verts.extend([
+                (p.x + radius, p.y, p.z), (p.x - radius, p.y, p.z),
+                (p.x, p.y + radius, p.z), (p.x, p.y - radius, p.z),
+                (p.x, p.y, p.z + radius), (p.x, p.y, p.z - radius),
+            ])
+            faces.extend(tuple(base + i for i in face) for face in octahedron)
+            step += spacing
+    if verts:
+        mesh_object(name, verts, faces, exterior, mat, smooth=True,
+                    split_angle_deg=60.0)
+
+
 def build_panel_lines(exterior, mats):
     line = mats["panel_line"]
     # Fuselage frame stations.
@@ -734,7 +770,8 @@ def build_panel_lines(exterior, mats):
               -1.50, -2.10, -2.70, -3.30, -3.90, -4.45):
         points = [fuselage_surface_point(y, 2.0 * math.pi * i / 28.0, 1.004)
                   for i in range(28)]
-        tube_from_points(f"PanelFrame{y:.1f}", points, 0.0045, exterior, line, resolution=0)
+        tube_from_points(f"PanelFrame{y:.1f}", points, 0.012, exterior, line, resolution=0)
+        rivet_strip(f"RivetsFrame{y:.1f}", points, exterior, line)
 
     # Fuselage longitudinal seams.
     y_values = [3.70 - 0.18 * i for i in range(47)]
@@ -742,19 +779,22 @@ def build_panel_lines(exterior, mats):
                   math.pi * 0.25, math.pi * 0.75, math.pi * 1.25, math.pi * 1.75):
         points = [fuselage_surface_point(y, angle, 1.004)
                   for y in y_values if y <= 3.85 and y >= -4.9]
-        tube_from_points(f"PanelLongitude{angle:.2f}", points, 0.0035, exterior, line, resolution=0)
+        tube_from_points(f"PanelLongitude{angle:.2f}", points, 0.010, exterior, line, resolution=0)
+        rivet_strip(f"RivetsLongitude{angle:.2f}", points, exterior, line)
 
     # Wing ribs (chordwise) and spanwise joints, both surfaces.
     for t in (-0.90, -0.70, -0.50, -0.30, -0.10, 0.10, 0.30, 0.50, 0.70, 0.90):
         for upper in (True, False):
             points = [wing_point(t, c / 10.0, upper) for c in range(1, 10)]
-            tube_from_points(f"WingRib{t:+.2f}{upper}", points, 0.0035, exterior, line,
+            tube_from_points(f"WingRib{t:+.2f}{upper}", points, 0.010, exterior, line,
                              resolution=0)
+            rivet_strip(f"RivetsWingRib{t:+.2f}{upper}", points, exterior, line)
     for c in (0.20, 0.50, 0.80):
         for upper in (True, False):
             points = [wing_point(-0.96 + 1.92 * i / 14.0, c, upper) for i in range(15)]
-            tube_from_points(f"WingSpan{c:.2f}{upper}", points, 0.0035, exterior, line,
+            tube_from_points(f"WingSpan{c:.2f}{upper}", points, 0.010, exterior, line,
                              resolution=0)
+            rivet_strip(f"RivetsWingSpan{c:.2f}{upper}", points, exterior, line)
 
     # Tailplane ribs.
     for t in (-0.80, -0.40, 0.40, 0.80):
@@ -768,8 +808,9 @@ def build_panel_lines(exterior, mats):
                 le_y = TAIL_ROOT_LE - (TAIL_ROOT_LE - TAIL_TIP_LE) * a
                 dz = 0.085 * chord * 0.5 if upper else -0.085 * chord * 0.5
                 points.append((x, le_y - c * chord, TAIL_Z + dz))
-            tube_from_points(f"TailRib{t:+.2f}{upper}", points, 0.0030, exterior, line,
+            tube_from_points(f"TailRib{t:+.2f}{upper}", points, 0.009, exterior, line,
                              resolution=0)
+            rivet_strip(f"RivetsTailRib{t:+.2f}{upper}", points, exterior, line)
 
     # National markings: fuselage sides, upper and lower wings.
     for side, suffix in ((-1.0, "L"), (1.0, "R")):
@@ -947,6 +988,14 @@ def main():
     consolidate(exterior, cockpit)
     meshes = collection_objects(exterior) + collection_objects(cockpit)
     uv_unwrap_all(meshes)
+
+    # Bake the geometry panel lines into a 4K normal map and drop them from the
+    # runtime mesh; the material's normal node now carries the same detail.
+    bake_detail_normal(
+        bpy.data.objects.get("ExteriorStatic"),
+        os.path.join(texture_dir, "spitfire_camo_normal.png"),
+        size=4096,
+    )
 
     # Metadata for the exporter / reviewer.
     scene = bpy.context.scene
