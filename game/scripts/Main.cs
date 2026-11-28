@@ -331,6 +331,11 @@ public partial class Main : Node3D
             _seatHeight = Mathf.Clamp(seatHeight, 0.58f, 0.86f);
         }
 
+        if (HasUserFlag("--no-hud"))
+        {
+            _hudVisible = false;
+        }
+
         if (float.TryParse(ReadUserOption("--chase-yaw"), out float chaseYaw))
         {
             _chaseYaw = chaseYaw;

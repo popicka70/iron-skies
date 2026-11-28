@@ -38,6 +38,7 @@ from aircraft_common import (  # noqa: E402
     descendants,
     export_glb,
     extrude_outline,
+    gauge_needle,
     image_material,
     join_meshes,
     link_object,
@@ -590,6 +591,14 @@ def build_cockpit(cockpit, mats):
     cylinder("Compass", (0.0, 0.725, 0.62), 0.030, 0.022, cockpit, dark,
              axis=(0.0, 1.0, 0.0), vertices=16)
 
+    # Telemetry needles; the runtime rotates these nodes every frame.
+    needle_names = ("NeedleAirspeed", "NeedleAltimeter", "NeedleRpm",
+                    "NeedleManifold", "NeedleCoolant", "NeedleFuel", "NeedleOil")
+    for index, name in enumerate(needle_names):
+        x = (-1.5 + (index % 4)) * 0.115
+        z = 0.505 - (index // 4) * 0.135
+        gauge_needle(name, (x, 0.709, z), 0.044, cockpit, mats["needle"])
+
     # Seat, cushions, armour, headrest pad and harness.
     box("SeatPan", (0.0, -0.32, 0.02), (0.44, 0.42, 0.08), cockpit, leather)
     box("SeatCushion", (0.0, -0.30, 0.075), (0.38, 0.34, 0.045), cockpit, leather)
@@ -876,7 +885,8 @@ def consolidate(exterior, cockpit):
 
     cockpit_root = bpy.data.objects.get("CockpitInterior")
     if cockpit_root is not None:
-        cockpit_meshes = [obj for obj in descendants(cockpit_root) if obj.type == "MESH"]
+        cockpit_meshes = [obj for obj in descendants(cockpit_root)
+                              if obj.type == "MESH" and not obj.name.startswith("Needle")]
         join_meshes("CockpitStatic", cockpit_meshes, cockpit)
         # Soften the box-built interior; the modifier is applied on GLB export
         # and stays visible in the source scene for review.
@@ -922,6 +932,7 @@ def main():
         "leather": material("leather", (0.20, 0.10, 0.045), 0.88, 0.0),
         "harness": material("harness", (0.25, 0.22, 0.12), 0.92, 0.0),
         "gauge_face": material("gauge_face", (0.055, 0.070, 0.055), 0.55, 0.05),
+        "needle": material("needle", (0.82, 0.82, 0.76), 0.45, 0.10),
         "panel_line": material("panel_line", (0.055, 0.060, 0.050), 0.90, 0.02),
         "roundel_blue": material("roundel_blue", (0.075, 0.14, 0.38), 0.62, 0.0,
                                  double_sided=True),

@@ -803,3 +803,34 @@ def attach_occlusion(mat: bpy.types.Material, ao_path: str) -> None:
     texture.image = ao_image
     texture.interpolation = "Linear"
     mat.node_tree.links.new(texture.outputs["Color"], group_node.inputs["Occlusion"])
+
+
+def gauge_needle(
+    name: str,
+    center: Sequence[float],
+    length: float,
+    collection: bpy.types.Collection,
+    mat: bpy.types.Material | None = None,
+    width: float = 0.004,
+) -> bpy.types.Object:
+    """Thin needle whose object origin is the gauge pivot.
+
+    The mesh runs from the pivot along local +Z so a rotation about the gauge
+    normal (local Y in Blender) sweeps the needle across the face. The runtime
+    rotates the matching node around Godot's Z axis.
+    """
+    half = width * 0.5
+    depth = 0.0015
+    verts = [
+        (-half, -depth, 0.0), (half, -depth, 0.0),
+        (half, -depth, length), (-half, -depth, length),
+        (-half, depth, 0.0), (half, depth, 0.0),
+        (half, depth, length), (-half, depth, length),
+    ]
+    faces = [
+        (0, 1, 2, 3), (4, 7, 6, 5), (0, 4, 5, 1),
+        (1, 5, 6, 2), (2, 6, 7, 3), (3, 7, 4, 0),
+    ]
+    obj = mesh_object(name, verts, faces, collection, mat, smooth=False)
+    obj.location = center
+    return obj
