@@ -58,14 +58,48 @@ Silhouette overlays (measured 2026-11-27):
 | Wikimedia Commons, `File:Spitfire MKIX.jpg` — https://commons.wikimedia.org/wiki/File:Spitfire_MKIX.jpg | Mk IX nose, spinner, 4-blade prop and canopy side profile | **CC BY-SA 3.0** (B. Huber) | no | reference-only; the overlay is a local review artifact, never committed |
 
 The Mk Vb drawing and the Mk IX profile are scaled to the authoritative span/length
-and overlaid with `tools/blender/render_silhouette.py`. Measured result: span 11.23 m,
-length 9.55 m (0.08 m / 0.85% over the 9.47 m authoritative figure, under half a tyre
-width), height 3.32 m with the prop disc and gear up. The side view matches the drawing
-along the fuselage within a few centimetres; the top view's outer-wing chord is within
-~0.2 m and the root is ~0.3 m narrower, which is the Mk Vb's wing-root fairing rather
-than a planform error (the blockout's wing area is 22.5 m² against the published
-22.49 m²). The 8 cm length is accepted for now; trim the rudder trailing edge if a
-later pass needs an exact figure.
+and overlaid with `tools/blender/render_silhouette.py`. Measured 2026-11-28 after the
+hero pass: span 11.23 m, length 9.47 m (exact; the rudder trailing edge was trimmed
+0.08 m to reach it), height 3.32 m with the prop disc and gear up. The side view matches
+the drawing along the fuselage within a few centimetres; the top view's outer-wing chord
+is within ~0.2 m and the root is ~0.3 m narrower, which is the Mk Vb's wing-root fairing
+rather than a planform error (the blockout's wing area is 22.5 m² against the published
+22.49 m²). The silhouette sheet is `docs/media/aircraft/spitfire-mk9-silhouette.jpg`.
+
+### Hero pass intake (2026-11-28)
+
+Hero-pass reference photos were downloaded to the git-ignored
+`reference-photos/spitfire-mk9/` (licence-filtered via
+`tools/fetch_reference_photos.py`); none of these files are committed. Sources and
+licences, as recorded in `reference-photos/spitfire-mk9/manifest.json`:
+
+| File | Source | Licence | Author | Use |
+| --- | --- | --- | --- | --- |
+| `Antwerp_Supermarine_Spitfire_Mk_IX_PH-OUQ_02/03/04/05/08/11/12/13/14/15/16/18/19.jpg` | Wikimedia Commons, PH-OUQ walkaround (Antwerp, 2019) | CC BY-SA 4.0 | Ad Meskens | whole-aircraft shape, nose/spinner, exhausts, radiator bath, oil cooler, chin intake, canopy framing, gear doors |
+| `IWM_Duxford_..._PV_202_-_geograph.org.uk_-_7102705.jpg` | Wikimedia Commons (geograph) | CC BY-SA 2.0 | Michael Garlick | taxi/gear/stance reference |
+| `IWM_Duxford_..._PV_202_-_geograph.org.uk_-_7102761.jpg` | Wikimedia Commons (geograph) | CC BY-SA 2.0 | Michael Garlick | taxi/gear/stance reference |
+| `A_ground_crewman_helps_a_pilot_..._CNA2829.jpg` | Wikimedia Commons (RAF official photograph) | Public domain | RAF official photographer (Flt Lt Woodbine) | period 1944 Mk IX (titled Mk VIII in the source title; airframe is a Mk IX-type) cockpit/fuselage reference |
+
+What was measured or taken from these photos (and only this):
+
+- Spinner: long, gently convex taper to a near-pointed tip (PH-OUQ_04/05/08/13/14);
+  modelled as a 7-ring loft instead of the previous 5-ring stubbier profile.
+- Exhausts: six ejector stubs per side, angled outward and slightly aft with rolled
+  outer flares (PH-OUQ_03/13/14); modelled as tapered tubes instead of boxes.
+- Radiator bath (starboard) and oil cooler (port): long deep rectangular ducts under
+  the wings with dark forward intake and rear outlet faces (PH-OUQ_13/15/16); modelled
+  as rounded-rectangle lofts instead of boxes.
+- Chin (carburettor) intake: half-round scoop under the nose with dark mouth — the
+  two-stage supercharger signature (PH-OUQ_05/13).
+- Wing guns: LF Mk IX fit, one 20 mm Hispano cannon stub per wing (inboard) plus two
+  flush .303 ports outboard; cannon protrudes, .303s are flat discs (PH-OUQ_04/05).
+- Pitot head on a mast ahead of the port wing leading edge (PH-OUQ_04/05); antenna
+  mast raking back behind the canopy plus a small blade aerial ahead of it
+  (PH-OUQ_11/12/18).
+- Canopy: framing/side plating subtly reshaped; gear doors rebuilt as raked
+  tapered slabs behind the legs (PH-OUQ_14/15).
+- Rudder trailing edge trimmed 0.08 m forward: overall length now 9.47 m exactly.
+- Span 11.23 m and 22.5 m² wing area unchanged; height 3.32 m (prop disc, gear up).
 
 ## Messerschmitt Bf 109 G-6
 

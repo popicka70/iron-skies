@@ -4,7 +4,7 @@
   "bounds": {
     "min": [
       -5.615,
-      -5.18,
+      -5.1,
       -1.66
     ],
     "max": [
@@ -14,24 +14,26 @@
     ],
     "size": [
       11.23,
-      9.55,
+      9.47,
       3.32
     ]
   },
   "expected_span_m": 11.23,
   "expected_length_m": 9.47,
-  "triangles": 14356,
-  "objects": 31,
-  "meshes": 25,
+  "triangles": 15732,
+  "objects": 38,
+  "meshes": 32,
   "materials": [
     "airframe",
     "dark",
+    "dark_ds",
     "gauge_face",
     "glass",
     "harness",
     "interior",
     "leather",
     "metal",
+    "needle",
     "roundel_blue",
     "roundel_red",
     "roundel_white",
@@ -73,6 +75,13 @@
     "GearTailWheel",
     "GearWheelL",
     "GearWheelR",
+    "NeedleAirspeed",
+    "NeedleAltimeter",
+    "NeedleCoolant",
+    "NeedleFuel",
+    "NeedleManifold",
+    "NeedleOil",
+    "NeedleRpm",
     "Propeller",
     "PropellerBlades",
     "PropellerRoot",

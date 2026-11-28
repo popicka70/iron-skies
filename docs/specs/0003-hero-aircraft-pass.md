@@ -60,9 +60,9 @@ summarised in [`../art/aircraft-references.md`](../art/aircraft-references.md).
 1. [ ] Reference intake and tooling: git-ignored `reference-photos/`, fetch tool,
        per-aircraft manifest; prune irrelevant downloads. *(done 2026-11-28, see
        changelog)*
-2. [ ] **Spitfire LF Mk IX** hero pass: reshape nose/spinner, exhausts, radiators,
+2. [x] **Spitfire LF Mk IX** hero pass: reshape nose/spinner, exhausts, radiators,
        canopy framing, wing gun ports, antenna mast, gear doors; correct the 0.08 m
-       length excess; re-bake; review sheet.
+       length excess; re-bake; review sheet. *(done 2026-11-28, see changelog)*
 3. [ ] **Bf 109 G-6** hero pass: slim aft fuselage, raise/reshape fin, MG 131 bulges,
        Erla canopy, underwing radiators, exhausts, prop, gear; re-bake; review sheet.
 4. [ ] **Ju 88 A-4** hero pass: raise belly/nacelles to the line drawing, annular
@@ -101,10 +101,18 @@ remaining accepted deviations.
 
 ## Remaining work
 
-Steps 2–6.
+Steps 3–6.
 
 ## Changelog
 
 - 2026-11-28 — branch `feature/0003-hero-aircraft-pass`; `tools/fetch_reference_photos.py`
   and git-ignored `reference-photos/` intake; licence-filtered downloads for the four
   aircraft (Spitfire 16, Bf 109 16, Ju 88 8, P-51D 12 candidates).
+- 2026-11-28 — Spitfire LF Mk IX hero pass: pointed Rotol-style spinner, six ejector
+  exhaust stubs per side, starboard radiator bath + port oil cooler as rounded-rect
+  ducts, chin (two-stage supercharger) intake, LF wing gun fit (20 mm stub + two .303
+  ports per wing), pitot on the port wing, raking antenna mast + blade aerial, raked
+  tapered gear doors, raked/flared canopy framing. Rudder trailing edge trimmed 0.08 m:
+  length now 9.47 m exactly; span 11.23 m; 15,732 tris (budget 22k). Validator OK, no
+  missing contract nodes; LOD1/LOD2 rebuilt; review sheets re-rendered
+  (`docs/media/aircraft/spitfire-mk9.jpg`, `spitfire-mk9-silhouette.jpg`).
