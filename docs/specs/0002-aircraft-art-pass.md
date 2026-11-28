@@ -336,6 +336,8 @@ work, not blockers.
 
 ## Changelog
 
+- 2026-11-28 — `2e60ae0` — reference overlays and the internal art-review record;
+  the external human sign-off is the only open process item.
 - 2026-11-28 — `42e85c3` — P-51D-25 fleet bundle (model, textures, aero, data,
   LODs/imposter), data-driven player-aircraft load; spec 0002 closed with step 7
   documentation.
