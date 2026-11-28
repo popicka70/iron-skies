@@ -39,7 +39,7 @@ is the reference register.
   `render_turntable.py`; `tools/textures/gen_*_textures.py`.
 - Review sheets: `docs/media/aircraft/spitfire-mk9.jpg`, `bf109-g6.jpg`, `ju88-a4.jpg`.
 
-Measured blockout state (LOD0, Godot auto-LOD enabled on import):
+Measured LOD0 state (authored LOD1/LOD2 and a distance imposter are generated from the same scenes):
 
 | Aircraft | Tris | Span / length | GLB | Materials | Notes |
 | --- | --- | --- | --- | --- | --- |
@@ -70,7 +70,11 @@ Known gaps:
 - Damage now has smoke/fire emitters anchored at the engine plus bullet-hole and scorch
   decals on per-aircraft surface anchors (offset 25 mm, capped at 10). Missing-panel
   deformation and a wider per-aircraft decal vocabulary remain.
-- LODs are Godot-generated; no authored LOD1/2, shadow LOD or imposter.
+- LODs are now authored: LOD1 (45% decimate) and LOD2 (16%) are generated from the source
+  scenes without a cockpit or materials, reusing the LOD0 maps, and selected by Godot
+  visibility ranges (0–160 m, 140–520 m, 500–1,600 m); a side-silhouette billboard covers
+  1,500–6,000 m. The LODs cast the distant shadows, so there is no separate shadow-only
+  mesh.
 - Cockpit view now renders (canopy frame, gunsight, panel and world) after fixing the
   depth-range bug: the camera kept a 6,000 km far plane against a 0.05 m cockpit near
   plane (ratio 1.2×10⁸), which degenerated Godot's float light-culler frustum
@@ -183,20 +187,22 @@ where it keeps review manageable. Push every commit.
    - Remaining nuance: missing-panel deformation and a larger decal vocabulary are
      deferred; the acceptance criteria are met.
 
-5. [ ] **Authored LODs, shadows and performance.**
+5. [x] **Authored LODs, shadows and performance.** *(done 2026-11-28)*
    - [x] Render-cost telemetry and a reproducible 1/6-aircraft measurement *(done
      2026-11-27)*: the per-second JSONL now carries draw calls, primitives, objects,
      video memory and texture memory; `tools/aircraft_perf_test.sh` runs a solo and a
      six-aircraft sortie and `tools/check_render_perf.py` enforces the budgets.
-   - [ ] Author LOD1/LOD2, shadow LOD and a distance imposter; set visibility ranges and
-     verify no popping in a 2 km pass.
+   - [x] Author LOD1/LOD2 and a distance imposter; set overlapping visibility ranges with
+     fades and verified a 100/300/800/2,000 m chase review
+     (`docs/media/aircraft/lod-review.jpg`). The LODs reuse the LOD0 materials (no
+     duplicated 4K maps) and cast the distant shadows.
    - Acceptance: 1080p/60 on the target GPU at “high” with six aircraft; no LOD pop in a
      normal chase view; the numbers are in the spec changelog.
-   - Current result (RX 9060 XT, 1600×900, 160 Hz VSync cap): solo 358 draw calls /
-     233k primitives / 6.25 ms / 1,749 MB VRAM; six aircraft (player + 3 wingmen +
-     2 bandits) 981 draw calls / 326k primitives / 6.25 ms / 1,755 MB VRAM. Both pass
-     the draw-call, primitive, VRAM and 16.6 ms budgets; the GTX 1060-class run and the
-     authored LOD pop test remain.
+   - Current result (RX 9060 XT, 1600×900, 160 Hz VSync cap): solo 344 draw calls /
+     189k primitives / 6.25 ms / 1,801 MB VRAM; six aircraft 1,070 draw calls /
+     264k primitives / 6.25 ms / 1,986 MB VRAM with the LOD/imposter sets loaded. All
+     budgets pass; the GTX 1060-class hardware run remains (not available on this
+     machine).
 
 6. [ ] **Fleet expansion.**
    - Add the P-51D-25 (the SPEC 1.0 third flyable) and then the agreed AI types, reusing
@@ -301,12 +307,13 @@ Recommended order for the next session:
 
 1. Finish the Bf 109 and Ju 88 reference overlays (the measurements and model-only sheets
    are done; the multi-panel drawings need cropping/alignment) and record the deviations.
-2. Step 5: authored LOD1/2, shadow LOD and a distance imposter, then the GTX 1060-class
-   six-aircraft run (the render-cost script and budgets are in place).
-3. Step 6 P-51D, then step 7's final review and documentation.
+2. Step 6 P-51D (a data bundle plus a `Build(id)` call; no per-aircraft gameplay code),
+   then step 7's final review and documentation.
 
 ## Changelog
 
+- 2026-11-28 — `c411e2b` — authored LOD1/LOD2 plus a distance imposter with visibility
+  ranges; 100/300/800/2,000 m review; render budgets pass.
 - 2026-11-28 — `53fa825` — battle-damage decals (bullet holes + scorch on per-aircraft
   anchors) and a damage-test screenshot.
 - 2026-11-28 — `e5bbeb6` — telemetry-driven 3D cockpit needles in both fighters and a
