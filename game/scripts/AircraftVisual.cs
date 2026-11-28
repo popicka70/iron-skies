@@ -30,6 +30,7 @@ public sealed partial class AircraftVisual : Node3D
     private Node3D? _fuselageCentre;
     private Node3D? _cockpitInterior;
     private readonly Dictionary<string, Node3D> _needles = new();
+    private DamageDecals? _damageDecals;
     private bool _cockpitView;
 
     public void Build(string aircraftId, Color? tint = null)
@@ -46,6 +47,9 @@ public sealed partial class AircraftVisual : Node3D
                 ResolveNodes();
                 ConfigureMaterials();
                 BuildPropDisc();
+                _damageDecals = new DamageDecals();
+                _damageDecals.Build(aircraftId);
+                AddChild(_damageDecals);
                 return;
             }
         }
@@ -187,6 +191,7 @@ public sealed partial class AircraftVisual : Node3D
     {
         UpdateExternal(sim.EngineRpm, sim.FlapPosition, sim.GearPosition, delta);
         UpdateNeedles(sim);
+        _damageDecals?.Update(sim.Damage);
     }
 
     /// <summary>
@@ -303,6 +308,10 @@ public sealed partial class AircraftVisual : Node3D
         if (_cockpitInterior is not null)
         {
             _cockpitInterior.Visible = active;
+        }
+        if (_damageDecals is not null)
+        {
+            _damageDecals.Visible = !active;
         }
     }
 }
