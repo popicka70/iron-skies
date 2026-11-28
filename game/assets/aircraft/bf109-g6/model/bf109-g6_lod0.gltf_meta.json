@@ -41,7 +41,8 @@
   "images": [
     "bf109_camo_albedo",
     "bf109_camo_ao",
-    "bf109_camo_normal"
+    "bf109_camo_normal",
+    "bf109_camo_orm"
   ],
   "nodes": [
     "AileronL",

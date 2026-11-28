@@ -87,6 +87,7 @@ def image_material(
     roughness: float = 0.55,
     metallic: float = 0.05,
     uv_scale: float = 1.0,
+    orm_path: str | None = None,
 ) -> bpy.types.Material:
     """PBR material using a packed albedo image and an optional normal map."""
     mat = bpy.data.materials.new(name)
@@ -124,6 +125,21 @@ def image_material(
         normal_map = nodes.new("ShaderNodeNormalMap")
         links.new(normal_node.outputs["Color"], normal_map.inputs["Color"])
         links.new(normal_map.outputs["Normal"], bsdf.inputs["Normal"])
+
+    if orm_path and os.path.exists(orm_path):
+        # glTF packs roughness in G and metallic in B; R is AO and is supplied
+        # by the baked occlusion texture instead.
+        orm_image = bpy.data.images.load(orm_path, check_existing=True)
+        orm_image.colorspace_settings.name = "Non-Color"
+        orm_image.pack()
+        orm_node = nodes.new("ShaderNodeTexImage")
+        orm_node.image = orm_image
+        orm_node.interpolation = "Linear"
+        links.new(mapping.outputs["Vector"], orm_node.inputs["Vector"])
+        separate = nodes.new("ShaderNodeSeparateColor")
+        links.new(orm_node.outputs["Color"], separate.inputs["Color"])
+        links.new(separate.outputs["Green"], bsdf.inputs["Roughness"])
+        links.new(separate.outputs["Blue"], bsdf.inputs["Metallic"])
 
     return mat
 
