@@ -47,3 +47,9 @@ The four aircraft are accepted **internally** as a coherent blockout fleet: cons
 scale, contract nodes, camo/markings, baked surface detail, cockpits, damage and LODs.
 The external human art review remains the one open process item from spec 0002; the
 overlay deviations above are the accepted starting points for that review.
+
+*Addendum 2026-11-28:* the Bf 109 G-6 hero pass (spec 0003 step 3) has since corrected
+the aft-fuselage/fin deviations listed above and replaced the underwing radiators with
+the chin bath; see `docs/art/aircraft-references.md` (hero pass intake) and spec 0003.
+The review table above still describes the pre-pass blockout for the other three
+aircraft.

@@ -137,6 +137,35 @@ Measured with `tools/blender/render_silhouette.py` (gear up): span 9.92 m, lengt
 prop disc. The model-only sheet is `docs/media/aircraft/bf109-g6-silhouette.jpg`; the
 full reference overlay is still to do.
 
+Hero pass intake (2026-11-28):
+
+| Source | Use | Licence | Shipped | Notes |
+| --- | --- | --- | --- | --- |
+| Wikimedia Commons, `File:Hispano HA1112 M1L Buchon Bf 109 G-AWHK Duxford 2025 01.jpg` — https://commons.wikimedia.org/wiki/File:Hispano_HA1112_M1L_Buchon_Bf_109_G-AWHK_Duxford_2025_01.jpg | flying G-6 side profile: Erla canopy, exhaust stubs, chin bath, gear stance | **CC BY 4.0** (Julian Herzog) | no | reference-only |
+| Wikimedia Commons, `File:Me109 G-6 D-FMBB 1.jpg` — https://commons.wikimedia.org/wiki/File:Me109_G-6_D-FMBB_1.jpg | front 3/4: MG 131 bulges, chin bath, DB 605 exhausts, gear | **CC BY-SA 2.0** (Kogo) | no | reference-only |
+| Wikimedia Commons, `File:Messerschmitt Bf 109 G-6R3.jpg` — https://commons.wikimedia.org/wiki/File:Messerschmitt_Bf_109_G-6R3.jpg | top/3/4 museum view: cowl bulges, MG 151 wing bulges, wing planform, antenna mast | **CC0** (Smithsonian, photo Eric Long) | no | reference-only |
+| Wikimedia Commons, `File:Messerschmitt Bf 109 G-6R3 Cockpit.jpg` — https://commons.wikimedia.org/wiki/File:Messerschmitt_Bf_109_G-6R3_Cockpit.jpg | cockpit layout cross-check (Erla hood, panels) | **CC0** (Smithsonian, photo Eric Long) | no | reference-only |
+| Wikimedia Commons, `File:Messerschmitt Bf-109G-10 Full Scale Mockup.jpg` — https://commons.wikimedia.org/wiki/File:Messerschmitt_Bf-109G-10_Full_Scale_Mockup.jpg | G-10 (close cousin) airframe sanity check, fin shape | **CC BY 2.0** (Eric Friedebach) | no | reference-only; G-6 preferred where they differ |
+| Wikimedia Commons, `File:Messerschmitt Bf-109G-10 Full Scale Mockup - 51166787397.jpg` — https://commons.wikimedia.org/wiki/File:Messerschmitt_Bf-109G-10_Full_Scale_Mockup_-_51166787397.jpg | G-10 detail: nose, fin, rudder, tailwheel | **CC BY 2.0** (Eric Friedebach) | no | reference-only |
+| Wikimedia Commons, `File:Messerschmitt Bf 109 E-1, Gruppenadjutant I. JG 76, Bastogne, Belgien, Mitte Mai 1940 (a).jpg` — https://commons.wikimedia.org/wiki/File:Messerschmitt_Bf_109_E-1%2C_Gruppenadjutant_I._JG_76%2C_Bastogne%2C_Belgien%2C_Mitte_Mai_1940_%28a%29.jpg | 1940-era airframe reference; shape comparison only | **Public domain** (unknown author) | no | reference-only; nose shape differs from G-6 |
+| Wikimedia Commons, `File:Bf 109 E-4 oder E-7, 3. (J) LG 2 und Ju 87 B, III. StG 77 in Vrba-Ost, südl. Radomir, Bulgarien, 01.04.1941.jpg` — https://commons.wikimedia.org/wiki/File:Bf_109_E-4_oder_E-7%2C_3._%28J%29_LG_2_und_Ju_87_B_III._StG_77_in_Vrba-Ost%2C_s%C3%BCdl._Radomir%2C_Bulgarien%2C_01.04.1941.jpg | wartime photo: exhausts, spinner in service | **Public domain** (unknown author) | no | reference-only |
+| Wikimedia Commons, `File:FuG 16 Z radio Messerschmitt Bf 109 G-6 1.jpg` — https://commons.wikimedia.org/wiki/File:FuG_16_Z_radio_Messerschmitt_Bf_109_G-6_1.jpg | FuG 16 Z radio set (cockpit context) | **Public domain** (MKFI) | no | reference-only |
+| Wikimedia Commons, `File:FuG 16 Z radio Messerschmitt Bf 109 G-6 2.jpg` — https://commons.wikimedia.org/wiki/File:FuG_16_Z_radio_Messerschmitt_Bf_109_G-6_2.jpg | FuG 16 Z radio set, alternate view | **Public domain** (MKFI) | no | reference-only |
+| Wikimedia Commons, `File:FuG 7 radio Messerschmitt Bf 109 G-2.jpg` — https://commons.wikimedia.org/wiki/File:FuG_7_radio_Messerschmitt_Bf_109_G-2.jpg | FuG 7 radio set (cockpit context) | **Public domain** (MKFI) | no | reference-only |
+| Wikimedia Commons, `File:Messerschmitt Bf 109 G-6N.jpg` — https://commons.wikimedia.org/wiki/File:Messerschmitt_Bf_109_G-6N.jpg | G-6N profile variant; G-6 spine/antenna comparison | **CC BY-SA 2.0 de** (B. Huber) | no | reference-only |
+
+Measured against the G-6 line drawing (`File:Messerschmitt Bf 109 G-6.jpg`) and the
+Buchon profile, then re-measured with `tools/blender/render_silhouette.py` (gear up):
+span 9.92 m, length **9.02 m** (was 9.07 m; spinner shortened 0.05 m), height 2.97 m
+with the prop disc. The aft fuselage now follows the drawing's upswept tail cone
+(belly raised ~0.2 m amidships-to-tail, spine raised to match), the fin/rudder are
+~0.15–0.2 m taller and raked, the chin radiator bath replaces the old underwing
+boxes, the MG 131 cowl bulges sit proud of the cowl, the Erla hood is flatter with
+raked frames, and the pitot/mast/gear geometry were corrected. Remaining accepted
+deviations: bulges are teardrop lofts (true teardrop cross-section), the tail cone
+sheds into the rudder slightly ahead of the drawing's hinge line, and the model
+keeps the blockout tailplane incidence.
+
 ## Junkers Ju 88 A-4
 
 | Source | Use | Licence | Shipped | Notes |

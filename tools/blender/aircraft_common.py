@@ -380,7 +380,7 @@ def cylinder_between(
     b = Vector(p2)
     direction = b - a
     obj = cylinder(name, 0.5 * (a + b), radius, direction.length, collection, mat,
-                   vertices=vertices)
+                   axis=direction, vertices=vertices)
     return obj
 
 

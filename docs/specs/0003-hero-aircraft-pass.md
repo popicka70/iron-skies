@@ -63,8 +63,9 @@ summarised in [`../art/aircraft-references.md`](../art/aircraft-references.md).
 2. [x] **Spitfire LF Mk IX** hero pass: reshape nose/spinner, exhausts, radiators,
        canopy framing, wing gun ports, antenna mast, gear doors; correct the 0.08 m
        length excess; re-bake; review sheet. *(done 2026-11-28, see changelog)*
-3. [ ] **Bf 109 G-6** hero pass: slim aft fuselage, raise/reshape fin, MG 131 bulges,
-       Erla canopy, underwing radiators, exhausts, prop, gear; re-bake; review sheet.
+3. [x] **Bf 109 G-6** hero pass: slim aft fuselage, raise/reshape fin, MG 131 bulges,
+       Erla canopy, chin radiator bath (not underwing baths), exhausts, prop, gear;
+       re-bake; review sheet. *(done 2026-11-28, see changelog)*
 4. [ ] **Ju 88 A-4** hero pass: raise belly/nacelles to the line drawing, annular
        radiators, greenhouse framing, gondola, tail surfaces, engine nacelles;
        re-bake; review sheet.
@@ -101,7 +102,7 @@ remaining accepted deviations.
 
 ## Remaining work
 
-Steps 3–6.
+Steps 4–6.
 
 ## Changelog
 
@@ -116,3 +117,14 @@ Steps 3–6.
   length now 9.47 m exactly; span 11.23 m; 15,732 tris (budget 22k). Validator OK, no
   missing contract nodes; LOD1/LOD2 rebuilt; review sheets re-rendered
   (`docs/media/aircraft/spitfire-mk9.jpg`, `spitfire-mk9-silhouette.jpg`).
+- 2026-11-28 — Bf 109 G-6 hero pass: aft fuselage raised to the line drawing (belly
+  up ~0.2 m, tail cone upswept), fin/rudder raised ~0.15 m and re-raked; MG 131 cowl
+  bulges modelled as proud teardrop humps; MG 151/20 wing bulges added; Erla canopy
+  flattened with raked framing; chin radiator bath replaces the underwing radiator
+  boxes (the G-6 carries the bath, not wing radiators); six ejector exhaust stubs per
+  side; pointed spinner (length now 9.02 m exactly); raked antenna mast, forward pitot
+  under the port wing (previously vertical), outward-splayed main gear with 0.36 m
+  wheels, tailwheel doors; fixed `cylinder_between` in `aircraft_common.py` to align
+  along the segment (was vertical-only). Validator OK, no missing contract nodes;
+  12,656 tris; LOD1/LOD2 rebuilt; takeoff test 832 m; sheets re-rendered
+  (`docs/media/aircraft/bf109-g6.jpg`, `bf109-g6-silhouette.jpg`).
