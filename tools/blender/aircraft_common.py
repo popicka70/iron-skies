@@ -672,3 +672,44 @@ def export_glb(path: str, objects: Sequence[bpy.types.Object]) -> None:
         export_lights=False,
         export_extras=True,
     )
+
+
+def rivet_strip(
+    name: str,
+    points: Sequence[Sequence[float]],
+    collection: bpy.types.Collection,
+    mat: bpy.types.Material | None = None,
+    spacing: float = 0.12,
+    radius: float = 0.018,
+) -> None:
+    """Place small octahedral rivets along a polyline for the detail bake.
+
+    These faces use the panel-line material and are removed from the shipped
+    mesh after the normal bake, so they cost bake time only.
+    """
+    verts: list[tuple[float, float, float]] = []
+    faces: list[tuple[int, ...]] = []
+    octahedron = [
+        (0, 2, 4), (2, 1, 4), (1, 3, 4), (3, 0, 4),
+        (2, 0, 5), (1, 2, 5), (3, 1, 5), (0, 3, 5),
+    ]
+    for index in range(len(points) - 1):
+        a = Vector(points[index])
+        b = Vector(points[index + 1])
+        segment = (b - a).length
+        if segment < 1e-6:
+            continue
+        step = 0.0
+        while step < segment:
+            p = a.lerp(b, step / segment)
+            base = len(verts)
+            verts.extend([
+                (p.x + radius, p.y, p.z), (p.x - radius, p.y, p.z),
+                (p.x, p.y + radius, p.z), (p.x, p.y - radius, p.z),
+                (p.x, p.y, p.z + radius), (p.x, p.y, p.z - radius),
+            ])
+            faces.extend(tuple(base + i for i in face) for face in octahedron)
+            step += spacing
+    if verts:
+        mesh_object(name, verts, faces, collection, mat, smooth=True,
+                    split_angle_deg=60.0)

@@ -45,6 +45,7 @@ from aircraft_common import (  # noqa: E402
     naca_offset,
     new_collection,
     reset_scene,
+    rivet_strip,
     scale_uvs,
     superellipse,
     tube_from_points,
@@ -727,40 +728,6 @@ def build_roundel_wing(name, center_x, center_y, radius, upper, exterior, mats):
             q = surface_z(x, y)
             ring.append((x, y, q[2] + (-offset if not upper else offset)))
         disc_mesh(f"{name}_{suffix}", center, ring, exterior, mats[mat_name])
-
-
-def rivet_strip(name, points, exterior, mat, spacing=0.12, radius=0.018):
-    """Place small octahedral rivets along a polyline for the detail bake.
-
-    These faces use the panel-line material and are removed from the shipped
-    mesh after the normal bake, so they cost bake time only.
-    """
-    verts = []
-    faces = []
-    octahedron = [
-        (0, 2, 4), (2, 1, 4), (1, 3, 4), (3, 0, 4),
-        (2, 0, 5), (1, 2, 5), (3, 1, 5), (0, 3, 5),
-    ]
-    for index in range(len(points) - 1):
-        a = Vector(points[index])
-        b = Vector(points[index + 1])
-        segment = (b - a).length
-        if segment < 1e-6:
-            continue
-        step = 0.0
-        while step < segment:
-            p = a.lerp(b, step / segment)
-            base = len(verts)
-            verts.extend([
-                (p.x + radius, p.y, p.z), (p.x - radius, p.y, p.z),
-                (p.x, p.y + radius, p.z), (p.x, p.y - radius, p.z),
-                (p.x, p.y, p.z + radius), (p.x, p.y, p.z - radius),
-            ])
-            faces.extend(tuple(base + i for i in face) for face in octahedron)
-            step += spacing
-    if verts:
-        mesh_object(name, verts, faces, exterior, mat, smooth=True,
-                    split_angle_deg=60.0)
 
 
 def build_panel_lines(exterior, mats):

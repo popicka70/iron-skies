@@ -20,7 +20,7 @@
   },
   "expected_span_m": 9.92,
   "expected_length_m": 9.02,
-  "triangles": 19264,
+  "triangles": 11672,
   "objects": 31,
   "meshes": 25,
   "materials": [
@@ -34,13 +34,13 @@
     "interior",
     "leather",
     "metal",
-    "panel_line",
     "spinner",
     "tyre",
     "underside"
   ],
   "images": [
-    "bf109_camo_albedo"
+    "bf109_camo_albedo",
+    "bf109_camo_normal"
   ],
   "nodes": [
     "AileronL",

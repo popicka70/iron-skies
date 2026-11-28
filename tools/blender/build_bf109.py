@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from aircraft_common import (  # noqa: E402
     airfoil_loop,
+    bake_detail_normal,
     box,
     collection_objects,
     cylinder,
@@ -36,6 +37,7 @@ from aircraft_common import (  # noqa: E402
     naca_offset,
     new_collection,
     reset_scene,
+    rivet_strip,
     superellipse,
     tube_from_points,
     uv_unwrap_all,
@@ -647,25 +649,29 @@ def build_panel_lines(exterior, mats):
     for y in (3.50, 3.00, 2.50, 2.00, 1.50, 1.05, 0.50, -0.10, -0.70,
               -1.30, -1.90, -2.50, -3.10, -3.70, -4.30):
         points = [fuselage_surface_point(y, 2.0 * math.pi * i / 24.0) for i in range(24)]
-        tube_from_points(f"PanelFrame{y:.1f}", points, 0.004, exterior, line, resolution=0)
+        tube_from_points(f"PanelFrame{y:.1f}", points, 0.012, exterior, line, resolution=0)
+        rivet_strip(f"RivetsFrame{y:.1f}", points, exterior, line)
 
     y_values = [3.70 - 0.18 * i for i in range(46)]
     for angle in (0.0, math.pi * 0.5, math.pi, math.pi * 1.5,
                   math.pi * 0.25, math.pi * 0.75, math.pi * 1.25, math.pi * 1.75):
         points = [fuselage_surface_point(y, angle) for y in y_values]
-        tube_from_points(f"PanelLongitude{angle:.2f}", points, 0.003, exterior, line,
+        tube_from_points(f"PanelLongitude{angle:.2f}", points, 0.010, exterior, line,
                          resolution=0)
+        rivet_strip(f"RivetsLongitude{angle:.2f}", points, exterior, line)
 
     for t in (-0.90, -0.70, -0.50, -0.30, -0.10, 0.10, 0.30, 0.50, 0.70, 0.90):
         for upper in (True, False):
             points = [wing_point(t, c / 10.0, upper) for c in range(1, 10)]
-            tube_from_points(f"WingRib{t:+.2f}{upper}", points, 0.0032, exterior, line,
+            tube_from_points(f"WingRib{t:+.2f}{upper}", points, 0.010, exterior, line,
                              resolution=0)
+            rivet_strip(f"RivetsWingRib{t:+.2f}{upper}", points, exterior, line)
     for c in (0.22, 0.52, 0.80):
         for upper in (True, False):
             points = [wing_point(-0.94 + 1.88 * i / 14.0, c, upper) for i in range(15)]
-            tube_from_points(f"WingSpan{c:.2f}{upper}", points, 0.0032, exterior, line,
+            tube_from_points(f"WingSpan{c:.2f}{upper}", points, 0.010, exterior, line,
                              resolution=0)
+            rivet_strip(f"RivetsWingSpan{c:.2f}{upper}", points, exterior, line)
 
     for side, suffix in ((-1.0, "L"), (1.0, "R")):
         build_cross_fuselage(f"BalkenkreuzFuselage{suffix}", -0.95, 0.12, side,
@@ -738,6 +744,7 @@ def main():
         "airframe": image_material(
             "airframe",
             os.path.join(texture_dir, "bf109_camo_albedo.png"),
+            os.path.join(texture_dir, "bf109_camo_normal.png"),
             roughness=0.58, metallic=0.05, uv_scale=0.16,
         ),
         "underside": material("underside", (0.52, 0.60, 0.64), 0.62, 0.03),
@@ -783,6 +790,13 @@ def main():
     consolidate(exterior, cockpit)
     meshes = collection_objects(exterior) + collection_objects(cockpit)
     uv_unwrap_all(meshes)
+
+    bake_detail_normal(
+        bpy.data.objects.get("ExteriorStatic"),
+        os.path.join(texture_dir, "bf109_camo_normal.png"),
+        size=4096,
+        ignore_materials=("cross_white", "cross_black"),
+    )
 
     scene = bpy.context.scene
     scene["aircraft_id"] = "bf109-g6"

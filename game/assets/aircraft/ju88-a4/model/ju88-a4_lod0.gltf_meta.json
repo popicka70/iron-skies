@@ -5,7 +5,7 @@
     "min": [
       -10.05,
       -7.18,
-      -1.71
+      -1.65
     ],
     "max": [
       10.05,
@@ -15,12 +15,12 @@
     "size": [
       20.1,
       14.36,
-      3.89
+      3.83
     ]
   },
   "expected_span_m": 20.1,
   "expected_length_m": 14.36,
-  "triangles": 18056,
+  "triangles": 10344,
   "objects": 24,
   "meshes": 18,
   "materials": [
@@ -30,13 +30,13 @@
     "dark",
     "glass",
     "metal",
-    "panel_line",
     "spinner",
     "tyre",
     "underside"
   ],
   "images": [
-    "ju88_camo_albedo"
+    "ju88_camo_albedo",
+    "ju88_camo_normal"
   ],
   "nodes": [
     "AileronL",
