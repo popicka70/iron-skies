@@ -1,0 +1,110 @@
+# 0003 — Hero aircraft pass: match the historical airframes
+
+**Status:** active
+**Updated:** 2026-11-28
+**Area:** rendering, art, tools
+**Goal owner:** rendering/art
+
+## Goal
+
+Spec 0002 produced a coherent, measurable blockout fleet. This pass makes the four
+shipped aircraft — **Spitfire LF Mk IX, Bf 109 G-6, Ju 88 A-4, P-51D-25** — read as
+their real, historical counterparts at chase and cockpit distances: correct silhouette
+*and* the characteristic details (radiators, exhausts, canopies, panel seams, gun
+ports, antennas, markings) that make each type instantly recognisable.
+
+"Done" means, per aircraft:
+
+- Silhouette and cross-sections match published reference photos/drawings within
+  roughly one tyre width; known deviations from 0002 (Bf 109 aft fuselage/fin,
+  Ju 88 belly/nacelles, Spitfire length trim) are corrected or explicitly re-accepted.
+- Characteristic external details are modelled, not implied by textures: e.g. Spitfire
+  exhaust stacks, radiator intake and oil cooler, wing guns; Bf 109 MG 131 cowl
+  bulges, Erla canopy, underwing radiators, exhausts; Ju 88 greenhouse, gondola,
+  nacelle annular radiators, ventral gondola; P-51D belly scoop, bubble canopy,
+  exhausts, tail fillet.
+- Markings match the chosen generic period scheme and are re-baked into the textures.
+- The validation contract is unchanged: contract nodes, span/length within 3 %,
+  validator OK, LODs and imposter regenerated, GLBs within budget, in-game smoke tests
+  green.
+
+## Current state
+
+See [`0002-aircraft-art-pass.md`](0002-aircraft-art-pass.md). All four aircraft are
+measured blockouts with packed UV atlases, baked 4K normal/AO/curvature, weathered
+albedos, cockpits, LOD1/LOD2/imposter and damage decals. Known shape gaps are listed in
+[`../art/aircraft-review-2026-11-28.md`](../art/aircraft-review-2026-11-28.md).
+
+Reference photos (reference-only, never committed) live in the git-ignored
+`reference-photos/<id>/` folder with a `manifest.json` recording source URL, author and
+licence; downloads go through `tools/fetch_reference_photos.py`. Only CC0 / CC BY /
+CC BY-SA / public-domain / no-known-restrictions images are fetched. Provenance is
+summarised in [`../art/aircraft-references.md`](../art/aircraft-references.md).
+
+## Requirements and constraints
+
+- Same rules as spec 0002: in-house geometry only (no game rips, no model imports),
+  Blender 4.5 LTS, CC BY 4.0 output, contract nodes and metres/+Y-nose/+Z-up frame,
+  LOD chain and budgets, `check_licenses.py` green.
+- Reference photos are **reference-only**: they stay in `reference-photos/` and are
+  never committed, shipped or baked into textures verbatim. Only measurements and
+  observations flow into the assets.
+- One aircraft at a time, in the order below. Each aircraft is one commit (or a small
+  series) with: rebuilt GLBs + LODs, re-baked maps, updated `docs/media/aircraft/`
+  sheets, updated reference register, spec changelog.
+- Keep the primitive fallback and the LOD/imposter chain working; do not regress the
+  1080p/GTX-1060 budget.
+
+## Plan
+
+1. [ ] Reference intake and tooling: git-ignored `reference-photos/`, fetch tool,
+       per-aircraft manifest; prune irrelevant downloads. *(done 2026-11-28, see
+       changelog)*
+2. [ ] **Spitfire LF Mk IX** hero pass: reshape nose/spinner, exhausts, radiators,
+       canopy framing, wing gun ports, antenna mast, gear doors; correct the 0.08 m
+       length excess; re-bake; review sheet.
+3. [ ] **Bf 109 G-6** hero pass: slim aft fuselage, raise/reshape fin, MG 131 bulges,
+       Erla canopy, underwing radiators, exhausts, prop, gear; re-bake; review sheet.
+4. [ ] **Ju 88 A-4** hero pass: raise belly/nacelles to the line drawing, annular
+       radiators, greenhouse framing, gondola, tail surfaces, engine nacelles;
+       re-bake; review sheet.
+5. [ ] **P-51D-25** hero pass: bubble canopy, belly scoop, Merlin nose exhausts,
+       fin fillet, radiator bath; correct the +0.13 m length; re-bake; review sheet.
+6. [ ] Fleet consistency: regenerate LODs/imposters, run the full verification suite,
+       update README/spec/register, close the spec.
+
+Each aircraft step follows the same loop: study photos → edit the `tools/blender/build_<id>.py`
+script → rebuild → `validate_aircraft.py` → render turntable/silhouette → compare
+against photos → iterate → commit.
+
+## Acceptance and verification
+
+```bash
+blender --background --python tools/blender/validate_aircraft.py -- \
+  --glb game/assets/aircraft/<id>/model/<id>_lod0.glb --id <id> --span <span> --length <length>
+python3 tools/check_licenses.py
+dotnet test
+godot --headless --path game scenes/Main.tscn -- --takeoff-test
+```
+
+Plus the per-aircraft review sheet in `docs/media/aircraft/` and a recorded list of
+remaining accepted deviations.
+
+## Risks / decisions
+
+- Procedural lofting can only approximate compound curvature; where photos disagree
+  with the current stations, the stations win. Detail density stays within the 0002
+  triangle budgets; character comes from the normal/AO bakes, not raw geometry.
+- Photo licensing: only the whitelisted licence set is fetched; anything unclear is
+  discarded. Photos never enter the repository.
+- Scope control: markings stay generic period-correct; no specific squadron.
+
+## Remaining work
+
+Steps 2–6.
+
+## Changelog
+
+- 2026-11-28 — branch `feature/0003-hero-aircraft-pass`; `tools/fetch_reference_photos.py`
+  and git-ignored `reference-photos/` intake; licence-filtered downloads for the four
+  aircraft (Spitfire 16, Bf 109 16, Ju 88 8, P-51D 12 candidates).
