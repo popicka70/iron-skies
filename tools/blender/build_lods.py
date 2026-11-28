@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from aircraft_common import export_glb  # noqa: E402
 
-AIRCRAFT = ("spitfire-mk9", "bf109-g6", "ju88-a4")
+AIRCRAFT = ("spitfire-mk9", "bf109-g6", "ju88-a4", "p51d-25")
 RATIOS = {1: 0.45, 2: 0.16}
 
 

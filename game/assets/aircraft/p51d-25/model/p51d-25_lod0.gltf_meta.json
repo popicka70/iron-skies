@@ -1,0 +1,91 @@
+{
+  "id": "p51d-25",
+  "source": "p51d-25_lod0.glb",
+  "bounds": {
+    "min": [
+      -5.64,
+      -5.24,
+      -1.72
+    ],
+    "max": [
+      5.64,
+      4.72,
+      1.95
+    ],
+    "size": [
+      11.28,
+      9.96,
+      3.67
+    ]
+  },
+  "expected_span_m": 11.28,
+  "expected_length_m": 9.83,
+  "triangles": 14252,
+  "objects": 38,
+  "meshes": 32,
+  "materials": [
+    "airframe",
+    "dark",
+    "gauge_face",
+    "glass",
+    "harness",
+    "interior",
+    "leather",
+    "metal",
+    "needle",
+    "roundel_blue",
+    "roundel_white",
+    "spinner",
+    "tyre",
+    "underside"
+  ],
+  "images": [
+    "p51d_camo_albedo",
+    "p51d_camo_ao",
+    "p51d_camo_normal",
+    "p51d_camo_orm"
+  ],
+  "nodes": [
+    "AileronL",
+    "AileronR",
+    "Canopy",
+    "CockpitInterior",
+    "CockpitStatic",
+    "DamageSmokeAnchor",
+    "ElevatorL",
+    "ElevatorR",
+    "ExteriorStatic",
+    "FlapL",
+    "FlapR",
+    "FuselageCenter",
+    "FuselageFront",
+    "FuselageRear",
+    "GearDoorL",
+    "GearDoorR",
+    "GearHubL",
+    "GearHubR",
+    "GearLegL",
+    "GearLegR",
+    "GearMainL",
+    "GearMainR",
+    "GearTail",
+    "GearTailLeg",
+    "GearTailWheel",
+    "GearWheelL",
+    "GearWheelR",
+    "NeedleAirspeed",
+    "NeedleAltimeter",
+    "NeedleCoolant",
+    "NeedleFuel",
+    "NeedleManifold",
+    "NeedleOil",
+    "NeedleRpm",
+    "Propeller",
+    "PropellerBlades",
+    "PropellerRoot",
+    "Rudder"
+  ],
+  "missing_contract_nodes": [],
+  "warnings": [],
+  "failures": []
+}

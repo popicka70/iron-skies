@@ -285,6 +285,7 @@ public sealed partial class AircraftVisual : Node3D
         {
             "bf109-g6" => 9.07f,
             "ju88-a4" => 14.36f,
+            "p51d-25" => 9.83f,
             _ => 9.55f,
         };
         _imposter = new Sprite3D
@@ -312,6 +313,7 @@ public sealed partial class AircraftVisual : Node3D
         {
             "bf109-g6" => 1.54f,
             "ju88-a4" => 1.70f,
+            "p51d-25" => 1.70f,
             _ => 1.65f,
         };
 
