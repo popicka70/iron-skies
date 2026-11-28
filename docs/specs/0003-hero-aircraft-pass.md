@@ -71,8 +71,9 @@ summarised in [`../art/aircraft-references.md`](../art/aircraft-references.md).
        Bola gondola with gun trough, nacelle-housed main gear, tailplane dihedral,
        rounded fin top, rear-cockpit antenna mast; re-bake; review sheet.
        *(done 2026-11-28, see changelog)*
-5. [ ] **P-51D-25** hero pass: bubble canopy, belly scoop, Merlin nose exhausts,
+5. [x] **P-51D-25** hero pass: bubble canopy, belly scoop, Merlin nose exhausts,
        fin fillet, radiator bath; correct the +0.13 m length; re-bake; review sheet.
+       *(done 2026-11-28, see changelog)*
 6. [ ] Fleet consistency: regenerate LODs/imposters, run the full verification suite,
        update README/spec/register, close the spec.
 
@@ -104,7 +105,7 @@ remaining accepted deviations.
 
 ## Remaining work
 
-Steps 5–6.
+Step 6.
 
 ## Changelog
 
@@ -143,3 +144,13 @@ Steps 5–6.
   Span 20.10 m / length 14.36 m exact, 11,500 tris (budget 22k), validator OK, no
   missing contract nodes; LOD1/LOD2 rebuilt; sheets re-rendered
   (`docs/media/aircraft/ju88-a4.jpg`, `ju88-a4-silhouette.jpg`, height 3.37 m).
+- 2026-11-28 — P-51D-25 hero pass: tailplane/elevators shifted 0.13 m forward and fin
+  chords trimmed ~0.13 m so the length is 9.84 m (was 9.96 m; target 9.83 m, span
+  unchanged at 11.28 m); dorsal fin fillet added; belly radiator bath rebuilt as a
+  deep lofted scoop (dark forward intake, vertical exit flap) replacing the boxy
+  radiator/oil-cooler; exhausts as six angled-back stubs per side; canopy reduced to
+  windscreen bow + rear hoop + thin sill rails (frameless bubble); gun ports as flush
+  leading-edge stubs (were 0.42 m barrels); pitot re-hung under the port wing on a
+  mast. 14,006 tris; validator OK, no missing contract nodes; LOD1/LOD2 rebuilt;
+  reference-photo intake logged in docs/art/aircraft-references.md; sheets re-rendered
+  (`docs/media/aircraft/p51d-25.jpg`, `p51d-25-silhouette.jpg`).

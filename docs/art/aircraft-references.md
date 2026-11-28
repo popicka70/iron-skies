@@ -249,11 +249,47 @@ For every new image or drawing:
 | Wikimedia Commons, `Category:North American P-51 Mustang` — https://commons.wikimedia.org/wiki/Category:North_American_P-51_Mustang | walkaround reference for later detail passes | varies per file | no | reference-only; no image was used for this blockout |
 | Public dimensions (span 11.28 m, length 9.83 m, wing area 21.83 m²) | blockout proportions | public data | no | dimension source only |
 
+Hero pass intake (2026-11-28) — used for the P-51D geometry rework (tailplane/elevator
+length trim, dorsal fillet, belly radiator bath, exhausts, bubble canopy framing,
+gun ports):
+
+| File (reference-photos/p51d-25/, never committed) | Use | Licence |
+| --- | --- | --- |
+| `London_RAF_Museum_Hendon_North_American_P-51D_Mustang_01.jpg` (Ad Meskens, Wikimedia Commons) | side profile: nose/cowl line, exhaust row, fin and fillet, scoop, spine | CC BY-SA 4.0 |
+| `London_RAF_Museum_Hendon_North_American_P-51D_Mustang_03.jpg` (Ad Meskens, Wikimedia Commons) | nose 3/4: exhaust stub angle, cowl fasteners, canopy frame | CC BY-SA 4.0 |
+| `London_RAF_Museum_Hendon_North_American_P-51D_Mustang_06.jpg` (Ad Meskens, Wikimedia Commons) | head-on 3/4: stub protrusion, intake, spinner backplate, gear stance | CC BY-SA 4.0 |
+| `London_RAF_Museum_Hendon_North_American_P-51D_Mustang_07.jpg` (Ad Meskens, Wikimedia Commons) | cowl panel/fastener detail, exhaust surround | CC BY-SA 4.0 |
+| `Duxford_Imperial_War_Museum_North_American_P-51D_Mustang_-_geograph.org.uk_-_4582855.jpg` (Michael Garlick, geograph) | side/rear 3/4: tail fillet, scoop, tailplane vs rudder TE | CC BY-SA 2.0 |
+| `Duxford_Imperial_War_Museum_North_American_P-51D_Mustang_-_geograph.org.uk_-_4582902.jpg` (Michael Garlick, geograph) | port side: canopy frame, scoop, fin | CC BY-SA 2.0 |
+| `Duxford_Imperial_War_Museum_North_American_P-51D_Mustang_-_geograph.org.uk_-_4582905.jpg` (Michael Garlick, geograph) | side/front: stubs, fillet, scoop depth | CC BY-SA 2.0 |
+| `Barksdale_Global_Power_Museum_September_2015_06_North_American_P-51D_Mustang_.jpg` (Michael Barera, Wikimedia Commons) | port side, gear down: scoop profile, fillet, fin top | CC BY-SA 4.0 |
+| `Barksdale_Global_Power_Museum_September_2015_07_North_American_P-51D_Mustang_.jpg` (Michael Barera, Wikimedia Commons) | front quarter: stub row, cowl cheeks, spinner | CC BY-SA 4.0 |
+| `At_American_Airpower_Museum_2024_022.jpg` (Mike Peel, Wikimedia Commons) | front quarter, nose-high: exhaust stub exit angle, bath outline | CC BY-SA 4.0 |
+| `At_American_Airpower_Museum_2024_023.jpg` (Mike Peel, Wikimedia Commons) | front quarter, other side: symmetric stub check | CC BY-SA 4.0 |
+| `J_26_North_American_P-51D_Mustang.jpg` (David Brohede, Wikimedia Commons) | cockpit 360: canopy framing, sill height (cockpit unchanged this pass) | CC BY-SA 4.0 |
+
+What was measured/matched against these photos: tailplane/elevator trailing edge moved
+0.13 m forward and fin chords trimmed ~0.13 m so the length is 9.84 m (was 9.96 m;
+9.83 m is the authoritative figure, within 0.1 %); dorsal fin fillet added (D-15
+onwards) rising from the spine behind the headrest into the fin leading edge; belly
+radiator bath rebuilt as a deep lofted scoop (forward-facing dark intake, vertical
+exit flap at the rear underside) replacing the boxy block and separate oil-cooler box;
+six exhaust stubs per side as short cylinders angled back ~20° and slightly outboard;
+canopy reduced to the windscreen bow, a rear hoop and thin sill rails (no spine, no
+mid-hood bows); gun ports as flush stubs in the wing leading edge (were 0.42 m barrels);
+pitot re-hung on a mast under the port wing (was floating below the tip).
+
+Remaining accepted deviations: the canopy frame spacing and the fillet are stylised
+(flat-sided wedge, constant 0.075 m thickness); exhaust stubs are straight (no fishtail
+collectors); the radiator flap is static; markings remain generic period-correct; the
+fin airfoil is still the blockout NACA section.
+
 Shape notes: long Merlin nose, teardrop bubble canopy, laminar-flow wing with a nearly
 straight leading edge, belly radiator/oil-cooler scoop, four-blade Hamilton Standard
 prop, wide-track main gear, USAAF olive-drab upper / neutral-grey lower with
 star-and-bar insignia. The blockout measured span 11.28 m, length 9.96 m (0.13 m over
-the 9.83 m authoritative figure) and height 3.67 m with the prop disc. The model-only
+the 9.83 m authoritative figure) and height 3.67 m with the prop disc; the hero pass
+(2026-11-28) trims the length to 9.84 m — see the intake section above. The model-only
 silhouette is `docs/media/aircraft/p51d-25-silhouette.jpg`; the public-domain NAA 3-view
 is registered in the review record, and its dimensioned callouts need a manual crop
 before a full side overlay can be composed.

@@ -4,7 +4,7 @@
   "bounds": {
     "min": [
       -5.64,
-      -5.24,
+      -5.12,
       -1.72
     ],
     "max": [
@@ -14,13 +14,13 @@
     ],
     "size": [
       11.28,
-      9.96,
+      9.84,
       3.67
     ]
   },
   "expected_span_m": 11.28,
   "expected_length_m": 9.83,
-  "triangles": 14252,
+  "triangles": 14006,
   "objects": 38,
   "meshes": 32,
   "materials": [
@@ -29,6 +29,7 @@
     "gauge_face",
     "glass",
     "harness",
+    "intake",
     "interior",
     "leather",
     "metal",
