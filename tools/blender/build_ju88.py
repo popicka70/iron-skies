@@ -565,7 +565,7 @@ def main():
         "airframe": image_material(
             "airframe", os.path.join(texture_dir, "ju88_camo_albedo.png"),
             os.path.join(texture_dir, "ju88_camo_normal.png"),
-            roughness=0.60, metallic=0.04, uv_scale=0.10,
+            roughness=0.60, metallic=0.04, uv_scale=1.0,
             orm_path=os.path.join(texture_dir, "ju88_camo_orm.png"),
         ),
         "underside": material("underside", (0.46, 0.58, 0.66), 0.62, 0.03),

@@ -98,10 +98,13 @@ def image_material(
     bsdf.inputs["Roughness"].default_value = roughness
     bsdf.inputs["Metallic"].default_value = metallic
 
-    geometry = nodes.new("ShaderNodeNewGeometry")
+    # The final pass uses the packed UV atlas, not the blockout triplanar
+    # projection: the baked normal/AO/ORM maps are in UV space and must line up
+    # with the camo and wear.
+    uv_node = nodes.new("ShaderNodeUVMap")
     mapping = nodes.new("ShaderNodeMapping")
     mapping.inputs["Scale"].default_value = (uv_scale, uv_scale, uv_scale)
-    links.new(geometry.outputs["Position"], mapping.inputs["Vector"])
+    links.new(uv_node.outputs["UV"], mapping.inputs["Vector"])
 
     albedo = bpy.data.images.load(albedo_path, check_existing=True)
     albedo.colorspace_settings.name = "sRGB"
@@ -109,8 +112,6 @@ def image_material(
     albedo_node = nodes.new("ShaderNodeTexImage")
     albedo_node.image = albedo
     albedo_node.interpolation = "Linear"
-    albedo_node.projection = "BOX"
-    albedo_node.projection_blend = 0.35
     links.new(mapping.outputs["Vector"], albedo_node.inputs["Vector"])
     links.new(albedo_node.outputs["Color"], bsdf.inputs["Base Color"])
 

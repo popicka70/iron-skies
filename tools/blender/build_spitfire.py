@@ -908,7 +908,7 @@ def main():
             os.path.join(texture_dir, "spitfire_camo_normal.png"),
             roughness=0.58,
             metallic=0.05,
-            uv_scale=0.14,
+            uv_scale=1.0,
             orm_path=os.path.join(texture_dir, "spitfire_camo_orm.png"),
         ),
         "airframe_solid": material("airframe_solid", (0.19, 0.25, 0.16), 0.62, 0.05),
