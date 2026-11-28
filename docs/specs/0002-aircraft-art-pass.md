@@ -44,8 +44,8 @@ Measured blockout state (LOD0, Godot auto-LOD enabled on import):
 | Aircraft | Tris | Span / length | GLB | Materials | Notes |
 | --- | --- | --- | --- | --- | --- |
 | Spitfire LF Mk IX | 14,356 | 11.23 / 9.55 m | 2.26 MB | 14 | elliptical wing, roundels, RAF camo, detailed cockpit, packed UV atlas, 4K baked panel/rivet normal (geometry lines removed) |
-| Bf 109 G-6 | 19,264 | 9.92 / 9.07 m | 1.58 MB | 14 | Erla canopy, cowl bulges, RLM 74/75, structural cockpit |
-| Ju 88 A-4 | 18,056 | 20.10 / 14.36 m | 1.2 MB | 10 | twin nacelles, greenhouse, gondola |
+| Bf 109 G-6 | 11,672 | 9.92 / 9.07 m | 2.11 MB | 13 | Erla canopy, cowl bulges, RLM 74/75, structural cockpit, packed UVs, 4K baked normal |
+| Ju 88 A-4 | 10,344 | 20.10 / 14.36 m | 1.66 MB | 9 | twin nacelles, greenhouse, gondola, packed UVs, 4K baked normal |
 
 Known gaps:
 
@@ -54,12 +54,12 @@ Known gaps:
   authoritative, outer-wing chord within ~0.2 m). The Bf 109 (span 9.92 m, length
   9.07 m vs 9.02 m) and Ju 88 (span 20.10 m, length 14.36 m exact) are measured with
   model-only sheets; their reference overlays are still to do.
-- The Spitfire now has a packed UV atlas (5.9% → 49% island coverage) and a 4K
-  tangent-space normal bake of the panel lines and rivet rows; the geometry panel lines
-  are removed from the shipped mesh (22,812 → 14,356 tris) and the normal map is wired
-  into the Blender material and the GLB. The albedo still has no exhaust staining, oil
-  streaks or chipped paint, and AO/curvature/ORM are not baked. The Bf 109 and Ju 88
-  keep the old UV/geometry-line material until the bake is applied to them.
+- All three aircraft now have the packed UV atlas and a 4K tangent-space normal bake of
+  the panel lines and rivet rows; the geometry panel lines are removed from the shipped
+  meshes (Spitfire 22,812 → 14,356, Bf 109 19,264 → 11,672, Ju 88 18,056 → 10,344 tris)
+  and the normal maps are wired into the Blender materials and the GLBs. The albedo still
+  has no exhaust staining, oil streaks or chipped paint, and AO/curvature/ORM are not
+  baked.
 - Both flyable fighters have a structural cockpit pass: tub, cushioned seat, harness and
   buckles, armoured headrest, pedals, control column and grip, throttle/mixture,
   three-section eight-gauge panel, compass, canopy rails and sidewall ribs, beveled edges
@@ -130,13 +130,12 @@ where it keeps review manageable. Push every commit.
      streaks and walkway wear; keep the camo readable at distance.
    - Acceptance: the turntable shows panel lines and rivets without a “wired” look;
      texture/VRAM numbers are recorded.
-   - [x] Spitfire bake slice *(done 2026-11-28)*: the UV atlas is packed (49% coverage),
-     the panel-line tubes and procedural rivet rows are baked to a 4K tangent normal
-     (`spitfire_camo_normal.png`, 860 KiB) and removed from the mesh (14,356 tris, GLB
-     2.26 MB), and the normal node is wired and exported. The review sheet
-     `docs/media/aircraft/spitfire-mk9.jpg` shows the baked lines without geometry wires.
-   - [ ] Exhaust/oil/walkway wear and AO/curvature/ORM bakes; then apply the bake to the
-     Bf 109 and Ju 88 (the shared `uv_unwrap_all` pack is already in place).
+   - [x] Fleet bake slice *(done 2026-11-28)*: the UV atlas is packed and the panel-line
+     tubes plus procedural rivet rows are baked to 4K tangent normals and removed from
+     the shipped meshes — Spitfire 14,356 tris / 2.26 MB, Bf 109 11,672 / 2.11 MB, Ju 88
+     10,344 / 1.66 MB. Normal nodes are wired and exported, and the three review sheets
+     are regenerated.
+   - [ ] Exhaust/oil/walkway wear and AO/curvature/ORM bakes.
 
 3. [ ] **Cockpit repair and interior pass.**
    - [x] Fix the pre-existing cockpit camera/renderer failure (`create_frustum_points`)
@@ -284,9 +283,9 @@ Recommended order for the next session:
 
 1. Finish the Bf 109 and Ju 88 reference overlays (the measurements and model-only sheets
    are done; the multi-panel drawings need cropping/alignment) and record the deviations.
-2. Step 2: the Spitfire UV-atlas and 4K panel/rivet normal bake are done; add the
-   exhaust/oil/walkway wear to the albedo and the AO/curvature/ORM bakes, then apply the
-   bake to the Bf 109 and Ju 88. This remains the gate for step 4's decals.
+2. Step 2: all three aircraft have the UV atlas and 4K panel/rivet normal bake; add the
+   exhaust/oil/walkway wear to the albedo and the AO/curvature/ORM bakes. This remains
+   the gate for step 4's decals.
 3. Step 3: wire the 3D gauge needles to `AircraftSimulator` telemetry. The renderer
    blocker and both fighter structural interiors are done; the Ju 88 is AI-only.
 4. Step 4 damage/wear after the UV atlas decision; the current triplanar camo cannot carry
@@ -301,6 +300,8 @@ measured; the art budget is the schedule risk, not the code.
 
 ## Changelog
 
+- 2026-11-28 — `edb23e2` — Bf 109 and Ju 88 packed UV atlas and 4K panel/rivet normal
+  bake; geometry lines removed (19,264 → 11,672 and 18,056 → 10,344 tris).
 - 2026-11-28 — `f38a314` — Spitfire packed UV atlas (49%) and 4K panel/rivet normal bake;
   geometry panel lines removed (22,812 → 14,356 tris), normal wired into the GLB.
 - 2026-11-27 — `dff9ddf` — Bf 109 structural cockpit (Erla tub adapted from the Spitfire
