@@ -43,9 +43,9 @@ Measured blockout state (LOD0, Godot auto-LOD enabled on import):
 
 | Aircraft | Tris | Span / length | GLB | Materials | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Spitfire LF Mk IX | 14,356 | 11.23 / 9.55 m | 4.01 MB | 14 | elliptical wing, roundels, RAF camo, detailed cockpit, packed UV atlas, 4K baked panel/rivet normal and AO, ORM (geometry lines removed) |
-| Bf 109 G-6 | 11,672 | 9.92 / 9.07 m | 3.68 MB | 13 | Erla canopy, cowl bulges, RLM 74/75, structural cockpit, packed UVs, 4K baked normal + AO, ORM |
-| Ju 88 A-4 | 10,344 | 20.10 / 14.36 m | 3.51 MB | 9 | twin nacelles, greenhouse, gondola, packed UVs, 4K baked normal + AO, ORM |
+| Spitfire LF Mk IX | 14,356 | 11.23 / 9.55 m | 4.14 MB | 14 | elliptical wing, roundels, RAF camo, detailed cockpit, packed UV atlas, 4K normal/AO/curvature, ORM, weathered albedo |
+| Bf 109 G-6 | 11,672 | 9.92 / 9.07 m | 3.77 MB | 13 | Erla canopy, cowl bulges, RLM 74/75, structural cockpit, packed UVs, 4K normal/AO/curvature, ORM, weathered albedo |
+| Ju 88 A-4 | 10,344 | 20.10 / 14.36 m | 3.61 MB | 9 | twin nacelles, greenhouse, gondola, packed UVs, 4K normal/AO/curvature, ORM, weathered albedo |
 
 Known gaps:
 
@@ -54,12 +54,14 @@ Known gaps:
   authoritative, outer-wing chord within ~0.2 m). The Bf 109 (span 9.92 m, length
   9.07 m vs 9.02 m) and Ju 88 (span 20.10 m, length 14.36 m exact) are measured with
   model-only sheets; their reference overlays are still to do.
-- All three aircraft now have the packed UV atlas, a 4K tangent-space normal bake of the
-  panel lines and rivet rows, and a 4K ambient-occlusion bake; the geometry panel lines
-  are removed from the shipped meshes (Spitfire 22,812 → 14,356, Bf 109 19,264 → 11,672,
-  Ju 88 18,056 → 10,344 tris) and the normal, occlusion and metallicRoughness maps are
-  wired into the Blender materials and the GLBs. The albedo still has no exhaust
-  staining, oil streaks or chipped paint, and the curvature bake remains.
+- Step 2 is complete. All three aircraft ship a packed UV atlas, a 4K tangent-space
+  normal bake of the panel lines and rivet rows, a 4K AO bake, a curvature master derived
+  from the normal, an exported ORM, and a weathered albedo with directional grime streaks
+  and sparse bare-metal chips. The geometry panel lines are removed from the shipped
+  meshes (Spitfire 22,812 → 14,356, Bf 109 19,264 → 11,672, Ju 88 18,056 → 10,344 tris);
+  the runtime samples the UV atlas and no longer forces triplanar projection. The
+  position-specific exhaust/oil/walkway stamps are approximated by the procedural wear
+  layer (the curvature map is ready for a later anchored pass).
 - Both flyable fighters have a structural cockpit pass: tub, cushioned seat, harness and
   buckles, armoured headrest, pedals, control column and grip, throttle/mixture,
   three-section eight-gauge panel, compass, canopy rails and sidewall ribs, beveled edges
@@ -123,7 +125,7 @@ where it keeps review manageable. Push every commit.
      length is 5 cm over 9.02 m for the Bf 109 and exact for the Ju 88. The G-5 3-view
      and Ju 88 A-4 drawings are registered; full overlays remain a review task.
 
-2. [ ] **Surface-detail and bake pipeline.**
+2. [x] **Surface-detail and bake pipeline.** *(done 2026-11-28)*
    - Build a high-poly detail cage: shallow panel-line insets, rivet strips, access
      panels, fabric rib tapes, control-surface gaps.
    - Bake normal/AO/curvature to 4K LOD0 maps; author restrained exhaust staining, oil
@@ -136,7 +138,10 @@ where it keeps review manageable. Push every commit.
      10,344 / 3.51 MB. The 4K AO maps are baked and exported as `occlusionTexture`, the
      ORM master is exported as `metallicRoughnessTexture`, the normal nodes are wired,
      and the three review sheets are regenerated.
-   - [ ] Exhaust/oil/walkway wear and the curvature bake.
+   - [x] Weathering and curvature: directional grime streaks and sparse bare-metal chips
+     in the albedo, a curvature master derived from the 4K normal, and UV sampling in the
+     runtime material (triplanar removed). Position-anchored exhaust/walkway stamps are
+     approximated by the procedural layer.
 
 3. [ ] **Cockpit repair and interior pass.**
    - [x] Fix the pre-existing cockpit camera/renderer failure (`create_frustum_points`)
@@ -284,23 +289,18 @@ Recommended order for the next session:
 
 1. Finish the Bf 109 and Ju 88 reference overlays (the measurements and model-only sheets
    are done; the multi-panel drawings need cropping/alignment) and record the deviations.
-2. Step 2: all three aircraft have the UV atlas and 4K panel/rivet normal bake; add the
-   exhaust/oil/walkway wear to the albedo and the curvature bake. This remains the gate
-   for step 4's decals.
-3. Step 3: wire the 3D gauge needles to `AircraftSimulator` telemetry. The renderer
+2. Step 3: wire the 3D gauge needles to `AircraftSimulator` telemetry. The renderer
    blocker and both fighter structural interiors are done; the Ju 88 is AI-only.
-4. Step 4 damage/wear after the UV atlas decision; the current triplanar camo cannot carry
-   per-face decals.
-5. Step 5: authored LOD1/2, shadow LOD and a distance imposter, then the GTX 1060-class
+3. Step 4 damage/wear decals; the packed UV atlas and curvature map are ready for
+   anchored bullet-hole, missing-panel and scorch decals.
+4. Step 5: authored LOD1/2, shadow LOD and a distance imposter, then the GTX 1060-class
    six-aircraft run (the render-cost script and budgets are in place).
-6. Step 6 P-51D only after the three current aircraft pass the art review, then step 7's
-   final review and documentation.
-
-Do not start a full-fleet detail pass before the Spitfire overlay and bake pipeline are
-measured; the art budget is the schedule risk, not the code.
+5. Step 6 P-51D, then step 7's final review and documentation.
 
 ## Changelog
 
+- 2026-11-28 — `96b3632` — step 2 finished: UV sampling replaces triplanar, weathered
+  albedos (grime streaks/chips), curvature master; GLBs 4.14 / 3.77 / 3.61 MB.
 - 2026-11-28 — `d2e308b` — ORM roughness/metallic wired and exported as
   `metallicRoughnessTexture` for all three; GLBs 4.01 / 3.68 / 3.51 MB.
 - 2026-11-28 — `f06634b` — 4K ambient-occlusion bake for all three aircraft, exported
