@@ -15,6 +15,7 @@ Run inside Blender only, e.g.:
 from __future__ import annotations
 
 import math
+import os
 from typing import Iterable, Sequence
 
 import bmesh
@@ -111,6 +112,18 @@ def image_material(
     albedo_node.projection_blend = 0.35
     links.new(mapping.outputs["Vector"], albedo_node.inputs["Vector"])
     links.new(albedo_node.outputs["Color"], bsdf.inputs["Base Color"])
+
+    if normal_path and os.path.exists(normal_path):
+        normal_image = bpy.data.images.load(normal_path, check_existing=True)
+        normal_image.colorspace_settings.name = "Non-Color"
+        normal_image.pack()
+        normal_node = nodes.new("ShaderNodeTexImage")
+        normal_node.image = normal_image
+        normal_node.interpolation = "Linear"
+        # The bake is in UV space; do not reuse the triplanar albedo mapping.
+        normal_map = nodes.new("ShaderNodeNormalMap")
+        links.new(normal_node.outputs["Color"], normal_map.inputs["Color"])
+        links.new(normal_map.outputs["Normal"], bsdf.inputs["Normal"])
 
     return mat
 
@@ -473,8 +486,164 @@ def uv_unwrap_all(objects: Sequence[bpy.types.Object], margin: float = 0.015) ->
             correct_aspect=True,
             scale_to_bounds=False,
         )
+        # Smart Project leaves the islands at their natural size; without a
+        # pack the atlas was only ~6% covered, wasting most of the 4K detail
+        # and camo budget. Pack needs the UVs selected explicitly.
+        bpy.ops.uv.select_all(action="SELECT")
+        bpy.ops.uv.pack_islands(
+            rotate=True, scale=True, margin=0.004, margin_method="SCALED")
         bpy.ops.object.mode_set(mode="OBJECT")
         obj.select_set(False)
+
+
+def bake_detail_normal(
+    obj: bpy.types.Object | None,
+    output_path: str,
+    size: int = 4096,
+    detail_material: str = "panel_line",
+    invert: bool = True,
+    ignore_materials: Sequence[str] = (
+        "roundel_blue", "roundel_white", "roundel_red"),
+) -> str | None:
+    """Bake the detail geometry into a tangent-space normal map and remove it.
+
+    ``obj`` is the joined low-poly mesh. A duplicate keeps the faces that use
+    ``detail_material`` (the panel-line tubes), a second duplicate drops them,
+    and Cycles bakes the high copy's normals onto the low copy's existing UVs.
+    The result stays aligned to the shipped mesh because both copies share its
+    UV map. ``invert`` flips the red/green channels so raised tubes read as
+    shallow grooves instead of ridges.
+
+    The detail faces are deleted from ``obj`` afterwards, so the runtime pays
+    for the texture instead of the panel-line geometry. Returns the saved path.
+    """
+    if obj is None or obj.type != "MESH":
+        return None
+    detail_indices = {
+        index for index, material in enumerate(obj.data.materials)
+        if material is not None and material.name == detail_material
+    }
+    if not detail_indices:
+        print(f"bake: {obj.name} has no {detail_material!r} faces")
+        return None
+
+    collection = obj.users_collection[0]
+    high = obj.copy()
+    high.data = obj.data.copy()
+    high.name = f"{obj.name}BakeHigh"
+    collection.objects.link(high)
+    low = obj.copy()
+    low.data = obj.data.copy()
+    low.name = f"{obj.name}BakeLow"
+    collection.objects.link(low)
+
+    def drop_faces(mesh: bpy.types.Mesh, indices: set[int]) -> None:
+        bm = bmesh.new()
+        bm.from_mesh(mesh)
+        faces = [face for face in bm.faces if face.material_index in indices]
+        if faces:
+            bmesh.ops.delete(bm, geom=faces, context="FACES")
+        bm.to_mesh(mesh)
+        bm.free()
+
+    def drop_detail(mesh: bpy.types.Mesh) -> None:
+        drop_faces(mesh, detail_indices)
+
+    # Coplanar decal discs would otherwise bake as raised rings.
+    ignore_indices = {
+        index for index, material in enumerate(obj.data.materials)
+        if material is not None and material.name in ignore_materials
+    }
+    if ignore_indices:
+        drop_faces(high.data, ignore_indices)
+
+    # Sink the base surface just under the low-poly so a ray cast from the low
+    # surface reaches the raised detail tubes first instead of the coincident
+    # airframe (which would bake a flat map everywhere).
+    bm = bmesh.new()
+    bm.from_mesh(high.data)
+    bm.normal_update()
+    base_vertices = {
+        vertex for face in bm.faces
+        if face.material_index not in detail_indices
+        for vertex in face.verts
+    }
+    for vertex in base_vertices:
+        vertex.co -= vertex.normal * 0.008
+    bm.to_mesh(high.data)
+    bm.free()
+
+    drop_detail(low.data)
+
+    # The bake writes to the active image node of the active object's material.
+    # Give the low copy one material so every face shares that node.
+    material = low.data.materials[0] if low.data.materials else None
+    if material is None or not material.use_nodes:
+        raise RuntimeError(f"{obj.name}: no node material to bake into")
+    low.data.materials.clear()
+    low.data.materials.append(material)
+    for polygon in low.data.polygons:
+        polygon.material_index = 0
+
+    image = bpy.data.images.new(
+        f"{obj.name}_detail_normal", size, size, alpha=False, is_data=True)
+    image.colorspace_settings.name = "Non-Color"
+    nodes = material.node_tree.nodes
+    bake_node = nodes.new("ShaderNodeTexImage")
+    bake_node.image = image
+    nodes.active = bake_node
+
+    bpy.ops.object.select_all(action="DESELECT")
+    high.select_set(True)
+    low.select_set(True)
+    bpy.context.view_layer.objects.active = low
+
+    scene = bpy.context.scene
+    scene.render.engine = "CYCLES"
+    scene.cycles.device = "CPU"
+    scene.cycles.samples = 1
+    bpy.ops.object.bake(
+        type="NORMAL",
+        normal_space="TANGENT",
+        use_selected_to_active=True,
+        cage_extrusion=0.08,
+        max_ray_distance=0.2,
+        use_clear=True,
+    )
+
+    if invert:
+        import numpy as np
+
+        pixels = np.empty(size * size * 4, dtype=np.float32)
+        image.pixels.foreach_get(pixels)
+        channels = pixels.reshape(-1, 4)
+        channels[:, 0] = 1.0 - channels[:, 0]
+        channels[:, 1] = 1.0 - channels[:, 1]
+        image.pixels.foreach_set(pixels)
+        image.update()
+
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    image.filepath_raw = output_path
+    image.file_format = "PNG"
+    image.save()
+
+    # Point the material's Normal Map node at the bake and pack it for export.
+    normal_source = None
+    for node in nodes:
+        if node.type != "NORMAL_MAP":
+            continue
+        for link in node.inputs["Color"].links:
+            if link.from_node.type == "TEX_IMAGE":
+                normal_source = link.from_node
+    if normal_source is not None:
+        normal_source.image = image
+        image.pack()
+    nodes.remove(bake_node)
+    bpy.data.objects.remove(high, do_unlink=True)
+    bpy.data.objects.remove(low, do_unlink=True)
+    drop_detail(obj.data)
+    print(f"bake: {output_path} {size}² from {len(detail_indices)} detail material(s)")
+    return output_path
 
 
 def scale_uvs(objects: Sequence[bpy.types.Object], factor: float) -> None:

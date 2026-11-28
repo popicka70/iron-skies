@@ -20,7 +20,7 @@
   },
   "expected_span_m": 11.23,
   "expected_length_m": 9.47,
-  "triangles": 22812,
+  "triangles": 14356,
   "objects": 31,
   "meshes": 25,
   "materials": [
@@ -32,7 +32,6 @@
     "interior",
     "leather",
     "metal",
-    "panel_line",
     "roundel_blue",
     "roundel_red",
     "roundel_white",
@@ -41,7 +40,8 @@
     "underside"
   ],
   "images": [
-    "spitfire_camo_albedo"
+    "spitfire_camo_albedo",
+    "spitfire_camo_normal"
   ],
   "nodes": [
     "AileronL",
