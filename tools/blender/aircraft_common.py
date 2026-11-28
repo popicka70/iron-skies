@@ -713,3 +713,76 @@ def rivet_strip(
     if verts:
         mesh_object(name, verts, faces, collection, mat, smooth=True,
                     split_angle_deg=60.0)
+
+
+def bake_ao(
+    obj: bpy.types.Object | None,
+    output_path: str,
+    size: int = 4096,
+    samples: int = 64,
+) -> str | None:
+    """Bake ambient occlusion from the shipped geometry into the packed UVs."""
+    if obj is None or obj.type != "MESH":
+        return None
+    collection = obj.users_collection[0]
+    work = obj.copy()
+    work.data = obj.data.copy()
+    work.name = f"{obj.name}AOBake"
+    collection.objects.link(work)
+
+    material = work.data.materials[0] if work.data.materials else None
+    if material is None or not material.use_nodes:
+        raise RuntimeError(f"{obj.name}: no node material for the AO bake")
+    work.data.materials.clear()
+    work.data.materials.append(material)
+    for polygon in work.data.polygons:
+        polygon.material_index = 0
+
+    image = bpy.data.images.new(
+        f"{obj.name}_ao", size, size, alpha=False, is_data=True)
+    image.colorspace_settings.name = "Non-Color"
+    nodes = material.node_tree.nodes
+    bake_node = nodes.new("ShaderNodeTexImage")
+    bake_node.image = image
+    nodes.active = bake_node
+
+    bpy.ops.object.select_all(action="DESELECT")
+    work.select_set(True)
+    bpy.context.view_layer.objects.active = work
+    scene = bpy.context.scene
+    scene.render.engine = "CYCLES"
+    scene.cycles.device = "CPU"
+    scene.cycles.samples = samples
+    scene.render.bake.margin = 8
+    bpy.ops.object.bake(type="AO", use_clear=True)
+
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    image.filepath_raw = output_path
+    image.file_format = "PNG"
+    image.save()
+    nodes.remove(bake_node)
+    bpy.data.images.remove(image)
+    bpy.data.objects.remove(work, do_unlink=True)
+    print(f"ao:   {output_path} {size}² ({samples} samples)")
+    return output_path
+
+
+def attach_occlusion(mat: bpy.types.Material, ao_path: str) -> None:
+    """Wire an AO image into the glTF exporter's Occlusion input."""
+    if not os.path.exists(ao_path) or not mat.use_nodes:
+        return
+    group = bpy.data.node_groups.get("glTF Material Output")
+    if group is None:
+        group = bpy.data.node_groups.new(
+            "glTF Material Output", "ShaderNodeTree")
+        group.interface.new_socket(
+            "Occlusion", in_out="INPUT", socket_type="NodeSocketFloat")
+    group_node = mat.node_tree.nodes.new("ShaderNodeGroup")
+    group_node.node_tree = group
+    ao_image = bpy.data.images.load(ao_path, check_existing=True)
+    ao_image.colorspace_settings.name = "Non-Color"
+    ao_image.pack()
+    texture = mat.node_tree.nodes.new("ShaderNodeTexImage")
+    texture.image = ao_image
+    texture.interpolation = "Linear"
+    mat.node_tree.links.new(texture.outputs["Color"], group_node.inputs["Occlusion"])

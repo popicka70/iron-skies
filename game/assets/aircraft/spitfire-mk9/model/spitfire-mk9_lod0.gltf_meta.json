@@ -41,6 +41,7 @@
   ],
   "images": [
     "spitfire_camo_albedo",
+    "spitfire_camo_ao",
     "spitfire_camo_normal"
   ],
   "nodes": [
