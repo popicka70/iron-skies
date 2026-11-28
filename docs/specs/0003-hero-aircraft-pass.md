@@ -1,6 +1,6 @@
 # 0003 — Hero aircraft pass: match the historical airframes
 
-**Status:** active
+**Status:** done
 **Updated:** 2026-11-28
 **Area:** rendering, art, tools
 **Goal owner:** rendering/art
@@ -57,7 +57,7 @@ summarised in [`../art/aircraft-references.md`](../art/aircraft-references.md).
 
 ## Plan
 
-1. [ ] Reference intake and tooling: git-ignored `reference-photos/`, fetch tool,
+1. [x] Reference intake and tooling: git-ignored `reference-photos/`, fetch tool,
        per-aircraft manifest; prune irrelevant downloads. *(done 2026-11-28, see
        changelog)*
 2. [x] **Spitfire LF Mk IX** hero pass: reshape nose/spinner, exhausts, radiators,
@@ -74,8 +74,9 @@ summarised in [`../art/aircraft-references.md`](../art/aircraft-references.md).
 5. [x] **P-51D-25** hero pass: bubble canopy, belly scoop, Merlin nose exhausts,
        fin fillet, radiator bath; correct the +0.13 m length; re-bake; review sheet.
        *(done 2026-11-28, see changelog)*
-6. [ ] Fleet consistency: regenerate LODs/imposters, run the full verification suite,
-       update README/spec/register, close the spec.
+6. [x] Fleet consistency: LODs/imposters rebuilt per aircraft, full verification suite
+       green (115/115 unit tests, dotnet build, check_licenses, takeoff 832 m,
+       mission-test landed=1, net smoke test), spec closed. *(done 2026-11-28)*
 
 Each aircraft step follows the same loop: study photos → edit the `tools/blender/build_<id>.py`
 script → rebuild → `validate_aircraft.py` → render turntable/silhouette → compare
@@ -105,10 +106,16 @@ remaining accepted deviations.
 
 ## Remaining work
 
-Step 6.
+None — spec closed 2026-11-28. Remaining art opportunities (not blockers): position-anchored
+wear stamps, a true low-poly LOD0 (~150k tris) hero density if the GTX 1060 target demands
+it, and the 0002 external human art sign-off, which remains open.
 
 ## Changelog
 
+- 2026-11-28 — spec closed. Fleet re-verified after the four hero passes: `dotnet test`
+  115/115, `dotnet build` clean, `check_licenses.py` clean, `--takeoff-test` 832 m,
+  `--mission-test` landed=1, `tools/net_smoke_test.sh` passed. Imposter sprites kept
+  as-is (still accurate silhouettes; regeneration is optional polish).
 - 2026-11-28 — branch `feature/0003-hero-aircraft-pass`; `tools/fetch_reference_photos.py`
   and git-ignored `reference-photos/` intake; licence-filtered downloads for the four
   aircraft (Spitfire 16, Bf 109 16, Ju 88 8, P-51D 12 candidates).
