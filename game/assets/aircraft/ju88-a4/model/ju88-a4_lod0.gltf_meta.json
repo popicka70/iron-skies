@@ -5,22 +5,22 @@
     "min": [
       -10.05,
       -7.18,
-      -1.65
+      -1.6
     ],
     "max": [
       10.05,
       7.18,
-      2.18
+      2.19
     ],
     "size": [
       20.1,
       14.36,
-      3.83
+      3.79
     ]
   },
   "expected_span_m": 20.1,
   "expected_length_m": 14.36,
-  "triangles": 10344,
+  "triangles": 11500,
   "objects": 24,
   "meshes": 18,
   "materials": [

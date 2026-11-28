@@ -193,8 +193,41 @@ Silhouette source (measured 2026-11-27):
 | Wikimedia Commons, `File:Junkers Ju 88 A-4.svg` — https://commons.wikimedia.org/wiki/File:Junkers_Ju_88_A-4.svg | A-4 3-view for the blockout silhouette | **CC BY-SA 3.0** (Kaboldy) | no | reference-only; the overlay is a local review artifact |
 
 Measured with `tools/blender/render_silhouette.py` (gear up): span 20.10 m, length
-14.36 m (exact), height 3.56 m with the prop discs. The model-only sheet is
-`docs/media/aircraft/ju88-a4-silhouette.jpg`; the full reference overlay is still to do.
+14.36 m (exact), height 3.37 m with the prop discs (2026-11-28 re-measure). The
+model-only sheet is `docs/media/aircraft/ju88-a4-silhouette.jpg`; the full reference overlay is still to do.
+
+Hero pass intake (2026-11-28) — used for the Ju 88 geometry rework (belly/nacelle
+depth, nacelle annular radiators, faceted greenhouse, Bola gondola, gear, tail):
+
+| File (reference-photos/ju88-a4/, never committed) | Use | Licence |
+| --- | --- | --- |
+| `Junkers_Ju_88A-4_at_the_Auto_and_Technik_Museum_Sinsheim_Ank_Kumar_Infosys_Limited_01.jpg` / `_02.jpg` (Ank Kumar, Wikimedia Commons) | Sinsheim preserved A-4: tail cone, fin/rudder top, tailplane dihedral, nacelle annular radiators, greenhouse framing, gear | CC BY-SA 4.0 |
+| `Cosford_180723_Junkers_Ju-88.jpg` (Oren Rozen, Wikimedia Commons) | RAF Cosford A-4: greenhouse panel layout and frames, gondola glazing, annular radiator mouth, exhaust stubs | CC BY-SA 4.0 |
+| `Junkers_Ju_88_SA-kuva_50530_.jpg` (Sot.virk. U. Eskola, SA-kuva) | ditched A-4, side/front profile: full silhouette, nacelle placement, fin shape | Public domain |
+| `Junkers_Ju_88_A-4_III._KG_54_1_.jpg` (Wikimedia Commons) | head-on ground shot: greenhouse stepping, annular radiators, Bola gondola, gear leg angle/track | Public domain |
+| `Bundesarchiv_Bild_101I-363-2258-11_Flugzeug_Junkers_Ju_88.jpg` (Rompel, Bundesarchiv) | in-flight side aspect: spine line, mast placement, nacelle/wing junction, Bola profile | CC BY-SA 3.0 de |
+| `Bundesarchiv_Bild_101I-388-0952-15_Flugzeuge_Junkers_Ju_88.jpg` (Marten, Bundesarchiv) | head-on taxi shot: dihedral, gear track, fin/tailplane stance | CC BY-SA 3.0 de |
+| `Bundesarchiv_Bild_101I-417-1766-03A_Flugzeug_Junkers_Ju_88.jpg` (Ellerbrock, Bundesarchiv) | underside/front quarter: wing planform, dive brakes, gondola, gear | CC BY-SA 3.0 de |
+| `Junkers_Ju-88_A4_Plastikov_modely.jpg` (Zbyna Zl, Wikimedia Commons) | plastic-model cross-check of proportions only | CC BY-SA 4.0 |
+
+What was measured/matched against these photos: fuselage/nacelle ventral line raised
+~0.4–0.5 m to the drawing proportions (tail cone upswept); nacelle fronts fitted with
+annular radiator rings (dark recessed tunnel + radial struts, inner diameter ≈ 0.53 m
+vs 0.88 m spinner-adjacent opening); greenhouse rebuilt as six stepped stations of
+faceted flat panels with frame tubes (crown + intermediate rails), taller apex
+(1.12 m above datum); Bola gondola re-hung from the raised belly with a raked
+bomb-aimer panel and a ventral gun trough/barrel; main gear moved into the nacelles
+(track ≈ 6.6 m, wheels Ø 1.0 m, slight outward splay, legs ahead of the wing LE);
+tailplane given 5° dihedral; fin/rudder top rounded further; antenna mast moved to
+just behind the cockpit (y = 3.05 m); underwing dive brakes reduced to flush inner
+pads sitting on the wing underside.
+
+Remaining accepted deviations: procedural lofts only approximate the compound curves of
+the real nacelle/spinner; the greenhouse is a stylized stepped face rather than the
+true blown-plexiglas panels; the antenna wire was omitted deliberately (read as a
+rendering artefact); the radiator ring struts are indicative, not the exact Jumo 211
+honeycomb pattern; markings remain generic period-correct (Balkenkreuz, no Geschwader
+codes).
 
 ## Reference intake checklist
 

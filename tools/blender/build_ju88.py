@@ -60,23 +60,25 @@ NACELLE_X = 3.20
 PROP_Y = 5.00
 PROP_RADIUS = 1.68
 
+NACELLE_Z = 0.32
+
 FUSELAGE_STATIONS = [
-    (7.18, 0.30, 0.55, -0.35),
-    (6.80, 0.55, 0.75, -0.50),
-    (6.20, 0.75, 0.95, -0.60),
-    (5.40, 0.85, 1.05, -0.68),
-    (4.60, 0.90, 1.05, -0.72),
-    (3.60, 0.92, 1.00, -0.75),
-    (2.50, 0.92, 0.92, -0.78),
-    (1.20, 0.90, 0.85, -0.80),
-    (0.00, 0.88, 0.80, -0.80),
-    (-1.20, 0.84, 0.76, -0.76),
-    (-2.40, 0.76, 0.70, -0.70),
-    (-3.60, 0.64, 0.64, -0.60),
-    (-4.80, 0.50, 0.56, -0.48),
-    (-5.80, 0.34, 0.48, -0.34),
-    (-6.60, 0.20, 0.40, -0.22),
-    (-7.18, 0.06, 0.30, -0.10),
+    (7.18, 0.30, 0.55, -0.12),
+    (6.80, 0.55, 0.75, -0.20),
+    (6.20, 0.75, 0.95, -0.27),
+    (5.40, 0.85, 1.05, -0.31),
+    (4.60, 0.90, 1.05, -0.33),
+    (3.60, 0.92, 1.00, -0.35),
+    (2.50, 0.92, 0.92, -0.33),
+    (1.20, 0.90, 0.85, -0.30),
+    (0.00, 0.88, 0.80, -0.28),
+    (-1.20, 0.84, 0.76, -0.24),
+    (-2.40, 0.76, 0.70, -0.18),
+    (-3.60, 0.64, 0.64, -0.12),
+    (-4.80, 0.50, 0.56, -0.04),
+    (-5.80, 0.34, 0.48, 0.05),
+    (-6.60, 0.20, 0.40, 0.12),
+    (-7.18, 0.06, 0.30, 0.17),
 ]
 
 FUSELAGE_SEGMENTS = 28
@@ -159,36 +161,85 @@ def build_wing_panel(name, t0, t1, exterior, mat, chord0=0.76, chord1=1.0):
     obj.location = hinge
 
 
+def annulus(name, center, r_inner, r_outer, segments, collection, mat):
+    """Flat annulus (ring face) in the XY-> Y-normal plane at y = center[1]."""
+    x_c, y, z_c = center
+    verts = []
+    for i in range(segments):
+        angle = 2.0 * math.pi * i / segments
+        c, s = math.cos(angle), math.sin(angle)
+        verts.append((x_c + r_inner * c, y, z_c + r_inner * s))
+        verts.append((x_c + r_outer * c, y, z_c + r_outer * s))
+    faces = []
+    for i in range(segments):
+        j = (i + 1) % segments
+        faces.append((2 * i, 2 * j, 2 * j + 1, 2 * i + 1))
+    return mesh_object(name, verts, faces, collection, mat, smooth=False)
+
+
 def build_nacelles(exterior, mats):
     for side, suffix in ((-1.0, "L"), (1.0, "R")):
         x = side * NACELLE_X
-        # Nacelle body, tapering into the wing.
+        # Nacelle body, tapering into the wing; annular radiator at the nose.
         rings = []
         for y, radius in ((1.30, 0.22), (1.70, 0.45), (2.20, 0.60), (2.90, 0.66),
-                          (3.60, 0.62), (4.20, 0.55), (4.70, 0.45), (4.95, 0.32)):
+                          (3.60, 0.62), (4.20, 0.55), (4.70, 0.46), (4.95, 0.44)):
             rings.append([
-                (x + radius * math.cos(2.0 * math.pi * i / 24.0), y,
-                 0.12 + radius * math.sin(2.0 * math.pi * i / 24.0))
-                for i in range(24)
+                (x + radius * math.cos(2.0 * math.pi * i / 28.0), y,
+                 NACELLE_Z + radius * math.sin(2.0 * math.pi * i / 28.0))
+                for i in range(28)
             ])
         loft(f"Nacelle{suffix}", rings, exterior, mats["airframe"],
-             cap_start=True, cap_end=True, split_angle_deg=36.0)
-        # Radiator under the nacelle.
-        box(f"NacelleRadiator{suffix}", (x, 3.10, -0.42), (0.60, 1.10, 0.20),
-            exterior, mats["dark"])
+             cap_start=True, cap_end=False, split_angle_deg=36.0)
+        # Annular radiator: flat ring face + recessed dark tunnel + radial struts.
+        annulus(f"RadiatorRing{suffix}", (x, 4.945, NACELLE_Z), 0.265, 0.44,
+                28, exterior, mats["dark"])
+        tunnel = []
+        for y in (4.70, 4.945):
+            tunnel.append([
+                (x + 0.265 * math.cos(2.0 * math.pi * i / 20.0), y,
+                 NACELLE_Z + 0.265 * math.sin(2.0 * math.pi * i / 20.0))
+                for i in range(20)
+            ])
+        loft(f"RadiatorTunnel{suffix}", tunnel, exterior, mats["dark"],
+             cap_start=False, cap_end=False, split_angle_deg=40.0)
+        cylinder(f"RadiatorCore{suffix}", (x, 4.70, NACELLE_Z), 0.265,
+                 0.02, exterior, mats["dark"], axis=(0.0, 1.0, 0.0),
+                 vertices=20)
+        for i in range(8):
+            angle = 2.0 * math.pi * i / 8.0 + math.pi / 8.0
+            c, s = math.cos(angle), math.sin(angle)
+            cylinder_between(
+                f"RadiatorStrut{suffix}{i}",
+                (x + 0.05 * c, 4.90, NACELLE_Z + 0.05 * s),
+                (x + 0.26 * c, 4.90, NACELLE_Z + 0.26 * s),
+                0.016, exterior, mats["metal"], vertices=6,
+            )
+        # Jumo 211 exhaust stubs, low on the nacelle sides, angled down/aft.
+        for side2 in (-1.0, 1.0):
+            for i, y in enumerate((2.55, 2.80, 3.05)):
+                cylinder_between(
+                    f"Exhaust{suffix}{side2:+.0f}{i}",
+                    (x + side2 * 0.52, y + 0.09, NACELLE_Z - 0.28),
+                    (x + side2 * 0.66, y - 0.16, NACELLE_Z - 0.40),
+                    0.045, exterior, mats["dark"], vertices=8,
+                )
+        # Small radiator bath under the nacelle (kept from the blockout).
+        box(f"NacelleRadiator{suffix}", (x, 3.10, NACELLE_Z - 0.70),
+            (0.60, 1.10, 0.18), exterior, mats["dark"])
         # Spinner and three-blade propeller.
         rings = []
         for y, radius in ((4.72, 0.30), (4.86, 0.27), (4.98, 0.18), (5.08, 0.07),
                           (5.13, 0.010)):
             rings.append([
                 (x + radius * math.cos(2.0 * math.pi * i / 24.0), y,
-                 0.12 + radius * math.sin(2.0 * math.pi * i / 24.0))
+                 NACELLE_Z + radius * math.sin(2.0 * math.pi * i / 24.0))
                 for i in range(24)
             ])
         loft(f"Spinner{suffix}", rings, exterior, mats["spinner"],
              cap_start=True, cap_end=True, split_angle_deg=45.0)
 
-        prop = empty(f"Propeller{suffix}", (x, PROP_Y, 0.12), exterior)
+        prop = empty(f"Propeller{suffix}", (x, PROP_Y, NACELLE_Z), exterior)
         all_verts = []
         all_faces = []
         for blade in range(3):
@@ -196,7 +247,7 @@ def build_nacelles(exterior, mats):
             ca, sa = math.cos(angle), math.sin(angle)
             ring_indices = []
             for r in [0.30, 0.55, 0.90, 1.25, 1.50, 1.65]:
-                chord = 0.22 + 0.16 * math.sin(math.pi * min(1.0, (r - 0.30) / 1.35))
+                chord = 0.24 + 0.17 * math.sin(math.pi * min(1.0, (r - 0.30) / 1.35))
                 pitch = math.radians(44.0 - 24.0 * (r - 0.30) / 1.35)
                 section = airfoil_loop(0.04, 0.4, 0.12, count=12)
                 start = len(all_verts)
@@ -205,7 +256,8 @@ def build_nacelles(exterior, mats):
                     y_local = cz * chord
                     y_rot = y_local * math.cos(pitch) - z_local * math.sin(pitch)
                     z_rot = y_local * math.sin(pitch) + z_local * math.cos(pitch)
-                    all_verts.append((x + r * ca - z_rot * sa, y_rot, 0.12 + r * sa + z_rot * ca))
+                    all_verts.append((x + r * ca - z_rot * sa, y_rot,
+                                      NACELLE_Z + r * sa + z_rot * ca))
                 ring_indices.append((start, len(section)))
             for i in range(len(ring_indices) - 1):
                 s0, n = ring_indices[i]
@@ -222,8 +274,15 @@ def build_nacelles(exterior, mats):
         parent_keep(blades, prop)
 
 
+TAIL_DIHEDRAL = math.radians(5.0)
+
+
+def tail_z(x):
+    return 0.38 + abs(x) * math.tan(TAIL_DIHEDRAL)
+
+
 def build_tail(exterior, mat):
-    # Tailplane.
+    # Tailplane (with dihedral).
     rings = []
     for i in range(19):
         t = -1.0 + 2.0 * i / 18.0
@@ -231,9 +290,10 @@ def build_tail(exterior, mat):
         x = 3.0 * t
         chord = 1.70 - (1.70 - 0.55) * a
         le_y = -5.20 - (-5.20 + 5.70) * a
+        zc = tail_z(x)
         section = []
         for cx, cz in airfoil_loop(0.0, 0.4, 0.09, count=16):
-            section.append((x, le_y - cx * chord, 0.38 + cz * chord))
+            section.append((x, le_y - cx * chord, zc + cz * chord))
         rings.append(section)
     loft("Tailplane", rings, exterior, mat, cap_start=True, cap_end=True,
          split_angle_deg=32.0)
@@ -244,7 +304,8 @@ def build_tail(exterior, mat):
         a = abs(t_mid)
         chord_mid = 1.70 - (1.70 - 0.55) * a
         le_mid = -5.20 - (-5.20 + 5.70) * a
-        hinge = (3.0 * t_mid, le_mid - 0.74 * chord_mid, 0.38)
+        hinge_x = 3.0 * t_mid
+        hinge = (hinge_x, le_mid - 0.74 * chord_mid, tail_z(hinge_x))
         rings = []
         for i in range(7):
             t = t0 + (t1 - t0) * i / 6.0
@@ -252,27 +313,28 @@ def build_tail(exterior, mat):
             chord = 1.70 - (1.70 - 0.55) * aa
             le_y = -5.20 - (-5.20 + 5.70) * aa
             x = 3.0 * t
+            zc = tail_z(x)
             rings.append([
-                (x - hinge[0], le_y - 0.74 * chord - hinge[1], 0.38 + 0.05 - hinge[2]),
-                (x - hinge[0], le_y - chord - hinge[1], 0.38 - hinge[2]),
-                (x - hinge[0], le_y - chord - hinge[1], 0.38 - hinge[2]),
-                (x - hinge[0], le_y - 0.74 * chord - hinge[1], 0.38 - 0.05 - hinge[2]),
+                (x - hinge[0], le_y - 0.74 * chord - hinge[1], zc + 0.05 - hinge[2]),
+                (x - hinge[0], le_y - chord - hinge[1], zc - hinge[2]),
+                (x - hinge[0], le_y - chord - hinge[1], zc - hinge[2]),
+                (x - hinge[0], le_y - 0.74 * chord - hinge[1], zc - 0.05 - hinge[2]),
             ])
         obj = loft(f"Elevator{suffix}", rings, exterior, mat, cap_start=True, cap_end=True,
                    split_angle_deg=32.0)
         obj.location = hinge
 
-    # Fin.
+    # Fin: rounded-top Ju 88 profile.
     stations = [
-        (0.35, -5.20, 1.75, 0.09),
-        (0.65, -5.30, 1.68, 0.09),
-        (0.95, -5.45, 1.55, 0.085),
-        (1.25, -5.65, 1.35, 0.08),
-        (1.55, -5.85, 1.10, 0.075),
-        (1.80, -6.05, 0.85, 0.07),
-        (2.00, -6.22, 0.65, 0.06),
-        (2.12, -6.36, 0.48, 0.05),
-        (2.18, -6.48, 0.34, 0.045),
+        (0.32, -5.20, 1.78, 0.09),
+        (0.68, -5.31, 1.72, 0.09),
+        (0.99, -5.45, 1.60, 0.085),
+        (1.29, -5.62, 1.43, 0.08),
+        (1.57, -5.82, 1.19, 0.075),
+        (1.82, -6.01, 0.94, 0.068),
+        (2.00, -6.17, 0.71, 0.061),
+        (2.13, -6.30, 0.48, 0.054),
+        (2.19, -6.44, 0.26, 0.048),
     ]
     rings = []
     for z, le_y, chord, thickness in stations:
@@ -316,107 +378,140 @@ def parent_keep(child, parent):
 
 def build_gear(exterior, metal, tyre):
     for side, suffix in ((-1.0, "L"), (1.0, "R")):
-        pivot = empty(f"GearMain{suffix}", (side * 1.92, 1.17, -0.55), exterior)
+        # Main gear retracts into the engine nacelles: legs hang from the
+        # nacelle with a slight outward splay and sit ahead of the wing LE.
+        pivot = empty(f"GearMain{suffix}", (side * 3.18, 2.48, NACELLE_Z - 0.55), exterior)
         leg = cylinder_between(
-            f"GearLeg{suffix}", (side * 1.92, 1.17, -0.55),
-            (side * 2.02, 1.17, -1.17), 0.075, exterior, metal,
+            f"GearLeg{suffix}", (side * 3.12, 2.52, NACELLE_Z - 0.55),
+            (side * 3.30, 2.36, -1.10), 0.085, exterior, metal,
         )
         wheel = cylinder(
-            f"GearWheel{suffix}", (side * 2.04, 1.17, -1.17),
-            0.48, 0.30, exterior, tyre, axis=(1.0, 0.0, 0.0), vertices=24,
+            f"GearWheel{suffix}", (side * 3.30, 2.36, -1.10),
+            0.50, 0.32, exterior, tyre, axis=(1.0, 0.0, 0.0), vertices=24,
         )
         hub = cylinder(
-            f"GearHub{suffix}", (side * 2.04, 1.17, -1.17),
-            0.16, 0.31, exterior, metal, axis=(1.0, 0.0, 0.0), vertices=16,
+            f"GearHub{suffix}", (side * 3.30, 2.36, -1.10),
+            0.17, 0.33, exterior, metal, axis=(1.0, 0.0, 0.0), vertices=16,
         )
         for part in (leg, wheel, hub):
             parent_keep(part, pivot)
 
-    tail_pivot = empty("GearTail", (0.0, -5.72, -0.20), exterior)
-    tail_leg = cylinder_between("GearTailLeg", (0.0, -5.72, -0.20),
-                                (0.0, -5.82, -0.30), 0.055, exterior, metal)
-    tail_wheel = cylinder("GearTailWheel", (0.0, -5.82, -0.295),
+    tail_pivot = empty("GearTail", (0.0, -5.72, 0.02), exterior)
+    tail_leg = cylinder_between("GearTailLeg", (0.0, -5.72, 0.02),
+                                (0.0, -5.84, -0.22), 0.055, exterior, metal)
+    tail_wheel = cylinder("GearTailWheel", (0.0, -5.85, -0.22),
                           0.20, 0.12, exterior, tyre, axis=(1.0, 0.0, 0.0), vertices=18)
     for part in (tail_leg, tail_wheel):
         parent_keep(part, tail_pivot)
 
 
-def canopy_ring(y, width, top, base=0.58, count=19, exponent=2.2):
-    power = 2.0 / exponent
-    ring = []
-    for i in range(count):
-        theta = math.pi * i / (count - 1)
+def arch_points(y, width, top, base, facets):
+    """Faceted arch from one side of the fuselage over the crown to the other."""
+    points = []
+    for i in range(facets + 1):
+        theta = math.pi * i / facets
         c, s = math.cos(theta), math.sin(theta)
-        x = width * math.copysign(abs(c) ** power, c)
-        z = base + (top - base) * (abs(s) ** power)
-        ring.append((x, y, z))
-    return ring
+        # Slightly peaked crown: raise the centre facet a touch.
+        apex = 1.0 + 0.06 * math.sin(theta) ** 2
+        points.append((width * c, y, base + (top - base) * (s ** 1.15) * apex / 1.06))
+    return points
 
 
 def build_greenhouse(exterior, glass, frame):
+    base = 0.45
     stations = [
-        (6.85, 0.30, 0.68), (6.60, 0.48, 0.82), (6.20, 0.62, 0.95),
-        (5.70, 0.72, 1.05), (5.20, 0.78, 1.12), (4.80, 0.80, 1.12),
+        (6.92, 0.21, 0.72),
+        (6.64, 0.35, 0.87),
+        (6.24, 0.46, 0.99),
+        (5.74, 0.55, 1.08),
+        (5.22, 0.60, 1.12),
+        (4.78, 0.61, 1.12),
     ]
-    count = 19
-    rings = [canopy_ring(y, width, top, base=0.62, count=count) for y, width, top in stations]
+    facets = 6
+    rings = [arch_points(y, w, t, base, facets) for y, w, t in stations]
+    verts = [v for ring in rings for v in ring]
+    per_ring = facets + 1
+    faces = [
+        (i * per_ring + j, i * per_ring + j + 1,
+         (i + 1) * per_ring + j + 1, (i + 1) * per_ring + j)
+        for i in range(len(rings) - 1)
+        for j in range(facets)
+    ]
+    # Cap the front (nose) and rear openings with fan faces.
+    front_center = len(verts)
+    verts.append((0.0, stations[0][0],
+                  sum(p[2] for p in rings[0]) / len(rings[0])))
+    for j in range(facets):
+        faces.append((front_center, j + 1, j))
+    rear_center = len(verts)
+    last = (len(rings) - 1) * per_ring
+    verts.append((0.0, stations[-1][0],
+                  sum(p[2] for p in rings[-1]) / len(rings[-1])))
+    for j in range(facets):
+        faces.append((rear_center, last + j, last + j + 1))
     mesh_object(
-        "GreenhouseGlass",
-        [v for ring in rings for v in ring],
-        [
-            (i * count + j, i * count + j + 1,
-             (i + 1) * count + j + 1, (i + 1) * count + j)
-            for i in range(len(rings) - 1)
-            for j in range(count - 1)
-        ],
-        exterior, glass, smooth=True, split_angle_deg=40.0,
+        "GreenhouseGlass", verts, faces, exterior, glass, smooth=False,
     )
-    for index in range(len(stations)):
-        y, width, top = stations[index]
-        points = [
-            (width * math.cos(math.pi * i / 12.0), y,
-             0.62 + (top - 0.62) * math.sin(math.pi * i / 12.0))
-            for i in range(13)
-        ]
-        tube_from_points(f"GreenhouseFrame{index}", points, 0.025, exterior, frame,
+    # Frame arches at each station.
+    for index, (y, width, top) in enumerate(stations):
+        tube_from_points(f"GreenhouseFrame{index}",
+                         arch_points(y, width, top, base, 12),
+                         0.020, exterior, frame, resolution=1)
+    # Longitudinal frame rails along intermediate arch vertices (1, 3 = crown, 5).
+    for k in (1, 3, 5):
+        points = [arch_points(y, w, t, base, facets)[k] for y, w, t in stations]
+        tube_from_points(f"GreenhouseRail{k}", points, 0.018, exterior, frame,
                          resolution=1)
+    # Base rails where the glazing meets the fuselage.
     for side in (-1.0, 1.0):
-        points = [(side * width, y, 0.62) for y, width, _ in stations]
+        points = [(side * w, y, base) for y, w, _ in stations]
         tube_from_points(f"GreenhouseRail{'L' if side < 0 else 'R'}", points,
                          0.020, exterior, frame, resolution=1)
 
 
 def build_gondola(exterior, mats):
+    # Bola gondola: glazed bombardier/ventral gun position slung under the nose.
     stations = [
-        (0.60, 0.16, -0.82, -1.12),
-        (0.20, 0.30, -0.80, -1.28),
-        (-0.50, 0.38, -0.78, -1.36),
-        (-1.20, 0.34, -0.76, -1.30),
-        (-1.90, 0.22, -0.72, -1.16),
-        (-2.30, 0.08, -0.70, -1.02),
+        (0.78, 0.13, -0.22, -0.52),
+        (0.30, 0.27, -0.23, -0.78),
+        (-0.40, 0.35, -0.24, -0.90),
+        (-1.15, 0.31, -0.22, -0.84),
+        (-1.85, 0.20, -0.20, -0.68),
+        (-2.35, 0.07, -0.18, -0.48),
     ]
     rings = [superellipse(y, w, top, bottom, count=18, exponent=2.1)
              for y, w, top, bottom in stations]
     loft("BolaGondola", rings, exterior, mats["airframe"], cap_start=True, cap_end=True,
          split_angle_deg=36.0)
-    box("BolaGlass", (0.0, 0.56, -0.86), (0.34, 0.02, 0.24), exterior, mats["glass"])
+    # Glazed bomb-aimer panel, raked to match the nose slope.
+    glass = box("BolaGlass", (0.0, 0.46, -0.47), (0.26, 0.03, 0.34),
+                exterior, mats["glass"])
+    glass.rotation_euler = (math.radians(28.0), 0.0, 0.0)
+    # Ventral defensive gun trough at the rear of the gondola + barrel hint.
+    box("BolaGunTrough", (0.0, -1.55, -0.72), (0.16, 0.55, 0.09),
+        exterior, mats["dark"])
+    barrel = cylinder_between("BolaGunBarrel", (0.0, -1.78, -0.72),
+                              (0.0, -2.35, -0.86), 0.028,
+                              exterior, mats["dark"], vertices=8)
 
 
 def build_details(exterior, mats):
     dark = mats["dark"]
     metal = mats["metal"]
-    # Dive brakes under the outer wings.
+    # Dive brakes under the inner wings (A-4 kept the inner pair only).
     for side in (-1.0, 1.0):
-        box(f"DiveBrake{side:+.0f}", (side * 4.4, -0.45, -0.55),
-            (1.25, 0.08, 0.38), exterior, dark)
-    # Aerial mast and pitot.
-    cylinder_between("AntennaMast", (0.0, -2.6, 0.78), (0.0, -2.6, 1.18),
-                     0.018, exterior, dark)
-    cylinder_between("Pitot", (-8.8, 0.20, -0.30), (-8.8, 1.10, -0.30),
+        t = side * 4.4 / SPAN_HALF
+        _, _, _, z_c = wing_planform(t)
+        box(f"DiveBrake{side:+.0f}", (side * 4.4, -0.45, z_c - 0.26),
+            (1.25, 0.10, 0.18), exterior, dark)
+    # Antenna mast behind the cockpit + wire to the fin.
+    cylinder_between("AntennaMast", (0.0, 3.05, 0.90), (0.0, 3.05, 1.80),
+                     0.018, exterior, dark, vertices=8)
+    cylinder_between("Pitot", (-8.8, 0.92, 0.55), (-8.8, 1.75, 0.55),
                      0.020, exterior, metal, vertices=8)
     # A few windows / panel details on the nose.
     for side in (-1.0, 1.0):
-        box(f"NosePanel{side:+.0f}", (side * 0.86, 5.55, 0.20),
+        box(f"NosePanel{side:+.0f}", (side * 0.83, 5.55, 0.20),
             (0.02, 0.60, 0.30), exterior, dark)
 
 
@@ -572,7 +667,7 @@ def main():
         "metal": material("metal", (0.42, 0.44, 0.43), 0.34, 0.70),
         "dark": material("dark", (0.035, 0.040, 0.035), 0.84, 0.08),
         "tyre": material("tyre", (0.025, 0.025, 0.025), 0.95, 0.0),
-        "glass": material("glass", (0.24, 0.30, 0.32), 0.06, 0.25, alpha=0.50,
+        "glass": material("glass", (0.10, 0.13, 0.14), 0.18, 0.0, alpha=0.55,
                           double_sided=True),
         "interior": material("interior", (0.075, 0.085, 0.075), 0.86, 0.02),
         "panel_line": material("panel_line", (0.030, 0.035, 0.030), 0.90, 0.02),

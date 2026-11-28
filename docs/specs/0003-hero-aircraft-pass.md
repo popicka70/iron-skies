@@ -66,9 +66,11 @@ summarised in [`../art/aircraft-references.md`](../art/aircraft-references.md).
 3. [x] **Bf 109 G-6** hero pass: slim aft fuselage, raise/reshape fin, MG 131 bulges,
        Erla canopy, chin radiator bath (not underwing baths), exhausts, prop, gear;
        re-bake; review sheet. *(done 2026-11-28, see changelog)*
-4. [ ] **Ju 88 A-4** hero pass: raise belly/nacelles to the line drawing, annular
-       radiators, greenhouse framing, gondola, tail surfaces, engine nacelles;
-       re-bake; review sheet.
+4. [x] **Ju 88 A-4** hero pass: raised belly/nacelles to the line drawing, annular
+       radiators at the nacelle noses, faceted greenhouse with frame rails, raised
+       Bola gondola with gun trough, nacelle-housed main gear, tailplane dihedral,
+       rounded fin top, rear-cockpit antenna mast; re-bake; review sheet.
+       *(done 2026-11-28, see changelog)*
 5. [ ] **P-51D-25** hero pass: bubble canopy, belly scoop, Merlin nose exhausts,
        fin fillet, radiator bath; correct the +0.13 m length; re-bake; review sheet.
 6. [ ] Fleet consistency: regenerate LODs/imposters, run the full verification suite,
@@ -102,7 +104,7 @@ remaining accepted deviations.
 
 ## Remaining work
 
-Steps 4–6.
+Steps 5–6.
 
 ## Changelog
 
@@ -128,3 +130,16 @@ Steps 4–6.
   along the segment (was vertical-only). Validator OK, no missing contract nodes;
   12,656 tris; LOD1/LOD2 rebuilt; takeoff test 832 m; sheets re-rendered
   (`docs/media/aircraft/bf109-g6.jpg`, `bf109-g6-silhouette.jpg`).
+- 2026-11-28 — Ju 88 A-4 hero pass: ventral line raised ~0.4–0.5 m to the drawing
+  proportions with the upswept tail cone kept; nacelles raised and fitted with
+  annular-radiator nose rings (recessed dark tunnel, radial struts, recessed core)
+  plus small under-nacelle baths and Jumo 211 exhaust stubs; greenhouse rebuilt as six
+  faceted flat-panel stations with frame tubes (arch frames, two side rails + crown
+  rail) and a capped front; Bola gondola re-hung from the raised belly with a raked
+  bomb-aimer panel and a ventral gun trough/barrel; main gear moved into the nacelles
+  (track ≈ 6.6 m, Ø 1.0 m wheels, legs ahead of the wing LE); tailplane given 5°
+  dihedral; fin top rounded further; antenna mast moved to just behind the cockpit;
+  dive brakes shrunk to flush inner pads; belly/nose gear and pitot positions fixed.
+  Span 20.10 m / length 14.36 m exact, 11,500 tris (budget 22k), validator OK, no
+  missing contract nodes; LOD1/LOD2 rebuilt; sheets re-rendered
+  (`docs/media/aircraft/ju88-a4.jpg`, `ju88-a4-silhouette.jpg`, height 3.37 m).
