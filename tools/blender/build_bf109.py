@@ -1,4 +1,4 @@
-"""Build a first-pass Messerschmitt Bf 109 G-6 blockout.
+"""Messerschmitt Bf 109 G-6 hero model (Erla canopy, MG 131 bulges).
 
 Run:
 
@@ -64,31 +64,34 @@ TAIL_ROOT_LE = -3.45
 TAIL_ROOT_CHORD = 0.95
 TAIL_TIP_CHORD = 0.35
 TAIL_TIP_LE = -3.75
-TAIL_Z = 0.18
+TAIL_Z = 0.62
 TAIL_SPAN_HALF = 1.50
 TAIL_THICKNESS = 0.09
 
 PROP_Y = 3.85
 PROP_RADIUS = 1.50
 
+# Aft fuselage stations lifted to the G-6 line drawing: the whole tail cone
+# rises toward the tail (spine nearly flat, belly sweeping up) instead of
+# tapering straight back from the mid-fuselage.
 FUSELAGE_STATIONS = [
-    (3.80, 0.26, 0.34, -0.38),
-    (3.40, 0.34, 0.42, -0.46),
-    (2.90, 0.40, 0.48, -0.54),
-    (2.30, 0.43, 0.54, -0.62),
-    (1.70, 0.44, 0.58, -0.64),
-    (1.20, 0.44, 0.62, -0.62),
-    (0.60, 0.44, 0.66, -0.60),
-    (0.00, 0.43, 0.64, -0.58),
-    (-0.60, 0.42, 0.66, -0.52),
-    (-1.20, 0.40, 0.64, -0.46),
-    (-1.80, 0.37, 0.58, -0.40),
-    (-2.40, 0.33, 0.50, -0.34),
-    (-3.00, 0.28, 0.42, -0.28),
-    (-3.60, 0.22, 0.35, -0.22),
-    (-4.20, 0.16, 0.30, -0.16),
-    (-4.70, 0.10, 0.26, -0.10),
-    (-5.07, 0.03, 0.22, -0.03),
+    (3.80, 0.26, 0.335, -0.35),
+    (3.40, 0.34, 0.415, -0.41),
+    (2.90, 0.40, 0.47, -0.475),
+    (2.30, 0.43, 0.54, -0.56),
+    (1.70, 0.44, 0.58, -0.575),
+    (1.20, 0.44, 0.62, -0.565),
+    (0.60, 0.44, 0.65, -0.55),
+    (0.00, 0.43, 0.645, -0.525),
+    (-0.60, 0.41, 0.70, -0.455),
+    (-1.20, 0.38, 0.755, -0.39),
+    (-1.80, 0.345, 0.765, -0.325),
+    (-2.40, 0.305, 0.745, -0.25),
+    (-3.00, 0.26, 0.725, -0.17),
+    (-3.60, 0.205, 0.70, -0.085),
+    (-4.20, 0.145, 0.655, 0.015),
+    (-4.70, 0.10, 0.63, 0.17),
+    (-5.07, 0.045, 0.60, 0.30),
 ]
 
 FUSELAGE_SEGMENTS = 28
@@ -226,22 +229,22 @@ def build_tail(exterior, mat):
     # Struts.
     for side in (-1.0, 1.0):
         cylinder_between(f"TailStrut{side:+.0f}",
-                         (side * 0.30, -3.42, 0.02),
-                         (side * 0.68, -3.78, TAIL_Z),
+                         (side * 0.27, -3.38, 0.16),
+                         (side * 0.66, -3.80, TAIL_Z - 0.04),
                          0.025, exterior, mat, vertices=10)
 
 
 def build_fin(exterior, mat):
     stations = [
-        (0.08, -3.30, 1.23, 0.085),
-        (0.30, -3.36, 1.18, 0.085),
-        (0.55, -3.46, 1.09, 0.080),
-        (0.80, -3.60, 0.96, 0.078),
-        (1.02, -3.76, 0.80, 0.072),
-        (1.18, -3.92, 0.64, 0.066),
-        (1.30, -4.06, 0.48, 0.060),
-        (1.38, -4.18, 0.33, 0.052),
-        (1.42, -4.28, 0.21, 0.045),
+        (0.30, -3.28, 1.10, 0.085),
+        (0.52, -3.35, 1.055, 0.083),
+        (0.75, -3.46, 0.97, 0.080),
+        (0.97, -3.60, 0.865, 0.077),
+        (1.17, -3.76, 0.735, 0.071),
+        (1.34, -3.93, 0.59, 0.065),
+        (1.46, -4.06, 0.445, 0.058),
+        (1.54, -4.22, 0.32, 0.051),
+        (1.585, -4.37, 0.215, 0.045),
     ]
     rings = []
     for z, le_y, chord, thickness in stations:
@@ -252,11 +255,11 @@ def build_fin(exterior, mat):
     loft("Fin", rings, exterior, mat, cap_start=True, cap_end=True, split_angle_deg=32.0)
 
     rudder_outline = [
-        (-4.30, 0.12), (-4.32, 0.36), (-4.34, 0.62), (-4.36, 0.90),
-        (-4.38, 1.12), (-4.46, 1.26), (-4.56, 1.18), (-4.62, 0.92),
-        (-4.64, 0.62), (-4.62, 0.34), (-4.58, 0.12),
+        (-4.40, 0.40), (-4.42, 0.66), (-4.44, 0.90), (-4.47, 1.12),
+        (-4.52, 1.28), (-4.60, 1.41), (-4.70, 1.49), (-4.76, 1.32),
+        (-4.78, 1.08), (-4.76, 0.80), (-4.72, 0.52), (-4.66, 0.32),
     ]
-    hinge_y, hinge_z = -4.30, 0.62
+    hinge_y, hinge_z = -4.42, 0.88
     half = 0.035
     verts = [(-half, y - hinge_y, z - hinge_z) for y, z in rudder_outline]
     verts += [(half, y - hinge_y, z - hinge_z) for y, z in rudder_outline]
@@ -285,38 +288,50 @@ def parent_keep(child, parent):
 
 def build_gear(exterior, metal, tyre):
     for side, suffix in ((-1.0, "L"), (1.0, "R")):
-        pivot = empty(f"GearMain{suffix}", (side * 1.20, 0.90, -0.40), exterior)
+        # Narrow-track main gear, legs splayed outward, wheels half a metre out.
+        pivot = empty(f"GearMain{suffix}", (side * 0.98, 0.90, -0.30), exterior)
         leg = cylinder_between(
             f"GearLeg{suffix}",
-            (side * 1.20, 0.90, -0.40),
-            (side * 1.30, 0.90, -1.17),
-            0.060, exterior, metal,
+            (side * 0.98, 0.90, -0.30),
+            (side * 1.27, 0.90, -1.13),
+            0.062, exterior, metal,
         )
         wheel = cylinder(
-            f"GearWheel{suffix}", (side * 1.32, 0.90, -1.17),
-            0.33, 0.18, exterior, tyre, axis=(1.0, 0.0, 0.0), vertices=24,
+            f"GearWheel{suffix}", (side * 1.28, 0.90, -1.13),
+            0.36, 0.21, exterior, tyre, axis=(1.0, 0.0, 0.0), vertices=26,
         )
         hub = cylinder(
-            f"GearHub{suffix}", (side * 1.32, 0.90, -1.17),
-            0.11, 0.19, exterior, metal, axis=(1.0, 0.0, 0.0), vertices=16,
+            f"GearHub{suffix}", (side * 1.29, 0.90, -1.13),
+            0.12, 0.22, exterior, metal, axis=(1.0, 0.0, 0.0), vertices=16,
         )
-        door = box(f"GearDoor{suffix}", (side * 1.37, 0.90, -0.78),
-                   (0.035, 0.48, 0.50), exterior, metal)
+        door = box(f"GearDoor{suffix}", (side * 1.12, 0.90, -0.70),
+                   (0.03, 0.46, 0.52), exterior, metal,
+                   rotation=(0.0, -side * 0.33, 0.0))
         for part in (leg, wheel, hub, door):
             parent_keep(part, pivot)
 
-    tail_pivot = empty("GearTail", (0.0, -4.40, -0.20), exterior)
-    tail_leg = cylinder_between("GearTailLeg", (0.0, -4.40, -0.20),
-                                (0.0, -4.50, -0.28), 0.040, exterior, metal)
-    tail_wheel = cylinder("GearTailWheel", (0.0, -4.50, -0.28),
-                          0.14, 0.09, exterior, tyre, axis=(1.0, 0.0, 0.0), vertices=18)
-    for part in (tail_leg, tail_wheel):
+    tail_pivot = empty("GearTail", (0.0, -4.38, 0.02), exterior)
+    tail_leg = cylinder_between("GearTailLeg", (0.0, -4.38, 0.05),
+                                (0.0, -4.47, -0.30), 0.038, exterior, metal)
+    tail_wheel = cylinder("GearTailWheel", (0.0, -4.47, -0.33),
+                          0.15, 0.09, exterior, tyre, axis=(1.0, 0.0, 0.0),
+                          vertices=18)
+    tail_parts = [tail_leg, tail_wheel]
+    for side, suffix in ((-1.0, "L"), (1.0, "R")):
+        door = box(f"GearTailDoor{suffix}", (side * 0.075, -4.43, -0.10),
+                   (0.022, 0.17, 0.24), exterior, metal,
+                   rotation=(0.0, side * 0.22, 0.0))
+        tail_parts.append(door)
+    for part in tail_parts:
         parent_keep(part, tail_pivot)
 
 
 def build_propeller(exterior, metal, dark):
     rings = []
-    for y, radius in ((3.72, 0.32), (3.82, 0.30), (3.90, 0.22), (3.96, 0.10), (4.00, 0.012)):
+    # Nose trimmed 0.05 m to bring the overall length to 9.02 m; the spinner
+    # stays a long, pointed cone typical of the DB 605 installation.
+    for y, radius in ((3.67, 0.33), (3.77, 0.305), (3.86, 0.235),
+                      (3.915, 0.15), (3.945, 0.065), (3.95, 0.012)):
         rings.append([
             (radius * math.cos(2.0 * math.pi * i / 28.0), y,
              radius * math.sin(2.0 * math.pi * i / 28.0))
@@ -334,7 +349,7 @@ def build_propeller(exterior, metal, dark):
         stations = [0.26, 0.48, 0.78, 1.08, 1.32, 1.46, 1.50]
         ring_indices = []
         for r in stations:
-            chord = 0.18 + 0.14 * math.sin(math.pi * min(1.0, (r - 0.26) / 1.24))
+            chord = 0.19 + 0.155 * math.sin(math.pi * min(1.0, (r - 0.26) / 1.24))
             pitch = math.radians(46.0 - 26.0 * (r - 0.26) / 1.24)
             section = airfoil_loop(0.04, 0.4, 0.12, count=14)
             start = len(all_verts)
@@ -378,10 +393,11 @@ def canopy_ring(y, width, top, base=0.64, count=19, exponent=2.0):
 
 
 def build_canopy(exterior, glass, frame, airframe):
+    # Erla hood: flatter top and shallower crown than a bubble canopy.
     stations = [
-        (1.22, 0.26, 0.88), (1.10, 0.32, 0.94), (0.88, 0.35, 0.97),
-        (0.52, 0.36, 0.98), (0.12, 0.35, 0.97), (-0.28, 0.32, 0.94),
-        (-0.60, 0.27, 0.89), (-0.80, 0.19, 0.82),
+        (1.22, 0.27, 0.79), (1.10, 0.325, 0.85), (0.88, 0.355, 0.885),
+        (0.52, 0.365, 0.885), (0.12, 0.355, 0.875), (-0.28, 0.325, 0.845),
+        (-0.60, 0.27, 0.81), (-0.80, 0.185, 0.75),
     ]
     count = 19
     rings = [canopy_ring(y, width, top, count=count) for y, width, top in stations]
@@ -415,11 +431,11 @@ def build_canopy(exterior, glass, frame, airframe):
 
     # Razorback spine fairing behind the canopy.
     fairing = [
-        (-0.72, 0.21, 0.66, 0.40),
-        (-0.95, 0.19, 0.64, 0.41),
-        (-1.25, 0.16, 0.61, 0.42),
-        (-1.55, 0.12, 0.57, 0.43),
-        (-1.82, 0.07, 0.53, 0.44),
+        (-0.72, 0.21, 0.80, 0.42),
+        (-0.95, 0.19, 0.80, 0.43),
+        (-1.25, 0.165, 0.79, 0.44),
+        (-1.55, 0.13, 0.775, 0.45),
+        (-1.85, 0.075, 0.765, 0.455),
     ]
     rings = [superellipse(y, w, top, bottom, count=16, exponent=2.0)
              for y, w, top, bottom in fairing]
@@ -600,49 +616,84 @@ def build_details(exterior, mats):
     metal = mats["metal"]
     dark = mats["dark"]
 
-    # MG 131 cowl bulges.
+    # MG 131 "Beulen" — the two cowl-top humps are the G-6's signature.
+    # Teardrop planform spanning the mid/aft cowl, blunt end forward.
     for side in (-1.0, 1.0):
-        stations = [(2.30, 0.05), (2.55, 0.105), (2.95, 0.105), (3.20, 0.05)]
         rings = []
-        for y, width in stations:
-            ring = superellipse(y, width, 0.50, 0.35, count=12, exponent=2.6)
-            rings.append([(x + side * 0.22, yy, zz) for x, yy, zz in ring])
+        for y, half_w, z_top in (
+            (1.00, 0.055, 0.575),
+            (1.22, 0.115, 0.645),
+            (1.46, 0.15, 0.695),
+            (1.72, 0.155, 0.70),
+            (1.95, 0.125, 0.65),
+            (2.13, 0.075, 0.575),
+        ):
+            ring = superellipse(y, half_w, z_top, 0.30, count=14, exponent=2.2)
+            rings.append([(x + side * 0.185, yy, zz) for x, yy, zz in ring])
         loft(f"CowlBulge{side:+.0f}", rings, exterior, mats["airframe"],
              cap_start=True, cap_end=True, split_angle_deg=40.0)
 
-    # Exhaust stacks, six per side.
+    # Exhaust stubs, six per side, angled down and out (ejector style).
     for side in (-1.0, 1.0):
         for i in range(6):
-            y = 3.35 - i * 0.14
-            box(f"Exhaust{side:+.0f}_{i}", (side * 0.44, y, 0.02),
-                (0.08, 0.13, 0.10), exterior, dark)
+            y = 3.26 - i * 0.145
+            cylinder_between(f"Exhaust{side:+.0f}_{i}",
+                             (side * 0.30, y + 0.06, 0.05),
+                             (side * 0.50, y - 0.09, -0.14),
+                             0.034, exterior, dark, vertices=10)
 
     # Supercharger intake on the left side of the nose.
-    box("SuperchargerIntake", (-0.44, 2.45, 0.18), (0.18, 0.42, 0.18), exterior, dark)
-    cylinder("SuperchargerMouth", (-0.53, 2.62, 0.18), 0.10, 0.04, exterior, dark,
-             axis=(0.0, 1.0, 0.0), vertices=16)
+    box("SuperchargerIntake", (-0.44, 2.45, 0.12), (0.20, 0.42, 0.20), exterior, dark)
+    cylinder("SuperchargerMouth", (-0.475, 2.63, 0.12), 0.105, 0.06, exterior, dark,
+             axis=(-0.35, 1.0, 0.0), vertices=18)
 
-    # Under-nose oil cooler.
-    box("OilCooler", (0.0, 2.55, -0.48), (0.34, 0.48, 0.20), exterior, dark)
-    box("OilCoolerFace", (0.0, 2.79, -0.48), (0.26, 0.03, 0.14), exterior, metal)
+    # Chin radiator bath under the forward fuselage (the Bf 109 carries its
+    # main coolant bath here, not in the wings).
+    bath_rings = []
+    for y, half_w, z_top, z_bot in (
+        (1.78, 0.19, -0.38, -0.55),
+        (2.02, 0.265, -0.37, -0.68),
+        (2.28, 0.30, -0.37, -0.735),
+        (2.53, 0.285, -0.37, -0.725),
+        (2.78, 0.23, -0.38, -0.635),
+        (2.94, 0.13, -0.39, -0.50),
+    ):
+        bath_rings.append(superellipse(y, half_w, z_top, z_bot, count=16,
+                                       exponent=2.6))
+    loft("ChinRadiatorBath", bath_rings, exterior, mats["airframe"],
+         cap_start=True, cap_end=True, split_angle_deg=40.0)
+    # Dark intake face low on the bath's front lip.
+    box("ChinRadiatorIntake", (0.0, 2.885, -0.485), (0.33, 0.05, 0.17),
+        exterior, dark, rotation=(math.radians(-18.0), 0.0, 0.0))
 
-    # Underwing radiators.
+    # MG 151/20 breech bulges on the upper wing, outboard of the cross.
     for side in (-1.0, 1.0):
-        box(f"Radiator{side:+.0f}", (side * 1.28, -0.10, -0.52),
-            (0.62, 0.92, 0.22), exterior, dark)
-        box(f"RadiatorFace{side:+.0f}", (side * 1.28, 0.36, -0.52),
-            (0.52, 0.03, 0.15), exterior, metal)
+        rings = []
+        for y, half_w, height in (
+            (0.52, 0.085, 0.015),
+            (0.36, 0.135, 0.05),
+            (0.15, 0.155, 0.07),
+            (-0.08, 0.14, 0.05),
+            (-0.28, 0.085, 0.015),
+        ):
+            ring = superellipse(y, half_w, 0.035 + height, -0.02,
+                                count=12, exponent=2.1)
+            rings.append([(x + side * 1.38, yy, zz) for x, yy, zz in ring])
+        loft(f"Mg151Bulge{side:+.0f}", rings, exterior, mats["airframe"],
+             cap_start=True, cap_end=True, split_angle_deg=40.0)
 
     # Wing cannon and cowl machine guns.
     for side in (-1.0, 1.0):
-        cylinder_between(f"Cannon{side:+.0f}", (side * 1.48, 0.95, -0.16),
-                         (side * 1.48, 1.34, -0.16), 0.033, exterior, metal, vertices=10)
+        cylinder_between(f"Cannon{side:+.0f}", (side * 1.48, 0.70, -0.065),
+                         (side * 1.48, 1.02, -0.065), 0.033, exterior, metal, vertices=10)
         cylinder_between(f"Mg131{side:+.0f}", (side * 0.22, 3.68, 0.28),
                          (side * 0.22, 3.86, 0.28), 0.030, exterior, metal, vertices=10)
 
-    cylinder_between("Pitot", (-4.0, 0.55, -0.30), (-4.0, 1.20, -0.30),
-                     0.016, exterior, metal, vertices=8)
-    cylinder_between("AntennaMast", (0.0, -1.35, 0.66), (0.0, -1.35, 0.98),
+    # Pitot under the port wing, pointing forward.
+    cylinder_between("Pitot", (-4.05, 0.42, 0.02), (-4.05, 1.26, 0.02),
+                     0.015, exterior, metal, vertices=8)
+    # Raked antenna mast behind the canopy.
+    cylinder_between("AntennaMast", (0.0, -0.95, 0.72), (0.0, -1.22, 1.13),
                      0.013, exterior, dark, vertices=8)
 
     # Leading-edge slats, suggested with a thin line.
@@ -818,7 +869,7 @@ def main():
     scene["aircraft_id"] = "bf109-g6"
     scene["display_name"] = "Messerschmitt Bf 109 G-6"
     scene["frame"] = "Blender +Y nose, +Z up, metres, origin at CoG"
-    scene["model_variant"] = "G-6, Erla canopy, MG 131 cowl bulges, 3-blade prop"
+    scene["model_variant"] = "G-6, Erla canopy, MG 131 cowl bulges, MG 151 wing bulges, chin radiator bath, 3-blade prop"
 
     bpy.context.preferences.filepaths.save_version = 0
     blend_path = os.path.join(source_dir, "bf109-g6.blend")

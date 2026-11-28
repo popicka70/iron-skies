@@ -73,10 +73,12 @@ WING_ROOT_THICKNESS = 0.15
 WING_TIP_THICKNESS = 0.10
 WING_ROOT_CAMBER = 0.02
 
-TAIL_ROOT_LE = -3.95
+TAIL_SHIFT = 0.13  # shift tailplane/elevators forward; the elevator TE overhung
+                    # the rudder/fuselage tip making the model 9.96 m, target 9.83 m
+TAIL_ROOT_LE = -3.95 + TAIL_SHIFT
 TAIL_ROOT_CHORD = 1.20
 TAIL_TIP_CHORD = 0.55
-TAIL_TIP_LE = -4.30
+TAIL_TIP_LE = -4.30 + TAIL_SHIFT
 TAIL_Z = 0.12
 TAIL_SPAN_HALF = 2.05
 
@@ -271,19 +273,32 @@ def build_tail(exterior, mat):
         obj.location = hinge
 
 
+def build_dorsal_fillet(exterior, mat):
+    """Dorsal fin fillet: the long shallow wedge ahead of the fin (D-15 on)."""
+    outline = [
+        (-1.55, 0.475), (-2.10, 0.50), (-2.70, 0.55), (-3.20, 0.63),
+        (-3.65, 0.73), (-4.05, 0.86), (-4.35, 1.00),
+        (-4.35, 0.34), (-4.05, 0.345), (-3.65, 0.36), (-3.20, 0.385),
+        (-2.70, 0.42), (-2.10, 0.455), (-1.55, 0.465),
+    ]
+    extrude_outline("DorsalFillet", outline, 0.075, exterior, mat)
+
+
 def build_fin(exterior, mat):
     # Fin as a lofted symmetric airfoil: chord along Y, thickness along X.
     fin_stations = [
         # (z, leading-edge y, chord, thickness ratio)
-        (0.10, -4.10, 1.00, 0.10),
-        (0.35, -4.15, 0.98, 0.10),
-        (0.65, -4.25, 0.92, 0.10),
-        (0.95, -4.38, 0.82, 0.095),
-        (1.25, -4.52, 0.70, 0.09),
-        (1.50, -4.66, 0.58, 0.085),
-        (1.70, -4.78, 0.46, 0.08),
-        (1.85, -4.88, 0.34, 0.07),
-        (1.95, -4.95, 0.24, 0.06),
+        # Chords trimmed ~0.13 m vs the blockout so the fin trailing edge
+        # does not overhang the rudder/fuselage tip (length target 9.83 m).
+        (0.10, -4.10, 0.87, 0.10),
+        (0.35, -4.15, 0.85, 0.10),
+        (0.65, -4.25, 0.79, 0.10),
+        (0.95, -4.38, 0.69, 0.095),
+        (1.25, -4.52, 0.57, 0.09),
+        (1.50, -4.66, 0.45, 0.085),
+        (1.70, -4.78, 0.33, 0.08),
+        (1.85, -4.88, 0.21, 0.07),
+        (1.95, -4.95, 0.11, 0.06),
     ]
     rings = []
     for z, le_y, chord, thickness in fin_stations:
@@ -497,9 +512,9 @@ def build_canopy(exterior, glass, frame, airframe):
         split_angle_deg=60.0,
     )
 
-    # Arch frames: windscreen, hood front, mid, rear.
-    for index, radius in ((0, 0.020), (2, 0.023), (4, 0.018), (6, 0.018),
-                          (8, 0.018), (10, 0.022)):
+    # Arch frames: only the windscreen bow and the rear hoop where the bubble
+    # meets the fuselage spine. The D-model bubble is nearly frameless.
+    for index, radius in ((0, 0.016), (10, 0.018)):
         y, width, top = stations[index]
         points = [
             (width * math.cos(math.pi * i / 14.0), y,
@@ -508,13 +523,11 @@ def build_canopy(exterior, glass, frame, airframe):
         ]
         tube_from_points(f"CanopyFrame{index}", points, radius, exterior, frame)
 
-    # Longitudinal sill rails and the top spine.
+    # Longitudinal sill rails only — no spine strip over the bubble.
     for side in (-1.0, 1.0):
         points = [(side * width, y, 0.60) for y, width, _ in stations]
-        tube_from_points(f"CanopyRail{'L' if side < 0 else 'R'}", points, 0.016,
+        tube_from_points(f"CanopyRail{'L' if side < 0 else 'R'}", points, 0.012,
                          exterior, frame)
-    spine_points = [(0.0, y, top) for y, _, top in stations]
-    tube_from_points("CanopySpine", spine_points, 0.015, exterior, frame)
 
     # Headrest fairing behind the hood.
     fairing_stations = [
@@ -848,34 +861,65 @@ def build_panel_lines(exterior, mats):
 def build_details(exterior, mats):
     metal = mats["metal"]
     dark = mats["dark"]
+    intake = mats["intake"]
 
-    # Exhaust stacks: six per side on the long Merlin nose.
+    # Exhaust stacks: six stubs per side on the Merlin nose, angled back and
+    # slightly out, as on the D-model.
     for side in (-1.0, 1.0):
         for i in range(6):
-            y = 3.05 - i * 0.16
-            box(f"Exhaust{side:+.0f}_{i}",
-                (side * 0.455, y, 0.16), (0.075, 0.14, 0.085),
-                exterior, dark, rotation=(0.0, 0.0, math.radians(side * 12.0)))
-
-    # Belly radiator scoop and oil cooler.
-    box("Radiator", (0.0, -1.05, -0.62), (0.58, 1.65, 0.30), exterior, dark)
-    box("RadiatorFace", (0.0, -0.22, -0.62), (0.50, 0.04, 0.24), exterior, metal)
-    box("RadiatorFlap", (0.0, -1.85, -0.60), (0.54, 0.30, 0.24), exterior, metal)
-    box("OilCooler", (0.0, -2.20, -0.42), (0.40, 0.60, 0.18), exterior, dark)
-
-    # Six .50 cal barrels in the wing leading edge.
-    for side in (-1.0, 1.0):
-        for x in (1.25, 1.70, 2.15):
+            y = 3.15 - i * 0.16
             cylinder_between(
-                f"Gun{side:+.0f}_{x:.2f}",
-                (side * x, 0.74, -0.16),
-                (side * x, 0.74 + 0.42, -0.16),
-                0.030, exterior, metal, vertices=10,
+                f"Exhaust{side:+.0f}_{i}",
+                (side * 0.42, y + 0.10, 0.15),
+                (side * 0.55, y - 0.13, 0.10),
+                0.034, exterior, dark, vertices=10,
             )
 
-    # Pitot under the left wingtip and the antenna mast.
-    cylinder_between("Pitot", (-5.10, 0.35, -0.22), (-5.10, 1.05, -0.22),
-                     0.018, exterior, metal, vertices=8)
+    # Belly radiator bath — the P-51 signature. A deep duct under the rear
+    # fuselage: forward-facing intake, sloped underside, vertical exit flap.
+    bath_rings = [
+        (0.75, 0.22, -0.48, -0.70),
+        (0.45, 0.31, -0.51, -0.83),
+        (0.10, 0.38, -0.53, -0.93),
+        (-0.35, 0.43, -0.53, -1.00),
+        (-0.85, 0.44, -0.51, -1.03),
+        (-1.30, 0.42, -0.48, -1.00),
+        (-1.75, 0.37, -0.45, -0.91),
+        (-2.15, 0.30, -0.43, -0.77),
+        (-2.42, 0.20, -0.41, -0.60),
+        (-2.56, 0.09, -0.40, -0.49),
+    ]
+    loft("RadiatorBath",
+         [superellipse(y, w, z_top, z_bot, count=24, exponent=2.6)
+          for y, w, z_top, z_bot in bath_rings],
+         exterior, mats["airframe"], cap_start=False, cap_end=True,
+         split_angle_deg=40.0)
+    # Dark intake mouth at the front of the bath.
+    disc_mesh("RadiatorIntake", (0.0, 0.745, -0.59),
+              superellipse(0.745, 0.235, -0.465, -0.715, count=24, exponent=2.6),
+              exterior, intake)
+    # Vertical exit door at the rear underside of the bath, hinged at the top.
+    box("RadiatorFlap", (0.0, -2.28, -0.50), (0.36, 0.030, 0.34),
+        exterior, metal, rotation=(math.radians(38.0), 0.0, 0.0))
+
+    # Six .50 cal gun ports in the wing leading edges (three per wing), flush.
+    for side in (-1.0, 1.0):
+        for x in (1.25, 1.70, 2.15):
+            t = abs(x) / SPAN_HALF
+            _, chord, le_y, z_center = wing_planform(t)
+            z = z_center - 0.015
+            cylinder_between(
+                f"Gun{side:+.0f}_{x:.2f}",
+                (side * x, le_y - 0.015, z),
+                (side * x, le_y + 0.075, z),
+                0.026, exterior, dark, vertices=10,
+            )
+
+    # Pitot under the left wing, mounted on a short mast below the wing.
+    cylinder_between("PitotMast", (-3.60, 0.42, 0.10), (-3.60, 0.42, -0.06),
+                     0.016, exterior, metal, vertices=8)
+    cylinder_between("Pitot", (-3.60, 0.42, -0.06), (-3.60, 1.12, -0.06),
+                     0.014, exterior, metal, vertices=8)
     cylinder_between("AntennaMast", (0.0, -1.60, 0.72), (0.0, -1.60, 1.02),
                      0.014, exterior, dark, vertices=8)
 
@@ -970,6 +1014,8 @@ def main():
         "metal": material("metal", (0.46, 0.48, 0.46), 0.32, 0.75),
         "spinner": material("spinner", (0.38, 0.46, 0.48), 0.55, 0.10),
         "dark": material("dark", (0.055, 0.060, 0.055), 0.78, 0.15),
+        "intake": material("intake", (0.020, 0.020, 0.020), 0.95, 0.0,
+                           double_sided=True),
         "tyre": material("tyre", (0.025, 0.025, 0.025), 0.95, 0.0),
         "glass": material("glass", (0.28, 0.36, 0.40), 0.05, 0.25, alpha=0.55,
                           double_sided=True),
@@ -996,6 +1042,7 @@ def main():
     build_wing_panel("FlapR", 0.10, 0.52, exterior, mats["airframe"])
     build_tail(exterior, mats["airframe"])
     build_fin(exterior, mats["airframe"])
+    build_dorsal_fillet(exterior, mats["airframe"])
     build_gear(exterior, mats["metal"], mats["tyre"])
     build_propeller(exterior, mats["spinner"], mats["dark"])
     build_canopy(exterior, mats["glass"], mats["dark"], mats["airframe"])

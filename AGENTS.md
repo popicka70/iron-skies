@@ -170,10 +170,10 @@ launch of the exported Linux build. Windows uses a sidecar `.pck`; keep both fil
 - Telemetry: per-second JSONL (`--telemetry`) and a CI budget check on the takeoff run.
 - Tests: 115 unit tests, 832 m Spitfire takeoff (810 m P-51D), mission lands,
   multiplayer smoke test, `--precision-test` PASS.
-- Active work and next step: specs 0001 (continental terrain) and 0002 (aircraft art) are
-  **done**. The next product milestone is in [`docs/ROADMAP.md`](docs/ROADMAP.md); the
-external human art sign-off recorded in spec 0002's remaining work is the only open
-  process item.
+- Active work and next step: specs 0001 (continental terrain), 0002 (aircraft art) and
+  0003 (hero aircraft pass) are **done**. The next product milestone is in
+  [`docs/ROADMAP.md`](docs/ROADMAP.md); the external human art sign-off recorded in
+  spec 0002's remaining work is the only open process item.
 
 ## Tone for agents
 

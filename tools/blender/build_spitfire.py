@@ -114,6 +114,58 @@ FUSELAGE_RADIAL_SEGMENTS = 32
 # ---------------------------------------------------------------------------
 
 
+def tapered_tube(name, p0, p1, r0, r1, collection, mat, segments=12):
+    """Tapered tube from p0 to p1 (loft of two circles)."""
+    a = Vector(p0)
+    b = Vector(p1)
+    axis = (b - a)
+    length = axis.length
+    direction = axis / length
+    # Build a local frame perpendicular to the axis.
+    ref = Vector((0.0, 0.0, 1.0)) if abs(direction.z) < 0.9 else Vector((1.0, 0.0, 0.0))
+    u = direction.cross(ref).normalized()
+    v = direction.cross(u).normalized()
+    rings = []
+    for t, radius in ((0.0, r0), (0.55, (r0 + r1) * 0.5), (1.0, r1)):
+        center = a + axis * t
+        ring = [
+            tuple(center + (u * math.cos(2.0 * math.pi * i / segments)
+                            + v * math.sin(2.0 * math.pi * i / segments)) * radius)
+            for i in range(segments)
+        ]
+        rings.append(ring)
+    return loft(name, rings, collection, mat, cap_start=True, cap_end=True,
+                split_angle_deg=40.0)
+
+
+def rounded_rect_ring(y, cx, cz, half_w, half_h, corner, count=6):
+    """Rounded-rectangle ring in the XZ plane at station *y* (for baths/scoops)."""
+    hw = half_w - corner
+    hh = half_h - corner
+    corners = [
+        (cx + hw, cz + hh, 0.0),
+        (cx - hw, cz + hh, 0.5 * math.pi),
+        (cx - hw, cz - hh, math.pi),
+        (cx + hw, cz - hh, 1.5 * math.pi),
+    ]
+    ring = []
+    per = max(2, count // 4 + 1)
+    for cx0, cz0, start in corners:
+        for i in range(per):
+            a = start + (0.5 * math.pi) * i / (per - 1)
+            ring.append((cx0 + corner * math.cos(a), y, cz0 + corner * math.sin(a)))
+    return ring
+
+
+def arc_ring(y, cx, cz, radius_x, radius_z, start_deg, end_deg, count=18, flatten_top=True):
+    """Elliptical arc in the XZ plane at station *y* (for the chin intake)."""
+    ring = []
+    for i in range(count):
+        a = math.radians(start_deg + (end_deg - start_deg) * i / (count - 1))
+        ring.append((cx + radius_x * math.cos(a), y, cz + radius_z * math.sin(a)))
+    return ring
+
+
 def section_ring(station, segments: int = FUSELAGE_RADIAL_SEGMENTS):
     y, width, z_top, z_bottom = station
     return superellipse(y, width, z_top, z_bottom, count=segments, exponent=2.35)
@@ -293,10 +345,12 @@ def build_fin(exterior, mat):
     loft("Fin", rings, exterior, mat, cap_start=True, cap_end=True,
          split_angle_deg=32.0)
 
+    # Trailing edge trimmed 0.08 m forward so overall length matches the
+    # authoritative 9.47 m (measured from the spinner tip to this edge).
     rudder_outline = [
         (-4.88, 0.12), (-4.90, 0.45), (-4.92, 0.78), (-4.93, 1.05),
-        (-4.94, 1.28), (-5.02, 1.38), (-5.12, 1.30), (-5.16, 1.05),
-        (-5.18, 0.72), (-5.17, 0.40), (-5.15, 0.12),
+        (-4.94, 1.28), (-4.94, 1.38), (-5.04, 1.30), (-5.08, 1.05),
+        (-5.10, 0.72), (-5.09, 0.40), (-5.07, 0.12),
     ]
     hinge_z = 0.62
     hinge_y = -4.88
@@ -363,13 +417,19 @@ def build_gear(exterior, metal, tyre):
             axis=(1.0, 0.0, 0.0),
             vertices=16,
         )
-        door = box(
-            f"GearDoor{suffix}",
-            (side * 1.00, 0.85, -0.78),
-            (0.035, 0.52, 0.52),
-            exterior,
-            metal,
-        )
+        # Leg door: a slim, raked panel behind the leg (Spitfire fit),
+        # built as a tapered slab rather than a box.
+        door_rings = [
+            (0.98, side * 0.94, -0.50, 0.016, 0.075),
+            (0.80, side * 0.95, -0.66, 0.018, 0.140),
+            (0.60, side * 0.96, -0.83, 0.018, 0.150),
+            (0.42, side * 0.97, -0.95, 0.016, 0.095),
+        ]
+        door = loft(f"GearDoor{suffix}",
+                    [rounded_rect_ring(y, cx, cz, hw, hh, 0.012, count=4)
+                     for y, cx, cz, hw, hh in door_rings],
+                    exterior, metal, cap_start=True, cap_end=True,
+                    split_angle_deg=30.0)
         for part in (leg, wheel, hub, door):
             parent_keep(part, pivot)
 
@@ -397,9 +457,11 @@ def build_gear(exterior, metal, tyre):
 
 
 def build_propeller(exterior, metal, dark):
-    # Build the spinner as a loft of circular rings.
+    # Spinner: long, gently convex taper to a near-pointed tip, matching the
+    # Mk IX's early pointed Rotol spinner (see PH-OUQ photos).
     rings = []
-    for y, radius in ((3.84, 0.30), (4.00, 0.285), (4.14, 0.23), (4.28, 0.13), (4.37, 0.015)):
+    for y, radius in ((3.84, 0.295), (3.96, 0.280), (4.07, 0.245), (4.17, 0.198),
+                      (4.26, 0.145), (4.33, 0.085), (4.37, 0.012)):
         rings.append([
             (radius * math.cos(2.0 * math.pi * i / 32.0), y,
              radius * math.sin(2.0 * math.pi * i / 32.0))
@@ -474,10 +536,10 @@ def canopy_ring(y, width, top, base=0.60, count=21, exponent=2.4):
 def build_canopy(exterior, glass, frame, airframe):
     stations = [
         # (y, half width, top z)
-        (1.31, 0.24, 0.66), (1.24, 0.31, 0.86), (1.16, 0.36, 0.95),
-        (1.00, 0.39, 1.00), (0.70, 0.40, 1.02), (0.30, 0.40, 1.03),
-        (-0.10, 0.39, 1.02), (-0.45, 0.37, 0.99), (-0.75, 0.33, 0.93),
-        (-1.00, 0.28, 0.85), (-1.18, 0.21, 0.75),
+        (1.32, 0.225, 0.665), (1.25, 0.295, 0.855), (1.17, 0.345, 0.945),
+        (1.00, 0.385, 1.000), (0.70, 0.398, 1.025), (0.30, 0.398, 1.030),
+        (-0.10, 0.388, 1.025), (-0.45, 0.362, 0.990), (-0.75, 0.325, 0.925),
+        (-1.00, 0.272, 0.850), (-1.19, 0.200, 0.750),
     ]
     count = 21
     rings = [canopy_ring(y, width, top, count=count) for y, width, top in stations]
@@ -803,37 +865,111 @@ def build_panel_lines(exterior, mats):
 def build_details(exterior, mats):
     metal = mats["metal"]
     dark = mats["dark"]
+    dark_ds = mats["dark_ds"]
 
-    # Exhaust stacks: six per side.
+    # Exhaust ejector stubs: six per side, angled outward and slightly aft,
+    # with the rolled outer flare of the ejectors (photo reference: PH-OUQ_03/14).
     for side in (-1.0, 1.0):
         for i in range(6):
-            y = 3.08 - i * 0.15
-            box(f"Exhaust{side:+.0f}_{i}",
-                (side * 0.435, y, 0.14), (0.075, 0.13, 0.085),
-                exterior, dark, rotation=(0.0, 0.0, math.radians(side * 12.0)))
+            y = 3.08 - i * 0.148
+            base = (side * 0.415, y, 0.145)
+            # Outward ~25 deg, slightly down and aft.
+            dx, dy, dz = side * 0.062, -0.115, -0.018
+            tip = (base[0] + dx, base[1] + dy, base[2] + dz)
+            tapered_tube(f"Exhaust{side:+.0f}_{i}", base, tip, 0.030, 0.040,
+                         exterior, dark, segments=12)
 
-    # Radiator and oil cooler under the wings.
+    # Radiator bath (starboard) and oil cooler (port): long, deep rectangular
+    # ducts slung under the wings, open intake faces forward, rectangular
+    # outlet at the rear (PH-OUQ_15/16/19).
+    bath_rings = [
+        (0.62, 1.42, -0.245, 0.27, 0.075, 0.045),
+        (0.30, 1.42, -0.295, 0.325, 0.135, 0.060),
+        (-0.15, 1.42, -0.305, 0.335, 0.150, 0.060),
+        (-0.60, 1.42, -0.295, 0.315, 0.135, 0.055),
+        (-0.92, 1.42, -0.265, 0.265, 0.095, 0.040),
+    ]
+    rings = [rounded_rect_ring(y, cx, cz, hw, hh, corner=c) for y, cx, cz, hw, hh, c in bath_rings]
+    loft("RadiatorBath", rings, exterior, mats["airframe"], cap_start=True, cap_end=True,
+         split_angle_deg=30.0)
+    # Dark intake and outlet faces, slightly proud of the caps.
+    disc_mesh("RadiatorIntake", (1.42, 0.626, -0.245),
+              rounded_rect_ring(0.626, 1.42, -0.245, 0.215, 0.052, 0.030, count=4),
+              exterior, dark_ds)
+    disc_mesh("RadiatorOutlet", (1.42, -0.926, -0.265),
+              rounded_rect_ring(-0.926, 1.42, -0.265, 0.210, 0.070, 0.032, count=4),
+              exterior, dark_ds)
+    oil_rings = [
+
+        (0.42, -1.32, -0.245, 0.20, 0.055, 0.030),
+        (0.15, -1.32, -0.275, 0.235, 0.095, 0.040),
+        (-0.25, -1.32, -0.280, 0.240, 0.105, 0.040),
+        (-0.60, -1.32, -0.270, 0.220, 0.090, 0.035),
+        (-0.72, -1.32, -0.245, 0.190, 0.065, 0.028),
+    ]
+    rings = [rounded_rect_ring(y, cx, cz, hw, hh, corner=c) for y, cx, cz, hw, hh, c in oil_rings]
+    loft("OilCooler", rings, exterior, mats["airframe"], cap_start=True, cap_end=True,
+         split_angle_deg=30.0)
+    disc_mesh("OilCoolerIntake", (-1.32, 0.426, -0.245),
+              rounded_rect_ring(0.426, -1.32, -0.245, 0.155, 0.035, 0.020, count=4),
+              exterior, dark_ds)
+    disc_mesh("OilCoolerOutlet", (-1.32, -0.726, -0.245),
+              rounded_rect_ring(-0.726, -1.32, -0.245, 0.150, 0.045, 0.020, count=4),
+              exterior, dark_ds)
+
+    # Carburettor ("chin") intake under the nose — the Merlin two-stage
+    # two-speed supercharger signature on the LF Mk IX. Half-round scoop with
+    # a dark forward-facing mouth.
+    chin_rings = [
+        arc_ring(3.02, 0.0, -0.33, 0.125, 0.10, 180, 360, count=14),
+        arc_ring(3.28, 0.0, -0.315, 0.175, 0.170, 180, 360, count=14),
+        arc_ring(3.56, 0.0, -0.305, 0.165, 0.180, 180, 360, count=14),
+    ]
+    loft("ChinIntake", chin_rings, exterior, mats["airframe"],
+         cap_start=True, cap_end=False, split_angle_deg=30.0)
+    disc_mesh("ChinIntakeMouth", (0.0, 3.555, -0.305),
+              arc_ring(3.555, 0.0, -0.305, 0.150, 0.165, 180, 360, count=16),
+              exterior, dark_ds)
+
+    # Wing guns: LF Mk IX fit — one 20 mm Hispano cannon stub inboard of the
+    # .303 Brownings (two per wing). Cannon protrudes; .303s are flush ports.
     for side in (-1.0, 1.0):
-        box(f"Radiator{side:+.0f}", (side * 1.30, -0.10, -0.54),
-            (0.72, 1.00, 0.22), exterior, dark)
-        box(f"RadiatorFace{side:+.0f}", (side * 1.30, 0.41, -0.54),
-            (0.62, 0.03, 0.16), exterior, metal)
+        for x, is_cannon in ((1.02, True), (1.47, False), (1.86, False)):
+            t = x / SPAN_HALF
+            _, _, le_y, zc = wing_planform(side * t)
+            if is_cannon:
+                tapered_tube(
+                    f"GunCannon{side:+.0f}",
+                    (side * x, le_y + 0.10, zc),
+                    (side * x, le_y - 0.035, zc),
+                    0.030, 0.030, exterior, mats["metal"], segments=12,
+                )
+                disc_mesh(f"GunCannonMuzzle{side:+.0f}", (side * x, le_y + 0.102, zc),
+                          [(side * x + 0.030 * math.cos(a), le_y + 0.103,
+                             zc + 0.030 * math.sin(a)) for a in
+                           (2 * math.pi * i / 12 for i in range(12))],
+                          exterior, dark_ds)
+            else:
+                disc_mesh(f"GunPort{side:+.0f}_{x:.2f}", (side * x, le_y + 0.002, zc),
+                          [(side * x + 0.021 * math.cos(a), le_y + 0.004,
+                             zc + 0.021 * math.sin(a)) for a in
+                           (2 * math.pi * i / 10 for i in range(10))],
+                          exterior, dark_ds)
 
-    # Cannon and machine-gun barrels in the wing leading edge.
-    for side in (-1.0, 1.0):
-        for x, radius, length in ((1.02, 0.035, 0.44), (1.42, 0.030, 0.38)):
-            cylinder_between(
-                f"Gun{side:+.0f}_{x:.2f}",
-                (side * x, 0.86, -0.19),
-                (side * x, 0.86 + length, -0.19),
-                radius, exterior, metal, vertices=10,
-            )
+    # Pitot head on the port wing leading edge, roughly 30 % semi-span.
+    t_pitot = 1.70 / SPAN_HALF
+    _, _, le_y, _ = wing_planform(-t_pitot)
+    tapered_tube("PitotMast", (-1.70, le_y + 0.01, -0.225), (-1.70, le_y + 0.34, -0.238),
+                 0.024, 0.020, exterior, mats["metal"], segments=10)
+    tapered_tube("Pitot", (-1.70, le_y + 0.30, -0.238), (-1.70, le_y + 0.78, -0.26),
+                 0.013, 0.010, exterior, mats["metal"], segments=8)
 
-    # Pitot under the left wingtip and a small antenna mast.
-    cylinder_between("Pitot", (-4.6, 0.30, -0.34), (-4.6, 1.05, -0.34),
-                     0.018, exterior, metal, vertices=8)
-    cylinder_between("AntennaMast", (0.0, -1.30, 0.70), (0.0, -1.30, 1.02),
-                     0.014, exterior, dark, vertices=8)
+    # Antenna mast: raking back from the spine behind the canopy, with a small
+    # blade aerial ahead of it (PH-OUQ_11/12/18).
+    tapered_tube("AntennaMast", (0.0, -1.26, 0.70), (0.0, -1.47, 1.07),
+                 0.017, 0.005, exterior, dark, segments=8)
+    tapered_tube("AntennaBlade", (0.0, -0.97, 0.70), (0.0, -1.05, 0.87),
+                 0.011, 0.004, exterior, dark, segments=6)
 
 # ---------------------------------------------------------------------------
 # Main
@@ -925,6 +1061,8 @@ def main():
         "metal": material("metal", (0.46, 0.48, 0.46), 0.32, 0.75),
         "spinner": material("spinner", (0.38, 0.46, 0.48), 0.55, 0.10),
         "dark": material("dark", (0.055, 0.060, 0.055), 0.78, 0.15),
+        "dark_ds": material("dark_ds", (0.055, 0.060, 0.055), 0.78, 0.15,
+                            double_sided=True),
         "tyre": material("tyre", (0.025, 0.025, 0.025), 0.95, 0.0),
         "glass": material("glass", (0.28, 0.36, 0.40), 0.05, 0.25, alpha=0.55,
                           double_sided=True),

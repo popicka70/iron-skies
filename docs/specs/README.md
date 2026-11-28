@@ -6,10 +6,10 @@ This directory is the **living plan** for active work.
 Linux and Windows, with single-player and authoritative multiplayer, engineering-grade
 6-DOF flight dynamics, and persistent maps generated from real, openly licensed geodata.
 The 4,000 km terrain workstream is complete:
-[`0001-continental-terrain.md`](0001-continental-terrain.md) is **done** (full continental
-imagery, floating origin, streamed OSM detail, packaging and telemetry). The active
-workstream is the aircraft art pass in
-[`0002-aircraft-art-pass.md`](0002-aircraft-art-pass.md). The product goal and scope are
+[`0001-continental-terrain.md`](0001-continental-terrain.md) is **done**. The aircraft
+art pass in [`0002-aircraft-art-pass.md`](0002-aircraft-art-pass.md) and the hero
+aircraft pass in [`0003-hero-aircraft-pass.md`](0003-hero-aircraft-pass.md) are **done**.
+The product goal and scope are
 in [`../SPEC.md`](../SPEC.md); the milestone backlog is in
 [`../ROADMAP.md`](../ROADMAP.md). A spec is not a design document: it records what is
 being changed now, how it will be verified, and what remains.

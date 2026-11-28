@@ -109,3 +109,6 @@ game/assets/terrain/europe-30m-tiles-1944/
 
 # Blender backup files
 *.blend1
+
+# Downloaded reference photos (reference-only, never committed)
+reference-photos/

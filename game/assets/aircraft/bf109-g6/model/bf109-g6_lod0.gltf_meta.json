@@ -5,24 +5,24 @@
     "min": [
       -4.96,
       -5.07,
-      -1.5
+      -1.4874
     ],
     "max": [
       4.96,
-      4.0,
-      1.42
+      3.95,
+      1.585
     ],
     "size": [
       9.92,
-      9.07,
-      2.92
+      9.02,
+      3.0724
     ]
   },
   "expected_span_m": 9.92,
   "expected_length_m": 9.02,
-  "triangles": 11672,
-  "objects": 31,
-  "meshes": 25,
+  "triangles": 12656,
+  "objects": 40,
+  "meshes": 34,
   "materials": [
     "airframe",
     "cross_black",
@@ -34,6 +34,7 @@
     "interior",
     "leather",
     "metal",
+    "needle",
     "spinner",
     "tyre",
     "underside"
@@ -68,10 +69,19 @@
     "GearMainL",
     "GearMainR",
     "GearTail",
+    "GearTailDoorL",
+    "GearTailDoorR",
     "GearTailLeg",
     "GearTailWheel",
     "GearWheelL",
     "GearWheelR",
+    "NeedleAirspeed",
+    "NeedleAltimeter",
+    "NeedleCoolant",
+    "NeedleFuel",
+    "NeedleManifold",
+    "NeedleOil",
+    "NeedleRpm",
     "Propeller",
     "PropellerBlades",
     "PropellerRoot",

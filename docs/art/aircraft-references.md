@@ -58,14 +58,48 @@ Silhouette overlays (measured 2026-11-27):
 | Wikimedia Commons, `File:Spitfire MKIX.jpg` — https://commons.wikimedia.org/wiki/File:Spitfire_MKIX.jpg | Mk IX nose, spinner, 4-blade prop and canopy side profile | **CC BY-SA 3.0** (B. Huber) | no | reference-only; the overlay is a local review artifact, never committed |
 
 The Mk Vb drawing and the Mk IX profile are scaled to the authoritative span/length
-and overlaid with `tools/blender/render_silhouette.py`. Measured result: span 11.23 m,
-length 9.55 m (0.08 m / 0.85% over the 9.47 m authoritative figure, under half a tyre
-width), height 3.32 m with the prop disc and gear up. The side view matches the drawing
-along the fuselage within a few centimetres; the top view's outer-wing chord is within
-~0.2 m and the root is ~0.3 m narrower, which is the Mk Vb's wing-root fairing rather
-than a planform error (the blockout's wing area is 22.5 m² against the published
-22.49 m²). The 8 cm length is accepted for now; trim the rudder trailing edge if a
-later pass needs an exact figure.
+and overlaid with `tools/blender/render_silhouette.py`. Measured 2026-11-28 after the
+hero pass: span 11.23 m, length 9.47 m (exact; the rudder trailing edge was trimmed
+0.08 m to reach it), height 3.32 m with the prop disc and gear up. The side view matches
+the drawing along the fuselage within a few centimetres; the top view's outer-wing chord
+is within ~0.2 m and the root is ~0.3 m narrower, which is the Mk Vb's wing-root fairing
+rather than a planform error (the blockout's wing area is 22.5 m² against the published
+22.49 m²). The silhouette sheet is `docs/media/aircraft/spitfire-mk9-silhouette.jpg`.
+
+### Hero pass intake (2026-11-28)
+
+Hero-pass reference photos were downloaded to the git-ignored
+`reference-photos/spitfire-mk9/` (licence-filtered via
+`tools/fetch_reference_photos.py`); none of these files are committed. Sources and
+licences, as recorded in `reference-photos/spitfire-mk9/manifest.json`:
+
+| File | Source | Licence | Author | Use |
+| --- | --- | --- | --- | --- |
+| `Antwerp_Supermarine_Spitfire_Mk_IX_PH-OUQ_02/03/04/05/08/11/12/13/14/15/16/18/19.jpg` | Wikimedia Commons, PH-OUQ walkaround (Antwerp, 2019) | CC BY-SA 4.0 | Ad Meskens | whole-aircraft shape, nose/spinner, exhausts, radiator bath, oil cooler, chin intake, canopy framing, gear doors |
+| `IWM_Duxford_..._PV_202_-_geograph.org.uk_-_7102705.jpg` | Wikimedia Commons (geograph) | CC BY-SA 2.0 | Michael Garlick | taxi/gear/stance reference |
+| `IWM_Duxford_..._PV_202_-_geograph.org.uk_-_7102761.jpg` | Wikimedia Commons (geograph) | CC BY-SA 2.0 | Michael Garlick | taxi/gear/stance reference |
+| `A_ground_crewman_helps_a_pilot_..._CNA2829.jpg` | Wikimedia Commons (RAF official photograph) | Public domain | RAF official photographer (Flt Lt Woodbine) | period 1944 Mk IX (titled Mk VIII in the source title; airframe is a Mk IX-type) cockpit/fuselage reference |
+
+What was measured or taken from these photos (and only this):
+
+- Spinner: long, gently convex taper to a near-pointed tip (PH-OUQ_04/05/08/13/14);
+  modelled as a 7-ring loft instead of the previous 5-ring stubbier profile.
+- Exhausts: six ejector stubs per side, angled outward and slightly aft with rolled
+  outer flares (PH-OUQ_03/13/14); modelled as tapered tubes instead of boxes.
+- Radiator bath (starboard) and oil cooler (port): long deep rectangular ducts under
+  the wings with dark forward intake and rear outlet faces (PH-OUQ_13/15/16); modelled
+  as rounded-rectangle lofts instead of boxes.
+- Chin (carburettor) intake: half-round scoop under the nose with dark mouth — the
+  two-stage supercharger signature (PH-OUQ_05/13).
+- Wing guns: LF Mk IX fit, one 20 mm Hispano cannon stub per wing (inboard) plus two
+  flush .303 ports outboard; cannon protrudes, .303s are flat discs (PH-OUQ_04/05).
+- Pitot head on a mast ahead of the port wing leading edge (PH-OUQ_04/05); antenna
+  mast raking back behind the canopy plus a small blade aerial ahead of it
+  (PH-OUQ_11/12/18).
+- Canopy: framing/side plating subtly reshaped; gear doors rebuilt as raked
+  tapered slabs behind the legs (PH-OUQ_14/15).
+- Rudder trailing edge trimmed 0.08 m forward: overall length now 9.47 m exactly.
+- Span 11.23 m and 22.5 m² wing area unchanged; height 3.32 m (prop disc, gear up).
 
 ## Messerschmitt Bf 109 G-6
 
@@ -103,6 +137,35 @@ Measured with `tools/blender/render_silhouette.py` (gear up): span 9.92 m, lengt
 prop disc. The model-only sheet is `docs/media/aircraft/bf109-g6-silhouette.jpg`; the
 full reference overlay is still to do.
 
+Hero pass intake (2026-11-28):
+
+| Source | Use | Licence | Shipped | Notes |
+| --- | --- | --- | --- | --- |
+| Wikimedia Commons, `File:Hispano HA1112 M1L Buchon Bf 109 G-AWHK Duxford 2025 01.jpg` — https://commons.wikimedia.org/wiki/File:Hispano_HA1112_M1L_Buchon_Bf_109_G-AWHK_Duxford_2025_01.jpg | flying G-6 side profile: Erla canopy, exhaust stubs, chin bath, gear stance | **CC BY 4.0** (Julian Herzog) | no | reference-only |
+| Wikimedia Commons, `File:Me109 G-6 D-FMBB 1.jpg` — https://commons.wikimedia.org/wiki/File:Me109_G-6_D-FMBB_1.jpg | front 3/4: MG 131 bulges, chin bath, DB 605 exhausts, gear | **CC BY-SA 2.0** (Kogo) | no | reference-only |
+| Wikimedia Commons, `File:Messerschmitt Bf 109 G-6R3.jpg` — https://commons.wikimedia.org/wiki/File:Messerschmitt_Bf_109_G-6R3.jpg | top/3/4 museum view: cowl bulges, MG 151 wing bulges, wing planform, antenna mast | **CC0** (Smithsonian, photo Eric Long) | no | reference-only |
+| Wikimedia Commons, `File:Messerschmitt Bf 109 G-6R3 Cockpit.jpg` — https://commons.wikimedia.org/wiki/File:Messerschmitt_Bf_109_G-6R3_Cockpit.jpg | cockpit layout cross-check (Erla hood, panels) | **CC0** (Smithsonian, photo Eric Long) | no | reference-only |
+| Wikimedia Commons, `File:Messerschmitt Bf-109G-10 Full Scale Mockup.jpg` — https://commons.wikimedia.org/wiki/File:Messerschmitt_Bf-109G-10_Full_Scale_Mockup.jpg | G-10 (close cousin) airframe sanity check, fin shape | **CC BY 2.0** (Eric Friedebach) | no | reference-only; G-6 preferred where they differ |
+| Wikimedia Commons, `File:Messerschmitt Bf-109G-10 Full Scale Mockup - 51166787397.jpg` — https://commons.wikimedia.org/wiki/File:Messerschmitt_Bf-109G-10_Full_Scale_Mockup_-_51166787397.jpg | G-10 detail: nose, fin, rudder, tailwheel | **CC BY 2.0** (Eric Friedebach) | no | reference-only |
+| Wikimedia Commons, `File:Messerschmitt Bf 109 E-1, Gruppenadjutant I. JG 76, Bastogne, Belgien, Mitte Mai 1940 (a).jpg` — https://commons.wikimedia.org/wiki/File:Messerschmitt_Bf_109_E-1%2C_Gruppenadjutant_I._JG_76%2C_Bastogne%2C_Belgien%2C_Mitte_Mai_1940_%28a%29.jpg | 1940-era airframe reference; shape comparison only | **Public domain** (unknown author) | no | reference-only; nose shape differs from G-6 |
+| Wikimedia Commons, `File:Bf 109 E-4 oder E-7, 3. (J) LG 2 und Ju 87 B, III. StG 77 in Vrba-Ost, südl. Radomir, Bulgarien, 01.04.1941.jpg` — https://commons.wikimedia.org/wiki/File:Bf_109_E-4_oder_E-7%2C_3._%28J%29_LG_2_und_Ju_87_B_III._StG_77_in_Vrba-Ost%2C_s%C3%BCdl._Radomir%2C_Bulgarien%2C_01.04.1941.jpg | wartime photo: exhausts, spinner in service | **Public domain** (unknown author) | no | reference-only |
+| Wikimedia Commons, `File:FuG 16 Z radio Messerschmitt Bf 109 G-6 1.jpg` — https://commons.wikimedia.org/wiki/File:FuG_16_Z_radio_Messerschmitt_Bf_109_G-6_1.jpg | FuG 16 Z radio set (cockpit context) | **Public domain** (MKFI) | no | reference-only |
+| Wikimedia Commons, `File:FuG 16 Z radio Messerschmitt Bf 109 G-6 2.jpg` — https://commons.wikimedia.org/wiki/File:FuG_16_Z_radio_Messerschmitt_Bf_109_G-6_2.jpg | FuG 16 Z radio set, alternate view | **Public domain** (MKFI) | no | reference-only |
+| Wikimedia Commons, `File:FuG 7 radio Messerschmitt Bf 109 G-2.jpg` — https://commons.wikimedia.org/wiki/File:FuG_7_radio_Messerschmitt_Bf_109_G-2.jpg | FuG 7 radio set (cockpit context) | **Public domain** (MKFI) | no | reference-only |
+| Wikimedia Commons, `File:Messerschmitt Bf 109 G-6N.jpg` — https://commons.wikimedia.org/wiki/File:Messerschmitt_Bf_109_G-6N.jpg | G-6N profile variant; G-6 spine/antenna comparison | **CC BY-SA 2.0 de** (B. Huber) | no | reference-only |
+
+Measured against the G-6 line drawing (`File:Messerschmitt Bf 109 G-6.jpg`) and the
+Buchon profile, then re-measured with `tools/blender/render_silhouette.py` (gear up):
+span 9.92 m, length **9.02 m** (was 9.07 m; spinner shortened 0.05 m), height 2.97 m
+with the prop disc. The aft fuselage now follows the drawing's upswept tail cone
+(belly raised ~0.2 m amidships-to-tail, spine raised to match), the fin/rudder are
+~0.15–0.2 m taller and raked, the chin radiator bath replaces the old underwing
+boxes, the MG 131 cowl bulges sit proud of the cowl, the Erla hood is flatter with
+raked frames, and the pitot/mast/gear geometry were corrected. Remaining accepted
+deviations: bulges are teardrop lofts (true teardrop cross-section), the tail cone
+sheds into the rudder slightly ahead of the drawing's hinge line, and the model
+keeps the blockout tailplane incidence.
+
 ## Junkers Ju 88 A-4
 
 | Source | Use | Licence | Shipped | Notes |
@@ -130,8 +193,41 @@ Silhouette source (measured 2026-11-27):
 | Wikimedia Commons, `File:Junkers Ju 88 A-4.svg` — https://commons.wikimedia.org/wiki/File:Junkers_Ju_88_A-4.svg | A-4 3-view for the blockout silhouette | **CC BY-SA 3.0** (Kaboldy) | no | reference-only; the overlay is a local review artifact |
 
 Measured with `tools/blender/render_silhouette.py` (gear up): span 20.10 m, length
-14.36 m (exact), height 3.56 m with the prop discs. The model-only sheet is
-`docs/media/aircraft/ju88-a4-silhouette.jpg`; the full reference overlay is still to do.
+14.36 m (exact), height 3.37 m with the prop discs (2026-11-28 re-measure). The
+model-only sheet is `docs/media/aircraft/ju88-a4-silhouette.jpg`; the full reference overlay is still to do.
+
+Hero pass intake (2026-11-28) — used for the Ju 88 geometry rework (belly/nacelle
+depth, nacelle annular radiators, faceted greenhouse, Bola gondola, gear, tail):
+
+| File (reference-photos/ju88-a4/, never committed) | Use | Licence |
+| --- | --- | --- |
+| `Junkers_Ju_88A-4_at_the_Auto_and_Technik_Museum_Sinsheim_Ank_Kumar_Infosys_Limited_01.jpg` / `_02.jpg` (Ank Kumar, Wikimedia Commons) | Sinsheim preserved A-4: tail cone, fin/rudder top, tailplane dihedral, nacelle annular radiators, greenhouse framing, gear | CC BY-SA 4.0 |
+| `Cosford_180723_Junkers_Ju-88.jpg` (Oren Rozen, Wikimedia Commons) | RAF Cosford A-4: greenhouse panel layout and frames, gondola glazing, annular radiator mouth, exhaust stubs | CC BY-SA 4.0 |
+| `Junkers_Ju_88_SA-kuva_50530_.jpg` (Sot.virk. U. Eskola, SA-kuva) | ditched A-4, side/front profile: full silhouette, nacelle placement, fin shape | Public domain |
+| `Junkers_Ju_88_A-4_III._KG_54_1_.jpg` (Wikimedia Commons) | head-on ground shot: greenhouse stepping, annular radiators, Bola gondola, gear leg angle/track | Public domain |
+| `Bundesarchiv_Bild_101I-363-2258-11_Flugzeug_Junkers_Ju_88.jpg` (Rompel, Bundesarchiv) | in-flight side aspect: spine line, mast placement, nacelle/wing junction, Bola profile | CC BY-SA 3.0 de |
+| `Bundesarchiv_Bild_101I-388-0952-15_Flugzeuge_Junkers_Ju_88.jpg` (Marten, Bundesarchiv) | head-on taxi shot: dihedral, gear track, fin/tailplane stance | CC BY-SA 3.0 de |
+| `Bundesarchiv_Bild_101I-417-1766-03A_Flugzeug_Junkers_Ju_88.jpg` (Ellerbrock, Bundesarchiv) | underside/front quarter: wing planform, dive brakes, gondola, gear | CC BY-SA 3.0 de |
+| `Junkers_Ju-88_A4_Plastikov_modely.jpg` (Zbyna Zl, Wikimedia Commons) | plastic-model cross-check of proportions only | CC BY-SA 4.0 |
+
+What was measured/matched against these photos: fuselage/nacelle ventral line raised
+~0.4–0.5 m to the drawing proportions (tail cone upswept); nacelle fronts fitted with
+annular radiator rings (dark recessed tunnel + radial struts, inner diameter ≈ 0.53 m
+vs 0.88 m spinner-adjacent opening); greenhouse rebuilt as six stepped stations of
+faceted flat panels with frame tubes (crown + intermediate rails), taller apex
+(1.12 m above datum); Bola gondola re-hung from the raised belly with a raked
+bomb-aimer panel and a ventral gun trough/barrel; main gear moved into the nacelles
+(track ≈ 6.6 m, wheels Ø 1.0 m, slight outward splay, legs ahead of the wing LE);
+tailplane given 5° dihedral; fin/rudder top rounded further; antenna mast moved to
+just behind the cockpit (y = 3.05 m); underwing dive brakes reduced to flush inner
+pads sitting on the wing underside.
+
+Remaining accepted deviations: procedural lofts only approximate the compound curves of
+the real nacelle/spinner; the greenhouse is a stylized stepped face rather than the
+true blown-plexiglas panels; the antenna wire was omitted deliberately (read as a
+rendering artefact); the radiator ring struts are indicative, not the exact Jumo 211
+honeycomb pattern; markings remain generic period-correct (Balkenkreuz, no Geschwader
+codes).
 
 ## Reference intake checklist
 
@@ -153,11 +249,47 @@ For every new image or drawing:
 | Wikimedia Commons, `Category:North American P-51 Mustang` — https://commons.wikimedia.org/wiki/Category:North_American_P-51_Mustang | walkaround reference for later detail passes | varies per file | no | reference-only; no image was used for this blockout |
 | Public dimensions (span 11.28 m, length 9.83 m, wing area 21.83 m²) | blockout proportions | public data | no | dimension source only |
 
+Hero pass intake (2026-11-28) — used for the P-51D geometry rework (tailplane/elevator
+length trim, dorsal fillet, belly radiator bath, exhausts, bubble canopy framing,
+gun ports):
+
+| File (reference-photos/p51d-25/, never committed) | Use | Licence |
+| --- | --- | --- |
+| `London_RAF_Museum_Hendon_North_American_P-51D_Mustang_01.jpg` (Ad Meskens, Wikimedia Commons) | side profile: nose/cowl line, exhaust row, fin and fillet, scoop, spine | CC BY-SA 4.0 |
+| `London_RAF_Museum_Hendon_North_American_P-51D_Mustang_03.jpg` (Ad Meskens, Wikimedia Commons) | nose 3/4: exhaust stub angle, cowl fasteners, canopy frame | CC BY-SA 4.0 |
+| `London_RAF_Museum_Hendon_North_American_P-51D_Mustang_06.jpg` (Ad Meskens, Wikimedia Commons) | head-on 3/4: stub protrusion, intake, spinner backplate, gear stance | CC BY-SA 4.0 |
+| `London_RAF_Museum_Hendon_North_American_P-51D_Mustang_07.jpg` (Ad Meskens, Wikimedia Commons) | cowl panel/fastener detail, exhaust surround | CC BY-SA 4.0 |
+| `Duxford_Imperial_War_Museum_North_American_P-51D_Mustang_-_geograph.org.uk_-_4582855.jpg` (Michael Garlick, geograph) | side/rear 3/4: tail fillet, scoop, tailplane vs rudder TE | CC BY-SA 2.0 |
+| `Duxford_Imperial_War_Museum_North_American_P-51D_Mustang_-_geograph.org.uk_-_4582902.jpg` (Michael Garlick, geograph) | port side: canopy frame, scoop, fin | CC BY-SA 2.0 |
+| `Duxford_Imperial_War_Museum_North_American_P-51D_Mustang_-_geograph.org.uk_-_4582905.jpg` (Michael Garlick, geograph) | side/front: stubs, fillet, scoop depth | CC BY-SA 2.0 |
+| `Barksdale_Global_Power_Museum_September_2015_06_North_American_P-51D_Mustang_.jpg` (Michael Barera, Wikimedia Commons) | port side, gear down: scoop profile, fillet, fin top | CC BY-SA 4.0 |
+| `Barksdale_Global_Power_Museum_September_2015_07_North_American_P-51D_Mustang_.jpg` (Michael Barera, Wikimedia Commons) | front quarter: stub row, cowl cheeks, spinner | CC BY-SA 4.0 |
+| `At_American_Airpower_Museum_2024_022.jpg` (Mike Peel, Wikimedia Commons) | front quarter, nose-high: exhaust stub exit angle, bath outline | CC BY-SA 4.0 |
+| `At_American_Airpower_Museum_2024_023.jpg` (Mike Peel, Wikimedia Commons) | front quarter, other side: symmetric stub check | CC BY-SA 4.0 |
+| `J_26_North_American_P-51D_Mustang.jpg` (David Brohede, Wikimedia Commons) | cockpit 360: canopy framing, sill height (cockpit unchanged this pass) | CC BY-SA 4.0 |
+
+What was measured/matched against these photos: tailplane/elevator trailing edge moved
+0.13 m forward and fin chords trimmed ~0.13 m so the length is 9.84 m (was 9.96 m;
+9.83 m is the authoritative figure, within 0.1 %); dorsal fin fillet added (D-15
+onwards) rising from the spine behind the headrest into the fin leading edge; belly
+radiator bath rebuilt as a deep lofted scoop (forward-facing dark intake, vertical
+exit flap at the rear underside) replacing the boxy block and separate oil-cooler box;
+six exhaust stubs per side as short cylinders angled back ~20° and slightly outboard;
+canopy reduced to the windscreen bow, a rear hoop and thin sill rails (no spine, no
+mid-hood bows); gun ports as flush stubs in the wing leading edge (were 0.42 m barrels);
+pitot re-hung on a mast under the port wing (was floating below the tip).
+
+Remaining accepted deviations: the canopy frame spacing and the fillet are stylised
+(flat-sided wedge, constant 0.075 m thickness); exhaust stubs are straight (no fishtail
+collectors); the radiator flap is static; markings remain generic period-correct; the
+fin airfoil is still the blockout NACA section.
+
 Shape notes: long Merlin nose, teardrop bubble canopy, laminar-flow wing with a nearly
 straight leading edge, belly radiator/oil-cooler scoop, four-blade Hamilton Standard
 prop, wide-track main gear, USAAF olive-drab upper / neutral-grey lower with
 star-and-bar insignia. The blockout measured span 11.28 m, length 9.96 m (0.13 m over
-the 9.83 m authoritative figure) and height 3.67 m with the prop disc. The model-only
+the 9.83 m authoritative figure) and height 3.67 m with the prop disc; the hero pass
+(2026-11-28) trims the length to 9.84 m — see the intake section above. The model-only
 silhouette is `docs/media/aircraft/p51d-25-silhouette.jpg`; the public-domain NAA 3-view
 is registered in the review record, and its dimensioned callouts need a manual crop
 before a full side overlay can be composed.
