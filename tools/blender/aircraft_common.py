@@ -672,7 +672,11 @@ def scale_uvs(objects: Sequence[bpy.types.Object], factor: float) -> None:
             loop.uv *= factor
 
 
-def export_glb(path: str, objects: Sequence[bpy.types.Object]) -> None:
+def export_glb(
+    path: str,
+    objects: Sequence[bpy.types.Object],
+    materials: str = "EXPORT",
+) -> None:
     select_only(objects)
     bpy.ops.export_scene.gltf(
         filepath=path,
@@ -680,7 +684,7 @@ def export_glb(path: str, objects: Sequence[bpy.types.Object]) -> None:
         use_selection=True,
         export_apply=True,
         export_yup=True,
-        export_materials="EXPORT",
+        export_materials=materials,
         export_texcoords=True,
         export_normals=True,
         export_tangents=False,

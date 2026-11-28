@@ -31,6 +31,11 @@ public sealed partial class AircraftVisual : Node3D
     private Node3D? _cockpitInterior;
     private readonly Dictionary<string, Node3D> _needles = new();
     private DamageDecals? _damageDecals;
+    private readonly List<Node3D> _lods = new();
+    private readonly Dictionary<string, Material> _lodMaterials = new();
+    private Material? _airframeMaterial;
+    private readonly Dictionary<string, Material> _lodOverrides = new();
+    private Sprite3D? _imposter;
     private bool _cockpitView;
 
     public void Build(string aircraftId, Color? tint = null)
@@ -50,6 +55,10 @@ public sealed partial class AircraftVisual : Node3D
                 _damageDecals = new DamageDecals();
                 _damageDecals.Build(aircraftId);
                 AddChild(_damageDecals);
+                CacheLodMaterials();
+                LoadLods();
+                BuildImposter();
+                ApplyLodRangeToModel();
                 return;
             }
         }
@@ -145,6 +154,156 @@ public sealed partial class AircraftVisual : Node3D
                 }
             }
         }
+    }
+
+    /// <summary>Collect the LOD0 materials so the material-less LOD meshes can reuse them.</summary>
+    private void CacheLodMaterials()
+    {
+        _lodMaterials.Clear();
+        _airframeMaterial = null;
+        if (_model is null)
+        {
+            return;
+        }
+        foreach (Node node in _model.FindChildren("*", "MeshInstance3D", true, false))
+        {
+            if (node is not MeshInstance3D mesh || mesh.Mesh is null
+                || mesh.Mesh.GetSurfaceCount() == 0)
+            {
+                continue;
+            }
+            if (mesh.GetActiveMaterial(0) is Material material)
+            {
+                _lodMaterials[mesh.Name] = material;
+                if (material.ResourceName.Contains("airframe", StringComparison.OrdinalIgnoreCase))
+                {
+                    _airframeMaterial = material;
+                }
+            }
+        }
+    }
+
+    private void LoadLods()
+    {
+        for (int level = 1; level <= 2; level++)
+        {
+            string path = $"res://assets/aircraft/{_aircraftId}/model/{_aircraftId}_lod{level}.glb";
+            if (!ResourceLoader.Exists(path)
+                || ResourceLoader.Load<PackedScene>(path) is not PackedScene scene)
+            {
+                continue;
+            }
+            if (scene is null)
+            {
+                continue;
+            }
+            Node3D lod = scene.Instantiate<Node3D>();
+            AddChild(lod);
+            _lods.Add(lod);
+            float begin = level == 1 ? 140.0f : 500.0f;
+            float end = level == 1 ? 520.0f : 1600.0f;
+            foreach (Node node in lod.FindChildren("*", "MeshInstance3D", true, false))
+            {
+                if (node is not MeshInstance3D mesh)
+                {
+                    continue;
+                }
+                Material? material = _lodMaterials.TryGetValue(mesh.Name, out Material? cached)
+                    ? cached : _airframeMaterial;
+                if (material is not null)
+                {
+                    mesh.MaterialOverride = material;
+                }
+                if (material is not null)
+                {
+                    mesh.MaterialOverride = LodMaterial(material);
+                }
+                ApplyLodRange(mesh, begin, end);
+            }
+        }
+    }
+
+    /// <summary>
+    /// The decimated LOD meshes have inconsistent winding, so their shared
+    /// material must not back-cull; duplicate it once per material and keep the
+    /// textures.
+    /// </summary>
+    private Material LodMaterial(Material source)
+    {
+        string key = source.ResourceName;
+        if (_lodOverrides.TryGetValue(key, out Material? cached))
+        {
+            return cached;
+        }
+        Material copy = (Material)source.Duplicate();
+        if (copy is BaseMaterial3D baseMaterial)
+        {
+            baseMaterial.CullMode = BaseMaterial3D.CullModeEnum.Disabled;
+        }
+        _lodOverrides[key] = copy;
+        return copy;
+    }
+
+    private static void ApplyLodRange(GeometryInstance3D instance, float begin, float end)
+    {
+        instance.VisibilityRangeBegin = begin;
+        instance.VisibilityRangeEnd = end;
+        instance.VisibilityRangeBeginMargin = 30.0f;
+        instance.VisibilityRangeEndMargin = 30.0f;
+        instance.VisibilityRangeFadeMode =
+            GeometryInstance3D.VisibilityRangeFadeModeEnum.Self;
+    }
+
+    private void ApplyLodRangeToModel()
+    {
+        if (_model is null)
+        {
+            return;
+        }
+        foreach (Node node in _model.FindChildren("*", "MeshInstance3D", true, false))
+        {
+            if (node is GeometryInstance3D instance)
+            {
+                ApplyLodRange(instance, 0.0f, 160.0f);
+            }
+        }
+    }
+
+    /// <summary>
+    /// A billboard silhouette for the last few kilometres. The side view is a
+    /// flat card; at this distance the aircraft is a handful of pixels.
+    /// </summary>
+    private void BuildImposter()
+    {
+        string path = $"res://assets/aircraft/{_aircraftId}/model/imposter.png";
+        if (!ResourceLoader.Exists(path)
+            || ResourceLoader.Load<Texture2D>(path) is not Texture2D texture)
+        {
+            return;
+        }
+        float length = _aircraftId switch
+        {
+            "bf109-g6" => 9.07f,
+            "ju88-a4" => 14.36f,
+            _ => 9.55f,
+        };
+        _imposter = new Sprite3D
+        {
+            Texture = texture,
+            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+            Shaded = false,
+            Modulate = Colors.White,
+            PixelSize = length / (Mathf.Max(1.0f, texture.GetWidth()) * 0.88f),
+            Position = new Vector3(0.0f, 0.35f, 0.0f),
+            VisibilityRangeBegin = 1500.0f,
+            VisibilityRangeEnd = 6000.0f,
+            VisibilityRangeBeginMargin = 60.0f,
+            VisibilityRangeEndMargin = 60.0f,
+            VisibilityRangeFadeMode =
+                GeometryInstance3D.VisibilityRangeFadeModeEnum.Self,
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+        };
+        AddChild(_imposter);
     }
 
     private void BuildPropDisc()
@@ -312,6 +471,14 @@ public sealed partial class AircraftVisual : Node3D
         if (_damageDecals is not null)
         {
             _damageDecals.Visible = !active;
+        }
+        foreach (Node3D lod in _lods)
+        {
+            lod.Visible = !active;
+        }
+        if (_imposter is not null)
+        {
+            _imposter.Visible = !active;
         }
     }
 }

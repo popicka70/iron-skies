@@ -348,7 +348,7 @@ public partial class Main : Node3D
 
         if (float.TryParse(ReadUserOption("--chase-distance"), out float chaseDistance))
         {
-            _chaseDistance = Mathf.Clamp(chaseDistance, 8.0f, 90.0f);
+            _chaseDistance = Mathf.Clamp(chaseDistance, 8.0f, 2_000.0f);
         }
 
         if (int.TryParse(ReadUserOption("--screenshot-delay"), out int delaySeconds))

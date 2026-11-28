@@ -88,6 +88,7 @@ public sealed partial class DamageDecals : Node3D
                 anchor.Position + anchor.Normal * SurfaceOffset + tangent * jitter),
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
         };
+        ApplyRange(hole);
         AddChild(hole);
         _holes.Add(hole);
     }
@@ -107,7 +108,18 @@ public sealed partial class DamageDecals : Node3D
                 anchor.Position + anchor.Normal * ScorchOffset),
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
         };
+        ApplyRange(_scorch);
         AddChild(_scorch);
+    }
+
+    private static void ApplyRange(GeometryInstance3D instance)
+    {
+        instance.VisibilityRangeBegin = 0.0f;
+        instance.VisibilityRangeEnd = 160.0f;
+        instance.VisibilityRangeBeginMargin = 20.0f;
+        instance.VisibilityRangeEndMargin = 20.0f;
+        instance.VisibilityRangeFadeMode =
+            GeometryInstance3D.VisibilityRangeFadeModeEnum.Self;
     }
 
     private static StandardMaterial3D? LoadDecal(string path)
