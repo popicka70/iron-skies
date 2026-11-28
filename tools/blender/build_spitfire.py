@@ -28,6 +28,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from aircraft_common import (  # noqa: E402
     airfoil_loop,
+    attach_occlusion,
+    bake_ao,
     bake_detail_normal,
     box,
     collection_objects,
@@ -963,6 +965,9 @@ def main():
         os.path.join(texture_dir, "spitfire_camo_normal.png"),
         size=4096,
     )
+    ao_path = os.path.join(texture_dir, "spitfire_camo_ao.png")
+    bake_ao(bpy.data.objects.get("ExteriorStatic"), ao_path, size=4096)
+    attach_occlusion(mats["airframe"], ao_path)
 
     # Metadata for the exporter / reviewer.
     scene = bpy.context.scene
