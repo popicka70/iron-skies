@@ -11,8 +11,8 @@ with **zero licence fees, zero royalties, and no proprietary dependencies**.
 >
 > M0 already starts the Spitfire on a marked runway, takes off, flies over a streamed
 > 40 × 40 km Normandy terrain with Sentinel-2 orthophoto/landcover, OSM roads,
-> hedgerows, woods and extruded buildings around the airfield, two flyable aircraft on
-> placeholder airframes, cockpit view, engine
+> hedgerows, woods and extruded buildings around the airfield, three flyable aircraft with
+> in-house art, cockpit view, engine
 > simulation, procedural audio and four working guns, up to six AI bandits plus AI wingmen,
 > hit-zone battle damage
 > (engine, controls, fuel) and a live cockpit instrument panel. A committed
@@ -61,6 +61,10 @@ missing.
 ![Ju 88 A-4 art pass](docs/media/aircraft/ju88-a4.jpg)
 
 *Ju 88 A-4: twin Jumo nacelles, greenhouse nose, Bola gondola, RLM 70/71/65.*
+
+![P-51D-25 Mustang art pass](docs/media/aircraft/p51d-25.jpg)
+
+*P-51D-25 Mustang: laminar wing, bubble canopy, belly radiator, olive drab and star-and-bar.*
 
 The three models are a measured blockout, not a final art pass. The remaining
 work — shape refinement, rivets, cockpit gauges, damage decals, authored LODs and

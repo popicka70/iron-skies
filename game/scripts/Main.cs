@@ -365,11 +365,8 @@ public partial class Main : Node3D
             playerAircraft = "bf109-g6";
         }
 
-        if (playerAircraft != "bf109-g6")
-        {
-            playerAircraft = "spitfire-mk9";
-        }
-
+        // Any data bundle under game/assets/aircraft/<id>/ is loadable; the
+        // mission only needs to know which id to spawn.
         _definition = LoadAircraft(playerAircraft);
         string enemyAircraft = playerAircraft == "bf109-g6" ? "spitfire-mk9" : "bf109-g6";
         _aiDefinition = LoadAircraft(enemyAircraft);

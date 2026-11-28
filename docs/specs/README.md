@@ -80,6 +80,6 @@ Ordered next steps for the next session. Keep this honest; it is the resume poin
 | Spec | Status | Area | Summary |
 | --- | --- | --- | --- |
 | [0001 — Continental terrain detail](0001-continental-terrain.md) | **done** | terrain | Full continental 120 m/30 m imagery, async I/O, floating origin, streamed OSM, packaging, telemetry. |
-| [0002 — Aircraft art pass](0002-aircraft-art-pass.md) | **active** | rendering, art, tools | Reference-locked silhouettes, PBR detail, cockpits, damage, authored LODs and the P-51D. |
+| [0002 — Aircraft art pass](0002-aircraft-art-pass.md) | **done** | rendering, art, tools | Reference-locked silhouettes, PBR detail, cockpits, damage, authored LODs and the P-51D. |
 
 Next number: `0003` (do not create until the work starts).

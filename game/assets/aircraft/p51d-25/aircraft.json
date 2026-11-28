@@ -1,0 +1,200 @@
+{
+  "id": "p51d-25",
+  "displayName": "North American P-51D-25 Mustang",
+  "notes": "Engineering data set, not a flight-test model. Geometry and performance anchors are public; aero coefficients are estimates. See validation.md.",
+  "aeroTable": "aero.csv",
+  "emptyMassKg": 3466.0,
+  "fuelMassKg": 408.0,
+  "wingAreaM2": 21.83,
+  "wingSpanM": 11.28,
+  "meanChordM": 1.935,
+  "cl0": 0.27,
+  "clAlphaPerRad": 4.6,
+  "clElevatorPerRad": 0.17,
+  "clFlapsPerUnit": 0.42,
+  "alphaStallDeg": 16.0,
+  "stallBlendDeg": 2.5,
+  "cd0": 0.016,
+  "oswaldEfficiency": 0.78,
+  "cdGear": 0.022,
+  "cdFlapsPerUnit": 0.035,
+  "cdRadiator": 0.006,
+  "cyBetaPerRad": 0.28,
+  "cm0": 0.0,
+  "cmAlphaPerRad": -0.6,
+  "cmElevatorPerRad": 0.36,
+  "cmQ": -14.0,
+  "clBetaPerRad": -0.06,
+  "clAileronPerRad": 0.042,
+  "clP": -0.85,
+  "cnBetaPerRad": 0.11,
+  "cnRudderPerRad": 0.05,
+  "cnR": -0.16,
+  "ixxKgM2": 4800.0,
+  "iyyKgM2": 11000.0,
+  "izzKgM2": 15000.0,
+  "maxStaticThrustN": 15000.0,
+  "fuelBurnKgPerSecondAtFullThrottle": 0.13,
+  "propellerEfficiency": 0.85,
+  "idleRpm": 650,
+  "maxRpm": 3000,
+  "rpmLagSeconds": 1.0,
+  "maxManifoldPressureInHg": 67,
+  "boostLimitSeconds": 300,
+  "coolantMaxC": 150,
+  "oilMaxC": 95,
+  "trimElevatorAuthority": 0.3,
+  "trimAileronAuthority": 0.1,
+  "trimRudderAuthority": 0.2,
+  "flapTravelSeconds": 7.0,
+  "gearTravelSeconds": 11.0,
+  "gear": [
+    {
+      "contact": [
+        0.8,
+        -1.4,
+        1.55
+      ],
+      "spring": 72000,
+      "damping": 23000,
+      "maxCompression": 0.42,
+      "rollingFriction": 0.03,
+      "lateralFriction": 0.9,
+      "braked": true
+    },
+    {
+      "contact": [
+        0.8,
+        1.4,
+        1.55
+      ],
+      "spring": 72000,
+      "damping": 23000,
+      "maxCompression": 0.42,
+      "rollingFriction": 0.03,
+      "lateralFriction": 0.9,
+      "braked": true
+    },
+    {
+      "contact": [
+        -4.7,
+        0.0,
+        0.45
+      ],
+      "spring": 50000,
+      "damping": 12000,
+      "maxCompression": 0.45,
+      "rollingFriction": 0.05,
+      "lateralFriction": 0.5,
+      "braked": false,
+      "steerable": true
+    }
+  ],
+  "enginePowerHp": [
+    [
+      0,
+      1490
+    ],
+    [
+      3050,
+      1720
+    ],
+    [
+      6700,
+      1500
+    ],
+    [
+      8500,
+      1200
+    ],
+    [
+      10000,
+      900
+    ],
+    [
+      12000,
+      600
+    ]
+  ],
+  "weapons": [
+    {
+      "name": ".50 M2 (far left)",
+      "muzzleVelocity": 880,
+      "rpm": 800,
+      "ammo": 400,
+      "damage": 4,
+      "dispersion": 0.0035,
+      "muzzle": [
+        1.2,
+        -2.15,
+        -0.16
+      ]
+    },
+    {
+      "name": ".50 M2 (mid left)",
+      "muzzleVelocity": 880,
+      "rpm": 800,
+      "ammo": 400,
+      "damage": 4,
+      "dispersion": 0.0035,
+      "muzzle": [
+        1.2,
+        -1.7,
+        -0.16
+      ]
+    },
+    {
+      "name": ".50 M2 (inner left)",
+      "muzzleVelocity": 880,
+      "rpm": 800,
+      "ammo": 400,
+      "damage": 4,
+      "dispersion": 0.0035,
+      "muzzle": [
+        1.2,
+        -1.25,
+        -0.16
+      ]
+    },
+    {
+      "name": ".50 M2 (inner right)",
+      "muzzleVelocity": 880,
+      "rpm": 800,
+      "ammo": 400,
+      "damage": 4,
+      "dispersion": 0.0035,
+      "muzzle": [
+        1.2,
+        1.25,
+        -0.16
+      ]
+    },
+    {
+      "name": ".50 M2 (mid right)",
+      "muzzleVelocity": 880,
+      "rpm": 800,
+      "ammo": 400,
+      "damage": 4,
+      "dispersion": 0.0035,
+      "muzzle": [
+        1.2,
+        1.7,
+        -0.16
+      ]
+    },
+    {
+      "name": ".50 M2 (far right)",
+      "muzzleVelocity": 880,
+      "rpm": 800,
+      "ammo": 400,
+      "damage": 4,
+      "dispersion": 0.0035,
+      "muzzle": [
+        1.2,
+        2.15,
+        -0.16
+      ]
+    }
+  ],
+  "structuralHealth": 1200.0
+}

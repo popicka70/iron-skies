@@ -19,6 +19,7 @@ slice is merged; this file keeps the detailed build notes and is not the current
 | In-game verification | Spitfire and Bf 109 screenshots; Ju 88 loads in bomber mission |
 | Spitfire + Bf 109 cockpit structure | tub, cushioned seat/harness, armoured headrest, pedals, stick, throttle/mixture, 8-gauge panel, compass, gunsight, canopy rails, bevel and fill light; adjustable eye point (2026-11-27) |
 | Render-cost telemetry | draw calls, primitives, objects, video/texture memory in the per-second JSONL; 1/6-aircraft perf script and budget checker (2026-11-27) |
+| P-51D-25 | data bundle + builder + textures + aero; laminar wing, bubble canopy, star-and-bar, LODs/imposter; takeoff 810 m (2026-11-28) |
 | Authored LODs | LOD1 45% / LOD2 16% (no cockpit, material-less, LOD0 maps reused), visibility ranges, side-silhouette imposter; 100–2,000 m review (2026-11-28) |
 | Damage decals | bullet-hole and scorch quads on per-aircraft anchors, offset 25 mm and capped; damage-test screenshot (2026-11-28) |
 | Cockpit needles | seven telemetry-driven needle nodes per fighter; `--no-hud` review flag (2026-11-28) |

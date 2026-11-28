@@ -1144,7 +1144,9 @@ public sealed partial class Launcher : Control
         _aircraftOption.SetItemMetadata(0, "spitfire-mk9");
         _aircraftOption.AddItem("Messerschmitt Bf 109 G-6");
         _aircraftOption.SetItemMetadata(1, "bf109-g6");
-        _aircraftOption.Selected = GameSettings.PlayerAircraft == "bf109-g6" ? 1 : 0;
+        _aircraftOption.AddItem("North American P-51D-25 Mustang");
+        _aircraftOption.SetItemMetadata(2, "p51d-25");
+        _aircraftOption.Selected = AircraftIndex(GameSettings.PlayerAircraft);
         _aircraftOption.ItemSelected += index =>
         {
             GameSettings.PlayerAircraft =
@@ -1235,6 +1237,13 @@ public sealed partial class Launcher : Control
         content.AddChild(close);
     }
 
+    private static int AircraftIndex(string id) => id switch
+    {
+        "bf109-g6" => 1,
+        "p51d-25" => 2,
+        _ => 0,
+    };
+
     private void ShowSettings()
     {
         HideMissions();
@@ -1244,7 +1253,7 @@ public sealed partial class Launcher : Control
         _settingsOverlay.Visible = true;
         _volumeSlider.Value = GameSettings.MasterVolume;
         _fullscreenCheck.ButtonPressed = GameSettings.Fullscreen;
-        _aircraftOption.Selected = GameSettings.PlayerAircraft == "bf109-g6" ? 1 : 0;
+        _aircraftOption.Selected = AircraftIndex(GameSettings.PlayerAircraft);
         _hudScaleSlider.Value = GameSettings.HudScale;
         _invertPitchCheck.ButtonPressed = GameSettings.InvertPitch;
         for (int i = 0; i < _theatreOption.ItemCount; i++)

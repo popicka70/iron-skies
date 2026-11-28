@@ -11,7 +11,7 @@ current.
 | [`SPEC.md`](SPEC.md) | Product goal, scope, technology decisions, 1.0 acceptance. |
 | [`specs/README.md`](specs/README.md) | Living-spec convention, template and index. |
 | [`specs/0001-continental-terrain.md`](specs/0001-continental-terrain.md) | **Done:** full continental height/imagery, floating origin, streamed OSM, packaging, telemetry. |
-| [`specs/0002-aircraft-art-pass.md`](specs/0002-aircraft-art-pass.md) | **Active art workstream:** silhouettes, PBR detail, cockpits, damage, LODs, fleet expansion. |
+| [`specs/0002-aircraft-art-pass.md`](specs/0002-aircraft-art-pass.md) | **Completed art workstream:** silhouettes, PBR detail, cockpits, damage, LODs, fleet expansion. |
 | [`ROADMAP.md`](ROADMAP.md) | Milestone backlog (M0–M5). Use for “what comes later.” |
 
 ## How the system works
@@ -50,7 +50,7 @@ treat them as the active plan.
 | [`plan-europe-heightmap.md`](plan-europe-heightmap.md) | Height/imagery build log; superseded by spec 0001. |
 | [`plan-europe-mountains.md`](plan-europe-mountains.md) | Completed range catalog; see spec 0001 for current terrain work. |
 | [`plan-mountains-rivers.md`](plan-mountains-rivers.md) | Early research; superseded. |
-| [`plan-aircraft-art-pass.md`](plan-aircraft-art-pass.md) | Aircraft art implementation log; current plan is spec 0002. |
+| [`plan-aircraft-art-pass.md`](plan-aircraft-art-pass.md) | Aircraft art implementation log; spec 0002 is closed. |
 | [`retro/m0.md`](retro/m0.md) | M0 retrospective and delivered slice. |
 
 Screenshots and previews live in [`media/`](media/).
