@@ -748,6 +748,7 @@ def main():
             os.path.join(texture_dir, "bf109_camo_albedo.png"),
             os.path.join(texture_dir, "bf109_camo_normal.png"),
             roughness=0.58, metallic=0.05, uv_scale=0.16,
+            orm_path=os.path.join(texture_dir, "bf109_camo_orm.png"),
         ),
         "underside": material("underside", (0.52, 0.60, 0.64), 0.62, 0.03),
         "metal": material("metal", (0.44, 0.46, 0.45), 0.32, 0.72),
