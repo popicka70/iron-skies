@@ -18,6 +18,7 @@ published dimensions. They override any drawing or photo measurement.
 | Spitfire LF Mk IX | 11.23 m | 9.47 m | 3.86 m | 22.49 m² | four-blade prop; LF = low-altitude Merlin 66 |
 | Bf 109 G-6 | 9.92 m | 9.02 m | 2.60 m | 16.10 m² | Erla canopy on late G-6; MG 131 bulges |
 | Ju 88 A-4 | 20.10 m | 14.36 m | 5.07 m | 54.70 m² | twin Jumo 211J; shortened wings vs A-1 |
+| P-51D-25 Mustang | 11.28 m | 9.83 m | 4.08 m | 21.83 m² | Packard V-1650-7; laminar wing; bubble canopy |
 
 Body origin is the CoG in `aircraft.json` gear geometry, not the ground. In Blender:
 nose **+Y**, up **+Z**, right **+X**, metres. Export converts to Godot **−Z forward**.
@@ -141,3 +142,18 @@ For every new image or drawing:
 4. Run `python3 tools/check_licenses.py` before the PR.
 5. State the chosen canopy/prop/camouflage variant in the aircraft's model metadata so
    reviewers know what was modelled.
+
+## North American P-51D-25 Mustang
+
+| Source | Use | Licence | Shipped | Notes |
+| --- | --- | --- | --- | --- |
+| Wikimedia Commons, `Category:North American P-51 Mustang` — https://commons.wikimedia.org/wiki/Category:North_American_P-51_Mustang | walkaround reference for later detail passes | varies per file | no | reference-only; no image was used for this blockout |
+| Public dimensions (span 11.28 m, length 9.83 m, wing area 21.83 m²) | blockout proportions | public data | no | dimension source only |
+
+Shape notes: long Merlin nose, teardrop bubble canopy, laminar-flow wing with a nearly
+straight leading edge, belly radiator/oil-cooler scoop, four-blade Hamilton Standard
+prop, wide-track main gear, USAAF olive-drab upper / neutral-grey lower with
+star-and-bar insignia. The blockout measured span 11.28 m, length 9.96 m (0.13 m over
+the 9.83 m authoritative figure) and height 3.67 m with the prop disc. The model-only
+silhouette is `docs/media/aircraft/p51d-25-silhouette.jpg`; the reference overlay is a
+later review task, as with the Bf 109 and Ju 88.

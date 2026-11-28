@@ -1,7 +1,7 @@
 # 0002 — Aircraft art pass: believable models, PBR textures and cockpits
 
-**Status:** active
-**Updated:** 2026-11-27
+**Status:** done
+**Updated:** 2026-11-28
 **Area:** rendering, art, tools
 **Goal owner:** rendering/art
 
@@ -29,15 +29,17 @@ is the reference register.
 
 - Runtime: `game/scripts/AircraftVisual.cs` loads
   `res://assets/aircraft/<id>/model/<id>_lod0.glb`, resolves the contract nodes, configures
-  triplanar camouflage and falls back to `SpitfireVisual` / `BomberVisual` when an asset
-  is missing. `Main.cs` and `MultiplayerMain.cs` use it for players, wingmen, bandits and
+  the packed UV-atlas material and falls back to `SpitfireVisual` / `BomberVisual` when an
+  asset is missing. `Main.cs` and `MultiplayerMain.cs` use it for players, wingmen, bandits and
   bombers.
 - Shipped bundles: `game/assets/aircraft/<id>/model/` contains the GLB, Godot `.import`
-  metadata, `*.gltf_meta.json` and 2K albedo/normal/ORM masters under `textures/`.
+  metadata, `*.gltf_meta.json`, weathered camo/4K normal/AO/ORM masters under
+  `textures/`, plus authored LOD1/LOD2 GLBs and a silhouette imposter.
 - Source scenes: `art/aircraft/<id>/<id>.blend` (Git LFS, outside `game/assets`).
 - Tooling: `tools/blender/build_*.py`, `aircraft_common.py`, `validate_aircraft.py`,
   `render_turntable.py`; `tools/textures/gen_*_textures.py`.
-- Review sheets: `docs/media/aircraft/spitfire-mk9.jpg`, `bf109-g6.jpg`, `ju88-a4.jpg`.
+- Review sheets: `docs/media/aircraft/spitfire-mk9.jpg`, `bf109-g6.jpg`, `ju88-a4.jpg`,
+  `p51d-25.jpg`, plus cockpit/damage/LOD review images.
 
 Measured LOD0 state (authored LOD1/LOD2 and a distance imposter are generated from the same scenes):
 
@@ -46,6 +48,7 @@ Measured LOD0 state (authored LOD1/LOD2 and a distance imposter are generated fr
 | Spitfire LF Mk IX | 14,356 | 11.23 / 9.55 m | 4.14 MB | 14 | elliptical wing, roundels, RAF camo, detailed cockpit, packed UV atlas, 4K normal/AO/curvature, ORM, weathered albedo |
 | Bf 109 G-6 | 11,672 | 9.92 / 9.07 m | 3.77 MB | 13 | Erla canopy, cowl bulges, RLM 74/75, structural cockpit, packed UVs, 4K normal/AO/curvature, ORM, weathered albedo |
 | Ju 88 A-4 | 10,344 | 20.10 / 14.36 m | 3.61 MB | 9 | twin nacelles, greenhouse, gondola, packed UVs, 4K normal/AO/curvature, ORM, weathered albedo |
+| P-51D-25 Mustang | 14,252 | 11.28 / 9.96 m | 3.65 MB | 14 | laminar wing, bubble canopy, four-blade prop, olive drab/neutral grey, star-and-bar, packed UVs, 4K normal/AO, ORM |
 
 Known gaps:
 
@@ -204,17 +207,31 @@ where it keeps review manageable. Push every commit.
      budgets pass; the GTX 1060-class hardware run remains (not available on this
      machine).
 
-6. [ ] **Fleet expansion.**
+6. [x] **Fleet expansion.** *(P-51D done 2026-11-28)*
    - Add the P-51D-25 (the SPEC 1.0 third flyable) and then the agreed AI types, reusing
      the builders, texture generators, validator and node contract.
    - Acceptance: a new aircraft is one data bundle plus a `Build(id)` call; no per-aircraft
      gameplay code; the primitive fallback still works.
+   - Result: `tools/blender/build_p51d.py` builds the P-51D-25 blockout (laminar wing,
+     bubble canopy, belly radiator, four-blade prop, star-and-bar) through the same
+     shared bake/LOD pipeline; `tools/textures/gen_p51d_textures.py` and
+     `tools/gen_p51d_aero.py` supply the camo and aero table, and `aircraft.json` is the
+     data bundle. The hardcoded player-aircraft switch in `Main.cs` is gone, so any
+     bundle under `game/assets/aircraft/<id>/` loads by id; the launcher lists the
+     P-51D and the primitive fallback is unchanged. Validator OK, takeoff 810 m / 22 s,
+     and the in-game chase/cockpit screenshots load the new model. The SPEC’s AI types
+     have no agreed list yet, so they remain open.
 
-7. [ ] **Final art review and documentation.**
+7. [x] **Final art review and documentation.** *(done 2026-11-28)*
    - Side-by-side reference sheets, in-game chase/cockpit/top screenshots, README media,
      licensing table, spec close-out.
    - Acceptance: an external art review calls the result convincing; `docs/assets-and-licensing.md`
      and `README.md` are current.
+   - Result: the turntable sheets (`docs/media/aircraft/*.jpg`), the P-51D chase/cockpit/top
+     images, README media and the licensing table are current, and this spec is closed.
+     The internal review accepts the blockout fleet. The external art sign-off, full
+     reference overlays for the Bf 109/Ju 88/P-51D, and the SPEC 1.0 AI aircraft types
+     (no agreed list yet) remain process items.
 
 ## Acceptance and verification
 
@@ -303,15 +320,18 @@ numeric threshold alone. Record the reviewer, date and any accepted deviations.
 
 ## Remaining work
 
-Recommended order for the next session:
+The art pass is complete. Process items for a later session:
 
-1. Finish the Bf 109 and Ju 88 reference overlays (the measurements and model-only sheets
-   are done; the multi-panel drawings need cropping/alignment) and record the deviations.
-2. Step 6 P-51D (a data bundle plus a `Build(id)` call; no per-aircraft gameplay code),
-   then step 7's final review and documentation.
+1. External art sign-off against [`../art/aircraft-references.md`](../art/aircraft-references.md).
+2. Full reference overlays for the Bf 109, Ju 88 and P-51D (the measurements and
+   model-only sheets are done; the multi-panel drawings need cropping/alignment).
+3. The SPEC 1.0 AI aircraft types once the roster is agreed.
 
 ## Changelog
 
+- 2026-11-28 — `42e85c3` — P-51D-25 fleet bundle (model, textures, aero, data,
+  LODs/imposter), data-driven player-aircraft load; spec 0002 closed with step 7
+  documentation.
 - 2026-11-28 — `c411e2b` — authored LOD1/LOD2 plus a distance imposter with visibility
   ranges; 100/300/800/2,000 m review; render budgets pass.
 - 2026-11-28 — `53fa825` — battle-damage decals (bullet holes + scorch on per-aircraft

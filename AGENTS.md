@@ -168,11 +168,11 @@ launch of the exported Linux build. Windows uses a sidecar `.pck`; keep both fil
 - Packaging: minimal/full Linux+Windows presets, optional terrain `.tar.xz` bundles with
   a SHA-256 manifest and a verified `fetch_terrain_bundle.py` installer path.
 - Telemetry: per-second JSONL (`--telemetry`) and a CI budget check on the takeoff run.
-- Tests: 115 unit tests, 832 m takeoff, mission lands, multiplayer smoke test,
-  `--precision-test` PASS.
-- Active work and next step: spec 0001 (continental terrain) is **done**. The parallel
-  art workstream continues in [`docs/specs/0002-aircraft-art-pass.md`](docs/specs/0002-aircraft-art-pass.md);
-  product milestones are in [`docs/ROADMAP.md`](docs/ROADMAP.md).
+- Tests: 115 unit tests, 832 m Spitfire takeoff (810 m P-51D), mission lands,
+  multiplayer smoke test, `--precision-test` PASS.
+- Active work and next step: specs 0001 (continental terrain) and 0002 (aircraft art) are
+  **done**. The next product milestone is in [`docs/ROADMAP.md`](docs/ROADMAP.md); pending
+  art sign-off items are recorded in spec 0002's remaining work.
 
 ## Tone for agents
 
