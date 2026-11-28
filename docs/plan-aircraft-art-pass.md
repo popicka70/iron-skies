@@ -19,6 +19,7 @@ slice is merged; this file keeps the detailed build notes and is not the current
 | In-game verification | Spitfire and Bf 109 screenshots; Ju 88 loads in bomber mission |
 | Spitfire + Bf 109 cockpit structure | tub, cushioned seat/harness, armoured headrest, pedals, stick, throttle/mixture, 8-gauge panel, compass, gunsight, canopy rails, bevel and fill light; adjustable eye point (2026-11-27) |
 | Render-cost telemetry | draw calls, primitives, objects, video/texture memory in the per-second JSONL; 1/6-aircraft perf script and budget checker (2026-11-27) |
+| Damage decals | bullet-hole and scorch quads on per-aircraft anchors, offset 25 mm and capped; damage-test screenshot (2026-11-28) |
 | Cockpit needles | seven telemetry-driven needle nodes per fighter; `--no-hud` review flag (2026-11-28) |
 | Fleet surface bake | packed UV atlas, 4K normal/AO bakes, curvature master, weathered albedo, ORM wired, UV sampling in the runtime, geometry lines removed from all three (2026-11-28) |
 
